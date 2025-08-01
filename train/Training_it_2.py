@@ -185,6 +185,13 @@ class Training(TrainingInit):
         else:
             print("No validation data available.")
             return False
+
+    def save_model(self):
+        torch.save(self.forward_setup.event_layers.state_dict(), 'event_layers.pth')
+        torch.save(self.forward_setup.t5_layers.state_dict(), 't5_layers.pth')
+        print("Model saved successfully.")
+
 if __name__ == "__main__":
     training = Training(batch_size=32, epochs=15, event_lr=0.01, t5_lr=0.001)
     training.train()
+    training.save_model()
