@@ -18,6 +18,12 @@ files = [
     "data/procesed_tensors(10).pt",
 ]
 
+pos_tags = {
+    "ADJ": 0.5, "ADP": 1, "ADV": 0.2, "AUX": 0.2, "CCONJ": 0, "DET": 1,
+    "INTJ": 0, "NOUN": 2, "NUM": 1, "PART": 0.3, "PRON": 1, "PROPN": 2,
+    "PUNCT": 0, "SCONJ": 0, "SYM": 0, "VERB": 2, "X": 0
+}
+
 class AttentionMech:
     def __init__(self, data, model_name='bert-base-uncased', filename="data/event_scheduling.csv"):
         self.data = pd.DataFrame(data, columns=["input_text", "response_text", "type", "event_name", "event_time", "event_date"])
@@ -29,15 +35,17 @@ class AttentionMech:
         self.bert_model = BertModel.from_pretrained(model_name)
         self.bert_model.eval()
         self.nlp = spacy.load("en_core_web_sm")
+        self.embedding_layer = torch.nn.Embedding(100, 768)
         self.filename = filename
 
         self.files = files
+        self.pos_tags = pos_tags
         for file in self.files:
             if not os.path.exists(file): #TODO: Add more for intention, time, and date
                 dataset = {
                     "bert_input_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
                     "t5_input_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
-                    "tag_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
+                    "tag_embeddings": torch.empty((0, 100, 1), dtype=torch.float32),
                     "response_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
                     "priority_scores": torch.empty((0, 100), dtype=torch.float32),
                     "t5_event_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
@@ -67,15 +75,26 @@ class AttentionMech:
 
         return input_ids, attention_mask, outputs.last_hidden_state
     
+    def label_encoding(self, padded_tags):
+        tokens = padded_tags.split(' ')
+        labels = []
+        for token in tokens:
+            if token in self.pos_tags:
+                labels.append([self.pos_tags[token]])
+            else:
+                labels.append([0])
+        return labels
+    
     def tag_embeddings(self, input_text):
         text_doc = self.nlp(input_text.lower())
         input_text = " ".join([token.lemma_ for token in text_doc if not token.is_stop and not token.is_punct])
         processed_doc = self.nlp(input_text)
         tags = " ".join([token.pos_ for token in processed_doc])
-        tag_ids, tag_attention_mask, tag_embeddings = self.text_embeddings(tags, is_t5=False)
-        return tag_ids, tag_attention_mask, tag_embeddings
+        padded_tags = "[CLS] " + tags + " [SEP]" + " [PAD]" * (100 - (len(tags.split(' ')) + 2))
+        label_encodings = self.label_encoding(padded_tags)
+        return torch.tensor([label_encodings], dtype=torch.float32)
 
-    def generate_scores(self, input_text, event_text): #TODO: add another for intention
+    def generate_scores(self, input_text, event_text): 
         tokens = self.bert_tokenizer.tokenize(input_text)
         tokens = ['[CLS]'] + tokens
         if len(tokens) < 99:
@@ -138,7 +157,7 @@ class AttentionMech:
                 response_text = row['response_text']
                 event_text = row["event_name"]
     
-                tag_ids, tag_attention_mask, tag_embeddings = self.tag_embeddings(input_text)
+                tag_embeddings = self.tag_embeddings(input_text)
                 bert_input_ids, bert_attention_mask, bert_embeddings = self.text_embeddings(input_text, is_t5=False)
                 t5_input_ids, t5_attention_mask, t5_embeddings = self.text_embeddings("RESPOND TO THIS REQUEST: " + input_text, is_t5=True)
                 t5_event_ids, t5_event_attention_mask, t5_event_embeddings = self.text_embeddings(("EVENT: " + event_text), is_t5=True)
@@ -157,7 +176,7 @@ class AttentionMech:
                     "tag_embeddings": tag_embeddings.squeeze(0),
                     "response_embeddings": response_embeddings.squeeze(0),
                     "priority_scores": priority_scores.squeeze(0),
-                    "t5_event_embeddings": t5_event_embeddings.squeeze(0), #TODO: Mod Training
+                    "t5_event_embeddings": t5_event_embeddings.squeeze(0), 
                     "intention_scores": intention_scores,
                     "intent_embeddings": intent_embeddings.squeeze(0),
                     "time_embeddings": time_embeddings.squeeze(0),
@@ -165,7 +184,6 @@ class AttentionMech:
                 }
                 batch_data.append(row)
                 print(f"\rRow {j + 1}/{total_samples} processed", end='', flush=True)
-
             batch_tensors = {}
             for key in batch_data[0]:
                 batch_tensors[key] = torch.stack([item[key] for item in batch_data])

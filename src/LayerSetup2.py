@@ -23,7 +23,7 @@ class EventLayers(nn.Module):
             nn.Sigmoid(),
         )
 
-        self.event_loss = nn.MSELoss()
+        self.event_loss = nn.BCELoss()
         self.intent_loss = nn.MSELoss()
 
 class T5Layers(nn.Module):
