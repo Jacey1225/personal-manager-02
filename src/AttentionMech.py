@@ -4,6 +4,7 @@ from transformers.models.t5 import T5Tokenizer, T5Model
 import spacy 
 import os
 import torch
+import numpy as np
 
 files = [
     "data/procesed_tensors(1).pt",
@@ -44,22 +45,26 @@ class AttentionMech:
             if not os.path.exists(file): #TODO: Add more for intention, time, and date
                 dataset = {
                     "bert_input_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
-                    "t5_input_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
                     "tag_embeddings": torch.empty((0, 100, 1), dtype=torch.float32),
-                    "response_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
-                    "priority_scores": torch.empty((0, 100), dtype=torch.float32),
-                    "t5_event_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
+                    "t5_input_ids": torch.empty((0, 100), dtype=torch.long),
+                    "response_ids": torch.empty((0, 100), dtype=torch.long),
+                    "priority_scores": torch.empty((0, 100, 768), dtype=torch.float32),
+                    "t5_event_ids": torch.empty((0, 100), dtype=torch.long),
                     "intention_scores": torch.empty((0, 1), dtype=torch.float32),
-                    "intent_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
-                    "time_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
-                    "date_embeddings": torch.empty((0, 100, 768), dtype=torch.float32)
+                    "t5_intent_ids": torch.empty((0, 100), dtype=torch.long),
+                    "t5_time_ids": torch.empty((0, 100), dtype=torch.long),
+                    "t5_date_ids": torch.empty((0, 100), dtype=torch.long)
                 }
             torch.save(dataset, file)
         self.broken_text = []
 
+#MARK: Embeddings
     def text_embeddings(self, data, is_t5=False): 
+        input_doc = self.nlp(data)
+        input_tokens = [token.lemma_ for token in input_doc if not token.is_stop and not token.is_punct]
+        input_text = " ".join(input_tokens)
         if is_t5:
-            inputs = self.t5_tokenizer(data, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
+            inputs = self.t5_tokenizer(input_text, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
             input_ids = inputs['input_ids']
             attention_mask = inputs['attention_mask']
             outputs = self.t5_model.encoder(
@@ -68,12 +73,21 @@ class AttentionMech:
                 return_dict=True
             )
         else:
-            inputs = self.bert_tokenizer(data, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
+            inputs = self.bert_tokenizer(input_text, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
             input_ids = inputs['input_ids']
             attention_mask = inputs['attention_mask']
             outputs = self.bert_model(**inputs)
 
         return input_ids, attention_mask, outputs.last_hidden_state
+    
+    def tag_embeddings(self, input_text):
+        text_doc = self.nlp(input_text.lower())
+        input_text = " ".join([token.lemma_ for token in text_doc if not token.is_stop and not token.is_punct])
+        processed_doc = self.nlp(input_text)
+        tags = " ".join([token.pos_ for token in processed_doc])
+        padded_tags = "[CLS] " + tags + " [SEP]" + " [PAD]" * (100 - (len(tags.split(' ')) + 2))
+        label_encodings = self.label_encoding(padded_tags)
+        return torch.tensor([label_encodings], dtype=torch.float32)
     
     def label_encoding(self, padded_tags):
         tokens = padded_tags.split(' ')
@@ -84,56 +98,39 @@ class AttentionMech:
             else:
                 labels.append([0])
         return labels
-    
-    def tag_embeddings(self, input_text):
-        text_doc = self.nlp(input_text.lower())
-        input_text = " ".join([token.lemma_ for token in text_doc if not token.is_stop and not token.is_punct])
-        processed_doc = self.nlp(input_text)
-        tags = " ".join([token.pos_ for token in processed_doc])
-        padded_tags = "[CLS] " + tags + " [SEP]" + " [PAD]" * (100 - (len(tags.split(' ')) + 2))
-        label_encodings = self.label_encoding(padded_tags)
-        return torch.tensor([label_encodings], dtype=torch.float32)
 
-    def generate_scores(self, input_text, event_text): 
-        tokens = self.bert_tokenizer.tokenize(input_text)
-        tokens = ['[CLS]'] + tokens
-        if len(tokens) < 99:
-            tokens = tokens + ['[SEP]']
-        else:
-            tokens = tokens[:99] + ['[SEP]']
-        if len(tokens) < 100:
-            tokens += ['[PAD]'] * (100 - len(tokens))
-        else:
-            tokens = tokens[:100]
+#MARK: Priority Scores
+    def generate_scores(self, input_text, event):
+        try:
+            padded_text = "[CLS] " + input_text + " [SEP]" + " [PAD]" * (100 - (len(input_text.split(' ')) + 2))
+            input_doc = self.nlp(padded_text)
+            input_tokens = [token.lemma_ for token in input_doc if not token.is_stop and not token.is_punct]
+            padded_inputs = ["[CLS]"] + [token for token in input_tokens] + ["[SEP]"] + ["[PAD]"] * (100 - (len(input_tokens) + 2))
+            padded_inputs = padded_inputs[:100]
+            input_embeddings = self.embedding_layer(torch.tensor([padded_inputs], dtype=torch.long))
+            
+            event_doc = self.nlp(event)
+            event_tokens = [token.lemma_ for token in event_doc if not token.is_stop and not token.is_punct]
+            padded_event = []
+            event_token_index = 0
+            for i in range(len(padded_inputs)):
+                if padded_inputs[i] == event_tokens[event_token_index] and event_token_index < len(event_tokens):
+                    padded_event.append(event_tokens[event_token_index])
+                    event_token_index += 1
+                else:
+                    padded_event.append("[PAD]")
+            padded_event = padded_event[:100]
+            event_embeddings = self.embedding_layer(torch.tensor([padded_event], dtype=torch.long))
 
-        event_start = input_text.lower().find(event_text.lower())
-        event_end = event_start + len(event_text)
-        if event_start == -1:
+            priority_scores = np.dot(input_embeddings, event_embeddings.T)
+            priority_scores = priority_scores[:, :100, :]  # Ensure the shape is [batch_size, 100, 768]
+            print(f"Generated priority scores for input text with shape {priority_scores.shape}")
+            return priority_scores
+        except Exception as e:
+            print(f"Error generating scores for input text: {input_text}. Error: {e}")
             self.broken_text.append(input_text)
             return None
-
-        char_idx = 0
-        scores = []
-        for tok in tokens:
-            if tok in ['[CLS]', '[SEP]', '[PAD]']:
-                scores.append(0.0)
-            else:
-                clean_tok = tok.replace('##', '')
-                idx = input_text.lower().find(clean_tok, char_idx)
-                if idx == -1:
-                    scores.append(0.0)
-                else:
-                    if idx >= event_start and idx < event_end:
-                        scores.append(1.0)
-                    else:
-                        scores.append(0.0)
-                    char_idx = idx + len(clean_tok)
-        if len(scores) < 100:
-            scores += [0.0] * (100 - len(scores))
-        else:
-            scores = scores[:100]
-        return torch.tensor([scores], dtype=torch.float32)
-
+                
     def get_intention_scores(self, intention):
         intention_score = 0.0
         if intention.lower() == "delete":
@@ -144,7 +141,8 @@ class AttentionMech:
             intention_score = 0.0
         return torch.tensor([intention_score], dtype=torch.float32)
 
-    def generate_data(self, batch_size=25):
+#MARK: Main Processing
+    def generate_data(self, batch_size=50):
         current_file_index = 0
         total_samples = len(self.data)
 
@@ -172,15 +170,15 @@ class AttentionMech:
                 response_ids, response_attention_mask, response_embeddings = self.text_embeddings("TRUE RESPONSE: " + response_text, is_t5=True)
                 row = {
                     "bert_input_embeddings": bert_embeddings.squeeze(0),
-                    "t5_input_embeddings": t5_embeddings.squeeze(0),
+                    "t5_input_ids": t5_input_ids.squeeze(0),
                     "tag_embeddings": tag_embeddings.squeeze(0),
-                    "response_embeddings": response_embeddings.squeeze(0),
+                    "response_ids": response_ids.squeeze(0),
                     "priority_scores": priority_scores.squeeze(0),
-                    "t5_event_embeddings": t5_event_embeddings.squeeze(0), 
+                    "t5_event_ids": t5_event_ids.squeeze(0),
                     "intention_scores": intention_scores,
-                    "intent_embeddings": intent_embeddings.squeeze(0),
-                    "time_embeddings": time_embeddings.squeeze(0),
-                    "date_embeddings": date_embeddings.squeeze(0)
+                    "t5_intent_ids": intent_input_ids.squeeze(0),
+                    "t5_time_ids": time_input_ids.squeeze(0),
+                    "t5_date_ids": date_input_ids.squeeze(0)
                 }
                 batch_data.append(row)
                 print(f"\rRow {j + 1}/{total_samples} processed", end='', flush=True)
