@@ -136,8 +136,8 @@ class Training(TrainingInit):
                 event_loss = self.event_layers.event_loss(event_logits, priority_scores_set)
                 self.backprop(event_loss, 0)
 
-                intent_output = outputs['intent_output'].mean(dim=1)
-                intent_loss = self.event_layers.intent_loss(intent_output, intention_scores_set)
+                intent_logits = outputs['intent_output'].mean(dim=1)
+                intent_loss = self.event_layers.intent_loss(intent_logits, intention_scores_set)
                 self.backprop(intent_loss, 1)
 
                 t5_loss = outputs['t5_output'].loss
@@ -159,20 +159,22 @@ class Training(TrainingInit):
                 print("No validation data available.")
                 break
             print(f"\nEpoch {epoch + 1} completed. Average Loss: {self.average_loss}")
+        self.save_model()
 
     def fetch_validation_batch(self, i):
         if self.validation_data is not None:
             tag_embeddings_set = self.validation_data['tag_embeddings'][i:i + self.batch_size]
             bert_input_embeddings_set = self.validation_data['bert_input_embeddings'][i:i + self.batch_size]
-            t5_input_embeddings_set = self.validation_data['t5_input_embeddings'][i:i + self.batch_size]
-            time_embeddings_set = self.validation_data['time_embeddings'][i:i + self.batch_size]
-            date_embeddings_set = self.validation_data['date_embeddings'][i:i + self.batch_size]
-            response_embeddings_set = self.validation_data['response_embeddings'][i:i + self.batch_size]
-            event_embeddings_set = self.validation_data['t5_event_embeddings'][i:i + self.batch_size]
+            t5_input_ids = self.validation_data['t5_input_ids'][i:i + self.batch_size]
+            response_ids = self.validation_data['response_ids'][i:i + self.batch_size]
+            t5_event_ids = self.validation_data['t5_event_ids'][i:i + self.batch_size]
+            t5_time_ids = self.validation_data['t5_time_ids'][i:i + self.batch_size]
+            t5_date_ids = self.validation_data['t5_date_ids'][i:i + self.batch_size]
             priority_scores_set = self.validation_data['priority_scores'][i:i + self.batch_size]
             intention_scores_set = self.validation_data['intention_scores'][i:i + self.batch_size]
 
-        return tag_embeddings_set, bert_input_embeddings_set, t5_input_embeddings_set, time_embeddings_set, date_embeddings_set, response_embeddings_set, event_embeddings_set, priority_scores_set, intention_scores_set
+        return (tag_embeddings_set, bert_input_embeddings_set, t5_input_ids, response_ids, t5_event_ids, 
+                t5_time_ids, t5_date_ids, priority_scores_set, intention_scores_set)
 
     def validate(self):
         """
@@ -193,13 +195,13 @@ class Training(TrainingInit):
                     't5_loss': 0.0
                 }
                 for i in range(0, len(self.validation_data['bert_input_embeddings']), self.batch_size):
-                    tag_embeddings_set, bert_input_embeddings_set, t5_input_embeddings_set, time_embeddings_set, date_embeddings_set, response_embeddings_set, event_embeddings_set, priority_scores_set, intention_scores_set = self.fetch_validation_batch(i)
-                    outputs = self.forward_setup.forward(tag_embeddings_set, bert_input_embeddings_set, t5_input_embeddings_set, time_embeddings_set, date_embeddings_set, response_embeddings_set, event_embeddings_set)
+                    tag_embeddings_set, bert_input_embeddings_set, t5_input_ids, response_ids, t5_event_ids, t5_time_ids, t5_date_ids, priority_scores_set, intention_scores_set = self.fetch_validation_batch(i)
+                    outputs = self.forward_setup.forward(tag_embeddings_set, bert_input_embeddings_set, t5_input_ids, response_ids, t5_event_ids, t5_time_ids, t5_date_ids)
                     event_logits = outputs['event_logits']
                     event_loss = self.forward_setup.event_layers.event_loss(event_logits, priority_scores_set)
                     validation_loss['event_loss'] += event_loss.item()
 
-                    intent_output = outputs['intent_output'].mean(dim=1)  
+                    intent_output = outputs['intent_output'].mean(dim=1)
                     intent_loss = self.forward_setup.event_layers.intent_loss(intent_output, intention_scores_set)
                     validation_loss['intent_loss'] += intent_loss.item()
                     
@@ -218,6 +220,6 @@ class Training(TrainingInit):
         print("Model saved successfully.")
 
 if __name__ == "__main__":
-    training = Training(batch_size=32, epochs=15, event_lr=5e-7, intent_lr=1e-3, t5_lr=5e-5)
+    training = Training(batch_size=32, epochs=15, event_lr=5e-2, intent_lr=5e-2, t5_lr=5e-5)
     training.train()
     training.save_model()

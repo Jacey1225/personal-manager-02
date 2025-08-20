@@ -17,11 +17,12 @@ class TrainingInit(nn.Module):
         self.file_data = torch.load(self.current_file, map_location=torch.device('cpu'))
         self.forward_setup = ForwardSetup()
         self.event_layers = self.forward_setup.event_layers
+        self.intent_layers = self.forward_setup.intent_layers
         self.t5_layers = self.forward_setup.t5_layers
 
-        self.event_optimizer = torch.optim.AdamW(self.event_layers.parameters(), lr=event_lr, weight_decay=1e-2)
-        self.intent_optimizer = torch.optim.AdamW(self.event_layers.parameters(), lr=intent_lr)
-        self.t5_optimizer = torch.optim.Adam(self.t5_layers.parameters(), lr=t5_lr)
+        self.event_optimizer = torch.optim.RMSprop(self.event_layers.parameters(), lr=event_lr)
+        self.intent_optimizer = torch.optim.RMSprop(self.intent_layers.parameters(), lr=intent_lr)
+        self.t5_optimizer = torch.optim.AdamW(self.t5_layers.parameters(), lr=t5_lr)
 
         self.full_data_size = full_data_size
         self.file_size = self.file_data['bert_input_embeddings'].shape[0]

@@ -4,9 +4,10 @@ import torch.nn as nn
 from transformers.models.t5 import T5Tokenizer
 
 class ForwardSetup(nn.Module):
-    def __init__(self, input_embedding_size=768, input_pos_size=1, hidden_size=512, output_size=1, t5_vocab_size=32128):
+    def __init__(self, input_embedding_size=768, input_pos_size=1, hidden_size=512, output_size=768, t5_vocab_size=32128):
         super().__init__()
         self.event_layers = EventLayers(input_embedding_size, input_pos_size, hidden_size, output_size)
+        self.intent_layers = EventLayers(input_embedding_size, input_pos_size, hidden_size, output_size)
         self.t5_layers = T5Layers(output_size, input_embedding_size, t5_vocab_size)
         self.t5_tokenizer = T5Tokenizer.from_pretrained('t5-base')
 
@@ -38,11 +39,11 @@ class ForwardSetup(nn.Module):
 
         try:
             input_embeds_event = self.event_layers.get_embedding_sequential(bert_input_embeds)
-            input_embeds_intent = self.event_layers.get_embedding_sequential(bert_input_embeds)
+            input_embeds_intent = self.intent_layers.get_embedding_sequential(bert_input_embeds)
             input_pos_event = self.event_layers.get_pos_sequential(tag_embeds)
-            input_pos_intent = self.event_layers.get_pos_sequential(tag_embeds)
+            input_pos_intent = self.intent_layers.get_pos_sequential(tag_embeds)
             event_output = self.event_layers.event_combined(torch.cat([input_embeds_event, input_pos_event], dim=-1))
-            intent_output = self.event_layers.intent_sequential(torch.cat([input_embeds_intent, input_pos_intent], dim=-1))
+            intent_output = self.intent_layers.intent_combined(torch.cat([input_embeds_intent, input_pos_intent], dim=-1))
 
             t5_input_ids = self.concatenate_tokens_ids([t5_input_ids, t5_event_ids, t5_time_ids, t5_date_ids])
             t5_attention_mask = torch.ones_like(t5_input_ids, dtype=torch.long)
