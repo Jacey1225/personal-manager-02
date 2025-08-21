@@ -20,9 +20,7 @@ class ForwardSetup(nn.Module):
         ], dim=1)
         return merged_token_ids
 
-    def forward(self, 
-                tag_embeds, bert_input_embeds, t5_input_ids,
-                response_ids, t5_event_ids, t5_time_ids, t5_date_ids):
+    def forward(self, bert_input_embeds, tag_embeds, t5_input_ids, t5_attention_mask, response_ids):
         """
         Performs a forward pass through the model, combining tag and input embeddings, processing them through event and T5 layers, and returning the outputs.
         Args:
@@ -44,9 +42,6 @@ class ForwardSetup(nn.Module):
             input_pos_intent = self.intent_layers.get_pos_sequential(tag_embeds)
             event_output = self.event_layers.event_combined(torch.cat([input_embeds_event, input_pos_event], dim=-1))
             intent_output = self.intent_layers.intent_combined(torch.cat([input_embeds_intent, input_pos_intent], dim=-1))
-
-            t5_input_ids = self.concatenate_tokens_ids([t5_input_ids, t5_event_ids, t5_time_ids, t5_date_ids])
-            t5_attention_mask = torch.ones_like(t5_input_ids, dtype=torch.long)
 
             t5_output = self.t5_layers.t5_model(
                 input_ids=t5_input_ids,

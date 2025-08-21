@@ -27,8 +27,8 @@ class EventLayers(nn.Module):
             nn.Sigmoid()
         )
 
-        self.event_loss = nn.MSELoss()
-        self.intent_loss = nn.MSELoss()
+        self.event_loss = nn.L1Loss()
+        self.intent_loss = nn.L1Loss()
 
     def get_embedding_sequential(self, input_embed):
         input_embed_sequential = nn.Sequential(

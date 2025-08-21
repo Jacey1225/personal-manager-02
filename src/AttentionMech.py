@@ -145,7 +145,7 @@ class AttentionMech:
                 print(f"Error applying dot product: {e}")
                 return None
 #MARK: Main Processing
-    def generate_data(self, batch_size=100):
+    def generate_data(self, batch_size=60):
         current_file_index = 0
         total_samples = len(self.data)
 

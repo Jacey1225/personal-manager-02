@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from src.ModelSetup2 import ForwardSetup
 
-
 class TrainingInit(nn.Module):
     def __init__(self, 
                  batch_size, epochs, event_lr, intent_lr, t5_lr, current_file, full_data_size, 
@@ -20,8 +19,8 @@ class TrainingInit(nn.Module):
         self.intent_layers = self.forward_setup.intent_layers
         self.t5_layers = self.forward_setup.t5_layers
 
-        self.event_optimizer = torch.optim.RMSprop(self.event_layers.parameters(), lr=event_lr)
-        self.intent_optimizer = torch.optim.RMSprop(self.intent_layers.parameters(), lr=intent_lr)
+        self.event_optimizer = torch.optim.AdamW(self.event_layers.parameters(), lr=event_lr)
+        self.intent_optimizer = torch.optim.AdamW(self.intent_layers.parameters(), lr=intent_lr)
         self.t5_optimizer = torch.optim.AdamW(self.t5_layers.parameters(), lr=t5_lr)
 
         self.full_data_size = full_data_size
