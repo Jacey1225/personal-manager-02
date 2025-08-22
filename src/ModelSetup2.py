@@ -8,17 +8,7 @@ class ForwardSetup(nn.Module):
         super().__init__()
         self.event_layers = EventLayers(input_embedding_size, input_pos_size, hidden_size, output_size)
         self.intent_layers = EventLayers(input_embedding_size, input_pos_size, hidden_size, output_size)
-        self.t5_layers = T5Layers(output_size, input_embedding_size, t5_vocab_size)
-        self.t5_tokenizer = T5Tokenizer.from_pretrained('t5-base')
-
-    def concatenate_tokens_ids(self, token_ids, sep_value=102):
-        batch_size = token_ids[0].shape[0]
-        seperator = torch.full((batch_size, 1), sep_value, dtype=torch.long)
-        
-        merged_token_ids = torch.cat([
-            token_ids[0], seperator, token_ids[1], seperator, token_ids[2], seperator, token_ids[3]
-        ], dim=1)
-        return merged_token_ids
+        self.t5_layers = T5Layers()
 
     def forward(self, bert_input_embeds, tag_embeds, t5_input_ids, t5_attention_mask, response_ids):
         """
@@ -36,12 +26,12 @@ class ForwardSetup(nn.Module):
         """
 
         try:
-            input_embeds_event = self.event_layers.get_embedding_sequential(bert_input_embeds)
-            input_embeds_intent = self.intent_layers.get_embedding_sequential(bert_input_embeds)
-            input_pos_event = self.event_layers.get_pos_sequential(tag_embeds)
+            event_output = self.event_layers.get_embedding_sequential(bert_input_embeds)
+            intent_output = self.intent_layers.get_embedding_sequential(bert_input_embeds)
+            """input_pos_event = self.event_layers.get_pos_sequential(tag_embeds)
             input_pos_intent = self.intent_layers.get_pos_sequential(tag_embeds)
             event_output = self.event_layers.event_combined(torch.cat([input_embeds_event, input_pos_event], dim=-1))
-            intent_output = self.intent_layers.intent_combined(torch.cat([input_embeds_intent, input_pos_intent], dim=-1))
+            intent_output = self.intent_layers.intent_combined(torch.cat([input_embeds_intent, input_pos_intent], dim=-1))"""
 
             t5_output = self.t5_layers.t5_model(
                 input_ids=t5_input_ids,

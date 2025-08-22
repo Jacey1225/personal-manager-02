@@ -16,7 +16,6 @@ class EventLayers(nn.Module):
             nn.Linear(hidden_size, hidden_size // 2),
             nn.ReLU(),
             nn.Linear(hidden_size // 2, output_size),
-            nn.Sigmoid()
         )
         self.intent_combined = nn.Sequential(
             nn.Linear(output_size * 2, hidden_size),
@@ -24,11 +23,10 @@ class EventLayers(nn.Module):
             nn.Linear(hidden_size, hidden_size // 2),
             nn.ReLU(),
             nn.Linear(hidden_size // 2, output_size),
-            nn.Sigmoid()
         )
 
-        self.event_loss = nn.L1Loss()
-        self.intent_loss = nn.L1Loss()
+        self.event_loss = nn.MSELoss()
+        self.intent_loss = nn.MSELoss()
 
     def get_embedding_sequential(self, input_embed):
         input_embed_sequential = nn.Sequential(
@@ -54,8 +52,7 @@ class EventLayers(nn.Module):
         return input_pos_sequential(input_pos)
     
 class T5Layers(nn.Module):
-    def __init__(self, input_size, projection_size, t5_vocab_size, model_name='t5-base'):
+    def __init__(self, model_name='t5-base'):
         super().__init__()
-        self.embeddings_to_logits = nn.Linear(projection_size, t5_vocab_size) # 768 to 32128
         self.t5_config = T5Config.from_pretrained(model_name)
         self.t5_model = T5ForConditionalGeneration.from_pretrained(model_name)

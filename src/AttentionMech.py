@@ -39,6 +39,7 @@ class AttentionMech:
         self.bert_model.eval()
         self.nlp = spacy.load("en_core_web_sm")
         self.filename = filename
+        self.scaler = MinMaxScaler()
 
         self.files = files
         self.pos_tags = pos_tags
@@ -58,11 +59,8 @@ class AttentionMech:
 
 #MARK: Embeddings
     def text_embeddings(self, data, is_t5=False): 
-        input_doc = self.nlp(data)
-        input_tokens = [token.lemma_ for token in input_doc if not token.is_stop and not token.is_punct]
-        input_text = " ".join(input_tokens)
         if is_t5:
-            inputs = self.t5_tokenizer(input_text, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
+            inputs = self.t5_tokenizer(data, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
             input_ids = inputs['input_ids']
             attention_mask = inputs['attention_mask']
             outputs = self.t5_model.encoder(
@@ -71,6 +69,9 @@ class AttentionMech:
                 return_dict=True
             )
         else:
+            input_doc = self.nlp(data)
+            input_tokens = [token.lemma_ for token in input_doc if not token.is_stop and not token.is_punct]
+            input_text = " ".join(input_tokens)
             inputs = self.bert_tokenizer(input_text, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
             input_ids = inputs['input_ids']
             attention_mask = inputs['attention_mask']
@@ -85,8 +86,10 @@ class AttentionMech:
         tags = " ".join([token.pos_ for token in processed_doc])
         padded_tags = "[CLS] " + tags + " [SEP]" + " [PAD]" * (100 - (len(tags.split(' ')) + 2))
         label_encodings = self.label_encoding(padded_tags)
-        return torch.tensor([label_encodings], dtype=torch.float32)
-    
+        scaled_encodings = self.scaler.fit_transform(np.array(label_encodings))
+        scaled_encodings = torch.tensor([scaled_encodings], dtype=torch.float32)
+        return scaled_encodings
+
     def label_encoding(self, padded_tags):
         tokens = padded_tags.split(' ')
         labels = []
@@ -117,7 +120,9 @@ class AttentionMech:
             bert_event_tokens = self.bert_tokenizer(" ".join(event_tokens), return_tensors='pt', padding='max_length', truncation=True, max_length=100)
             event_embeddings = self.bert_model(input_ids=bert_event_tokens['input_ids'], attention_mask=bert_event_tokens['attention_mask']).last_hidden_state
 
-            priority_scores = self.apply_dot_product(event_embeddings, input_embedding, input_embedding)
+            raw_scores = self.apply_dot_product(event_embeddings, input_embedding, input_embedding)
+            scaled_scores = self.scaler.fit_transform(raw_scores.squeeze(0).detach().numpy()) if raw_scores is not None else None
+            priority_scores = torch.tensor([scaled_scores], dtype=torch.float32)
             return priority_scores
         except Exception as e:
             print(f"Error generating scores for input text: {" ".join(input_tokens)} and event {event}. Error: {e}")
@@ -130,7 +135,9 @@ class AttentionMech:
         inputs = self.bert_tokenizer(intention_string, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
         intention_embeddings = self.bert_model(input_ids=inputs['input_ids'], attention_mask=inputs['attention_mask']).last_hidden_state
         try:
-            intention_scores = self.apply_dot_product(intention_embeddings, input_embeddings, input_embeddings)
+            raw_scores = self.apply_dot_product(intention_embeddings, input_embeddings, input_embeddings)
+            scaled_scores = self.scaler.fit_transform(raw_scores.squeeze(0).detach().numpy()) if raw_scores is not None else None
+            intention_scores = torch.tensor([scaled_scores], dtype=torch.float32)
             return intention_scores.mean(dim=1) if intention_scores is not None else None
         except Exception as e:      
             print(f"Error generating intention scores for {intention}. Error: {e}")
@@ -144,6 +151,7 @@ class AttentionMech:
             except Exception as e:
                 print(f"Error applying dot product: {e}")
                 return None
+            
 #MARK: Main Processing
     def generate_data(self, batch_size=60):
         current_file_index = 0
@@ -157,7 +165,7 @@ class AttentionMech:
                 input_text = row['input_text']
                 response_text = row['response_text']
                 event_text = row["event_name"]
-                t5_training_text = "RESPOND TO THIS REQUEST: " + input_text + ". EVENT: " + event_text + ". INTENTION: " + row['type'] + ". TIME: " + row['event_time'] + ". DATE: " + row['event_date']
+                t5_training_text = "respond to this request: " + input_text + ". event: " + event_text + ". intention: " + row['type'] + ". time: " + row['event_time'] + ". date: " + row['event_date']
 
                 input_doc = self.nlp(input_text.lower())
                 input_tokens = [token.lemma_ for token in input_doc if not token.is_stop and not token.is_punct]
@@ -171,7 +179,7 @@ class AttentionMech:
                 if priority_scores is None or intention_scores is None:
                     print(f"Skipping row {j} due to broken text: {input_text}")
                     continue
-                response_ids, response_attention_mask, response_embeddings = self.text_embeddings("TRUE RESPONSE: " + response_text, is_t5=True)
+                response_ids, response_attention_mask, response_embeddings = self.text_embeddings("true response: " + response_text, is_t5=True)
                 row = {
                     "bert_input_embeddings": bert_embeddings.squeeze(0),
                     "t5_input_ids": t5_input_ids.squeeze(0),
@@ -195,7 +203,7 @@ class AttentionMech:
             if dataset['bert_input_embeddings'].shape[0] >= 1500:
                 torch.save(dataset, self.files[current_file_index])
                 current_file_index += 1
-                print(f"Saved {self.files[current_file_index]} with shape {dataset['bert_input_embeddings'].shape}")
+                print(f"Saved {self.files[current_file_index]}")
                 if current_file_index >= len(self.files):
                     print("All files processed.")
                     break

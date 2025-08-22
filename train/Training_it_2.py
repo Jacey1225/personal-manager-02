@@ -70,6 +70,7 @@ class Training(TrainingInit):
             self.intent_losses.append(loss.item())
         if loss_type == 2:
             self.t5_optimizer.step()
+            self.t5_scheduler.step()
             self.average_loss['t5_loss'] += loss.item()
             self.t5_losses.append(loss.item())
 
@@ -125,6 +126,7 @@ class Training(TrainingInit):
                         break
                     continue
                 self.event_layers.zero_grad()
+                self.intent_layers.zero_grad()
                 self.t5_layers.zero_grad()
                 bert_input_embeddings_set, t5_input_ids, t5_attention_mask, tag_embeddings_set, response_ids, priority_scores_set, intention_scores_set = self.fetch_batch_data(index)
 
@@ -136,7 +138,7 @@ class Training(TrainingInit):
                 self.backprop(event_loss, 0)
 
                 intent_logits = outputs['intent_output'].mean(dim=1)
-                intent_loss = self.event_layers.intent_loss(intent_logits, intention_scores_set)
+                intent_loss = self.intent_layers.intent_loss(intent_logits, intention_scores_set)
                 self.backprop(intent_loss, 1)
 
                 t5_loss = outputs['t5_output'].loss
@@ -199,7 +201,7 @@ class Training(TrainingInit):
                     validation_loss['event_loss'] += event_loss.item()
 
                     intent_output = outputs['intent_output'].mean(dim=1)
-                    intent_loss = self.forward_setup.event_layers.intent_loss(intent_output, intention_scores_set)
+                    intent_loss = self.forward_setup.intent_layers.intent_loss(intent_output, intention_scores_set)
                     validation_loss['intent_loss'] += intent_loss.item()
                     
                     t5_loss = outputs['t5_output'].loss
@@ -218,6 +220,6 @@ class Training(TrainingInit):
         print("Model saved successfully.")
 
 if __name__ == "__main__":
-    training = Training(batch_size=60, epochs=15, event_lr=0.05, intent_lr=0.05, t5_lr=5e-5)
+    training = Training(batch_size=60, epochs=15, event_lr=1e-3, intent_lr=1e-3, t5_lr=1e-4)
     training.train()
     training.save_model()

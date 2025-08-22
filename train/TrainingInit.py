@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from src.ModelSetup2 import ForwardSetup
+from transformers.optimization import get_scheduler
 
 class TrainingInit(nn.Module):
     def __init__(self, 
@@ -22,6 +23,12 @@ class TrainingInit(nn.Module):
         self.event_optimizer = torch.optim.AdamW(self.event_layers.parameters(), lr=event_lr)
         self.intent_optimizer = torch.optim.AdamW(self.intent_layers.parameters(), lr=intent_lr)
         self.t5_optimizer = torch.optim.AdamW(self.t5_layers.parameters(), lr=t5_lr)
+        self.t5_scheduler = get_scheduler(
+            "linear",
+            optimizer=self.t5_optimizer,
+            num_warmup_steps=150,
+            num_training_steps=self.epochs * (full_data_size // self.batch_size)
+        )
 
         self.full_data_size = full_data_size
         self.file_size = self.file_data['bert_input_embeddings'].shape[0]
