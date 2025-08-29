@@ -51,12 +51,11 @@ class Training(TrainingInit):
             bert_input_embeddings_set = self.training_data['bert_input_embeddings'][i:i + self.batch_size]
             t5_input_ids = self.training_data['t5_input_ids'][i:i + self.batch_size]
             t5_attention_mask = self.training_data['t5_attention_mask'][i:i + self.batch_size]
-            tag_embeddings_set = self.training_data['tag_embeddings'][i:i + self.batch_size]
             response_ids = self.training_data['response_ids'][i:i + self.batch_size]
             priority_scores_set = self.training_data['priority_scores'][i:i + self.batch_size]
             intention_scores_set = self.training_data['intention_scores'][i:i + self.batch_size]
 
-        return (bert_input_embeddings_set, t5_input_ids, t5_attention_mask, tag_embeddings_set, response_ids, priority_scores_set, intention_scores_set)
+        return (bert_input_embeddings_set, t5_input_ids, t5_attention_mask, response_ids, priority_scores_set, intention_scores_set)
 
     def backprop(self, loss, loss_type):
         loss.backward()
@@ -128,11 +127,11 @@ class Training(TrainingInit):
                 self.event_layers.zero_grad()
                 self.intent_layers.zero_grad()
                 self.t5_layers.zero_grad()
-                bert_input_embeddings_set, t5_input_ids, t5_attention_mask, tag_embeddings_set, response_ids, priority_scores_set, intention_scores_set = self.fetch_batch_data(index)
+                bert_input_embeddings_set, t5_input_ids, t5_attention_mask, response_ids, priority_scores_set, intention_scores_set = self.fetch_batch_data(index)
 
 # Forward --> Backpropagation
 
-                outputs = self.forward_setup.forward(bert_input_embeddings_set, tag_embeddings_set, t5_input_ids, t5_attention_mask, response_ids)
+                outputs = self.forward_setup.forward(bert_input_embeddings_set, t5_input_ids, t5_attention_mask, response_ids)
                 event_logits = outputs['event_logits']
                 event_loss = self.event_layers.event_loss(event_logits, priority_scores_set)
                 self.backprop(event_loss, 0)
@@ -167,12 +166,11 @@ class Training(TrainingInit):
             bert_input_embeddings_set = self.validation_data['bert_input_embeddings'][i:i + self.batch_size]
             t5_input_ids = self.validation_data['t5_input_ids'][i:i + self.batch_size]
             t5_attention_mask = self.validation_data['t5_attention_mask'][i:i + self.batch_size]
-            tag_embeddings_set = self.validation_data['tag_embeddings'][i:i + self.batch_size]
             response_ids = self.validation_data['response_ids'][i:i + self.batch_size]
             priority_scores_set = self.validation_data['priority_scores'][i:i + self.batch_size]
             intention_scores_set = self.validation_data['intention_scores'][i:i + self.batch_size]
 
-        return (bert_input_embeddings_set, t5_input_ids, t5_attention_mask, tag_embeddings_set, response_ids, priority_scores_set, intention_scores_set)
+        return (bert_input_embeddings_set, t5_input_ids, t5_attention_mask, response_ids, priority_scores_set, intention_scores_set)
 
 #MARK: Validation 
     def validate(self):
@@ -194,8 +192,8 @@ class Training(TrainingInit):
                     't5_loss': 0.0
                 }
                 for i in range(0, len(self.validation_data['bert_input_embeddings']), self.batch_size):
-                    bert_input_embeddings_set, t5_input_ids, t5_attention_mask, tag_embeddings_set, response_ids, priority_scores_set, intention_scores_set = self.fetch_validation_batch(i)
-                    outputs = self.forward_setup.forward(bert_input_embeddings_set, tag_embeddings_set, t5_input_ids, t5_attention_mask, response_ids)
+                    bert_input_embeddings_set, t5_input_ids, t5_attention_mask, response_ids, priority_scores_set, intention_scores_set = self.fetch_validation_batch(i)
+                    outputs = self.forward_setup.forward(bert_input_embeddings_set, t5_input_ids, t5_attention_mask, response_ids)
                     event_logits = outputs['event_logits']
                     event_loss = self.forward_setup.event_layers.event_loss(event_logits, priority_scores_set)
                     validation_loss['event_loss'] += event_loss.item()
@@ -220,6 +218,6 @@ class Training(TrainingInit):
         print("Model saved successfully.")
 
 if __name__ == "__main__":
-    training = Training(batch_size=60, epochs=15, event_lr=1e-3, intent_lr=1e-3, t5_lr=1e-4)
+    training = Training(batch_size=60, epochs=30, event_lr=1e-3, intent_lr=1e-3, t5_lr=1e-3)
     training.train()
     training.save_model()

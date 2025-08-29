@@ -21,12 +21,6 @@ files = [
     "data/procesed_tensors(10).pt",
 ]
 
-pos_tags = {
-    "ADJ": 0.5, "ADP": 1, "ADV": 0.2, "AUX": 0.2, "CCONJ": 0, "DET": 1,
-    "INTJ": 0, "NOUN": 2, "NUM": 1, "PART": 0.3, "PRON": 1, "PROPN": 2,
-    "PUNCT": 0, "SCONJ": 0, "SYM": 0, "VERB": 2, "X": 0
-}
-
 class AttentionMech:
     def __init__(self, data, model_name='bert-base-uncased', filename="data/event_scheduling.csv"):
         self.data = pd.DataFrame(data, columns=["input_text", "response_text", "type", "event_name", "event_time", "event_date"])
@@ -42,15 +36,13 @@ class AttentionMech:
         self.scaler = MinMaxScaler()
 
         self.files = files
-        self.pos_tags = pos_tags
         for file in self.files:
             if not os.path.exists(file): #TODO: Add more for intention, time, and date
                 dataset = {
                     "bert_input_embeddings": torch.empty((0, 100, 768), dtype=torch.float32),
-                    "t5_input_ids": torch.empty((0, 100), dtype=torch.long),
-                    "t5_attention_mask": torch.empty((0, 100), dtype=torch.long),
-                    "tag_embeddings": torch.empty((0, 100, 1), dtype=torch.float32),
-                    "response_ids": torch.empty((0, 100), dtype=torch.long),
+                    "t5_input_ids": torch.empty((0, 250), dtype=torch.long),
+                    "t5_attention_mask": torch.empty((0, 250), dtype=torch.long),
+                    "response_ids": torch.empty((0, 250), dtype=torch.long),
                     "priority_scores": torch.empty((0, 100, 768), dtype=torch.float32),
                     "intention_scores": torch.empty((0, 768), dtype=torch.float32)
                 }
@@ -60,7 +52,7 @@ class AttentionMech:
 #MARK: Embeddings
     def text_embeddings(self, data, is_t5=False): 
         if is_t5:
-            inputs = self.t5_tokenizer(data, return_tensors='pt', padding='max_length', truncation=True, max_length=100)
+            inputs = self.t5_tokenizer(data, return_tensors='pt', padding='max_length', truncation=True, max_length=250)
             input_ids = inputs['input_ids']
             attention_mask = inputs['attention_mask']
             outputs = self.t5_model.encoder(
@@ -79,27 +71,6 @@ class AttentionMech:
 
         return input_ids, attention_mask, outputs.last_hidden_state
     
-    def tag_embeddings(self, input_text):
-        text_doc = self.nlp(input_text.lower())
-        input_text = " ".join([token.lemma_ for token in text_doc if not token.is_stop and not token.is_punct])
-        processed_doc = self.nlp(input_text)
-        tags = " ".join([token.pos_ for token in processed_doc])
-        padded_tags = "[CLS] " + tags + " [SEP]" + " [PAD]" * (100 - (len(tags.split(' ')) + 2))
-        label_encodings = self.label_encoding(padded_tags)
-        scaled_encodings = self.scaler.fit_transform(np.array(label_encodings))
-        scaled_encodings = torch.tensor([scaled_encodings], dtype=torch.float32)
-        return scaled_encodings
-
-    def label_encoding(self, padded_tags):
-        tokens = padded_tags.split(' ')
-        labels = []
-        for token in tokens:
-            if token in self.pos_tags:
-                labels.append([self.pos_tags[token]])
-            else:
-                labels.append([0])
-        return labels
-
 #MARK: Attention Scores
     def generate_scores(self, input_tokens, input_embedding, event):
         try:
@@ -172,19 +143,17 @@ class AttentionMech:
 
                 bert_input_ids, bert_attention_mask, bert_embeddings = self.text_embeddings(" ".join(input_tokens), is_t5=False)
                 t5_input_ids, t5_attention_mask, t5_embeddings = self.text_embeddings(t5_training_text, is_t5=True)             
-                tag_embeddings = self.tag_embeddings(" ".join(input_tokens))
                 priority_scores = self.generate_scores(input_tokens, bert_embeddings, event_text)
                 intention_scores = self.get_intention_scores(row['type'], bert_embeddings)
-
+                response_ids, response_attention_mask, response_embeddings = self.text_embeddings("true response: " + response_text, is_t5=True)
                 if priority_scores is None or intention_scores is None:
                     print(f"Skipping row {j} due to broken text: {input_text}")
                     continue
-                response_ids, response_attention_mask, response_embeddings = self.text_embeddings("true response: " + response_text, is_t5=True)
+                
                 row = {
                     "bert_input_embeddings": bert_embeddings.squeeze(0),
                     "t5_input_ids": t5_input_ids.squeeze(0),
                     "t5_attention_mask": t5_attention_mask.squeeze(0),
-                    "tag_embeddings": tag_embeddings.squeeze(0),
                     "response_ids": response_ids.squeeze(0),
                     "priority_scores": priority_scores.squeeze(0),
                     "intention_scores": intention_scores.squeeze(0)

@@ -4,13 +4,13 @@ import torch.nn as nn
 from transformers.models.t5 import T5Tokenizer
 
 class ForwardSetup(nn.Module):
-    def __init__(self, input_embedding_size=768, input_pos_size=1, hidden_size=512, output_size=768, t5_vocab_size=32128):
+    def __init__(self, input_embedding_size=768, hidden_size=512, output_size=768):
         super().__init__()
-        self.event_layers = EventLayers(input_embedding_size, input_pos_size, hidden_size, output_size)
-        self.intent_layers = EventLayers(input_embedding_size, input_pos_size, hidden_size, output_size)
+        self.event_layers = EventLayers(input_embedding_size, hidden_size, output_size)
+        self.intent_layers = EventLayers(input_embedding_size, hidden_size, output_size)
         self.t5_layers = T5Layers()
 
-    def forward(self, bert_input_embeds, tag_embeds, t5_input_ids, t5_attention_mask, response_ids):
+    def forward(self, bert_input_embeds, t5_input_ids, t5_attention_mask, response_ids):
         """
         Performs a forward pass through the model, combining tag and input embeddings, processing them through event and T5 layers, and returning the outputs.
         Args:
@@ -26,12 +26,8 @@ class ForwardSetup(nn.Module):
         """
 
         try:
-            event_output = self.event_layers.get_embedding_sequential(bert_input_embeds)
-            intent_output = self.intent_layers.get_embedding_sequential(bert_input_embeds)
-            """input_pos_event = self.event_layers.get_pos_sequential(tag_embeds)
-            input_pos_intent = self.intent_layers.get_pos_sequential(tag_embeds)
-            event_output = self.event_layers.event_combined(torch.cat([input_embeds_event, input_pos_event], dim=-1))
-            intent_output = self.intent_layers.intent_combined(torch.cat([input_embeds_intent, input_pos_intent], dim=-1))"""
+            event_output = self.event_layers.event_sequential(bert_input_embeds)
+            intent_output = self.intent_layers.intent_sequential(bert_input_embeds)
 
             t5_output = self.t5_layers.t5_model(
                 input_ids=t5_input_ids,
