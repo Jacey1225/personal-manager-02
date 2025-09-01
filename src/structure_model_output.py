@@ -140,10 +140,24 @@ class HandleResponse:
             print(f"Response: {self.event_details.response}")
             raise ValueError("Parsed values cannot be empty.")
 
-    def process_response(self):
-        self.generate_response()
-        self.parse_response()
-        if self.event_details.event_date != "None" and self.event_details.event_time != "None":
-            self.format_date_time()
-        return self.event_details
-        
+    def process_response(self) -> list[EventDetails]:
+        found_events = []
+        if '.' in self.input_text:
+            self.input_text = self.input_text.split('.')
+        for text in self.input_text:
+            self.generate_response()
+            self.parse_response()
+            if self.event_details.event_date != "None" and self.event_details.event_time != "None":
+                self.format_date_time()
+            found_events.append(self.event_details)
+            self.event_details = EventDetails(
+                event_name="None",
+                event_date="None",
+                event_time="None",
+                action="None",
+                response="None",
+                people=[]
+            )
+        if not found_events:
+            raise ValueError("No events were processed.")
+        return found_events
