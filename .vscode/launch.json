@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:personal-manager-02}/ios",
+            "name": "Debug ios (ios)",
+            "program": "${workspaceFolder:personal-manager-02}/ios/.build/debug/ios",
+            "preLaunchTask": "swift: Build Debug ios (ios)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:personal-manager-02}/ios",
+            "name": "Release ios (ios)",
+            "program": "${workspaceFolder:personal-manager-02}/ios/.build/release/ios",
+            "preLaunchTask": "swift: Build Release ios (ios)"
+        }
+    ]
+}
