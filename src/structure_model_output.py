@@ -2,7 +2,7 @@ from transformers.models.t5 import T5Tokenizer, T5ForConditionalGeneration
 from proxy_bypass import _configure_proxy_bypass
 import os
 import torch
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import datefinder
 from datetime import datetime
 from gtts import gTTS
@@ -10,8 +10,8 @@ import pygame
 import io
 
 class EventDetails(BaseModel):
-    input_text: str 
-    event_name: str
+    input_text: str = Field(default="None", description="Raw input text from a user")
+    event_name: str = Field(default="None", description="The identified name of the event inside the input text")
     datetime_objs: list = []
     action: str
     response: str

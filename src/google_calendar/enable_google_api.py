@@ -28,10 +28,12 @@ def enable_google_calendar_api():
         token.write(creds.to_json())
     
     try:
-        service = build('calendar', 'v3', credentials=creds)
+        event_service = build('calendar', 'v3', credentials=creds)
+        task_service = build('tasks', 'v1', credentials=creds)
     except HttpError as error:
         print(f'An error occurred: {error}')
-        service = None
-    return service
+        event_service = None
+        task_service = None
+    return event_service, task_service
 
 
