@@ -3,6 +3,12 @@ import SwiftUI
 struct ChatMessage: Identifiable {
     let id = UUID()
     let text: String
+    let isUserMessage: Bool
+
+    init(text: String, isUserMessage: Bool = false) {
+        self.text = text
+        self.isUserMessage = isUserMessage
+    }
 }
 
 struct ChatMessagesView: View {
@@ -10,13 +16,24 @@ struct ChatMessagesView: View {
     var body: some View {
         List(messages) { message in 
             HStack {
-                Text(message.text)
-                    .padding(10)
-                    .background(Color.white.opacity(0.8))
-                    .foregroundColor(.black)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                Spacer()
+                if !message.isUserMessage {
+                    Text(message.text)
+                        .padding(10)
+                        .background(Color.purple.opacity(1))
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Spacer()
+                }
+                else {
+                    Text(message.text)
+                        .padding(10)
+                        .background(Color.white.opacity(0.8))
+                        .foregroundColor(.black)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    Spacer()
+                }
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)

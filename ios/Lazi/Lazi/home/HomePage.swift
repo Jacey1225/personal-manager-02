@@ -71,7 +71,58 @@ struct HomePage: View {
             responseMessage = "Please enter a task."
             return
         }
-        messages.append(ChatMessage(text: userInput))
+        
+        // Add user message (always true for user input)
+        messages.append(ChatMessage(text: userInput, isUserMessage: true))
+        let currentInput = userInput
+        userInput = ""
+
+        guard let url = URL(string: "http://localhost:8000/scheduler/process_input") else {
+            messages.append(ChatMessage(text: "Invalid URL.", isUserMessage: false))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody = ["input_text": currentInput]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            messages.append(ChatMessage(text: "Failed to encode request.", isUserMessage: false))
+            return
+        }
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.messages.append(ChatMessage(text: "Error: \(error.localizedDescription)", isUserMessage: false))
+                    return
+                }
+
+                guard let data = data else {
+                    self.messages.append(ChatMessage(text: "No data received.", isUserMessage: false))
+                    return
+                }
+
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let message = json["message"] as? String {
+                        // System response (always false for API responses)
+                        self.messages.append(ChatMessage(text: message, isUserMessage: false))
+                    } else {
+                        let rawResponse = String(data: data, encoding: .utf8) ?? "Unknown response"
+                        self.messages.append(ChatMessage(text: rawResponse, isUserMessage: false))
+                    }
+                } catch {
+                    let rawResponse = String(data: data, encoding: .utf8) ?? "Failed to parse response"
+                    self.messages.append(ChatMessage(text: rawResponse, isUserMessage: false))
+                }
+            }
+        }
+        task.resume()
     }
 }
 

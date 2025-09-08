@@ -1,10 +1,9 @@
 from transformers.models.t5 import T5Tokenizer, T5ForConditionalGeneration
+from src.handleDateTimes import DateTimeSet, DateTimeHandler
 from proxy_bypass import _configure_proxy_bypass
 import os
 import torch
 from pydantic import BaseModel, Field
-import datefinder
-from datetime import datetime
 from gtts import gTTS
 import pygame
 import io
@@ -12,7 +11,7 @@ import io
 class EventDetails(BaseModel):
     input_text: str = Field(default="None", description="Raw input text from a user")
     event_name: str = Field(default="None", description="The identified name of the event inside the input text")
-    datetime_objs: list = []
+    datetime_obj: DateTimeSet = Field(default_factory=DateTimeSet, description="List of datetime objects extracted from the input text")
     action: str
     response: str
 
@@ -34,29 +33,31 @@ class HandleResponse:
         self.event_details = EventDetails(
             input_text=self.input_text,
             event_name="None",
-            datetime_objs=[],
+            datetime_obj=DateTimeSet(),
             action="None",
             response="None",
         )
 
-    def fetch_base_entities(self): # get times, dates, people if any
-        found_dates = list(datefinder.find_dates(self.input_text))
-        self.event_details.datetime_objs = found_dates
-        return found_dates
+        self.datetime_handler = DateTimeHandler(self.input_text)
 
-    def generate_response(self): #fetch response from fine-tuned T5
-        found_dates = self.fetch_base_entities()
-        if not isinstance(self.event_details.datetime_objs, list):
-            print(f"Event Date Type: {type(self.event_details.datetime_objs)} --> {self.event_details.datetime_objs}")
-            raise TypeError("Extracted entities must be lists.")
-        date_str = ''
-        time_str = ''
-        for dt in self.event_details.datetime_objs:
-            if not isinstance(dt, datetime):
-                print(f"Datetime Object Type: {type(dt)} --> {dt}")
-                raise TypeError("All extracted datetime objects must be of type datetime.")
-            date_str += dt.strftime("%B %d, %Y") + ' | '
-            time_str += dt.strftime("%I:%M %p") + ' | '
+    def generate_response(self): 
+        """Generates a response from the model based on the input text.
+
+        Raises:
+            ValueError: If no valid dates or times are found in the input text.
+            ValueError: If the response format is incorrect.
+        """
+        self.datetime_handler.compile_datetimes()
+        self.datetime_handler.organize_for_datetimes()
+        self.event_details.datetime_obj = self.datetime_handler.datetime_set
+        if len(self.datetime_handler.datetime_set.dates) < 1:
+            date_str = "None"
+        else:
+            date_str = ' | '.join([dt.strftime("%Y-%m-%d") for dt in self.datetime_handler.datetime_set.dates]) #type: ignore
+        if len(self.datetime_handler.datetime_set.times) < 1:
+            time_str = "None"
+        else:
+            time_str = ' | '.join([dt.strftime("%I:%M %p") for dt in self.datetime_handler.datetime_set.times])
 
         feature_context = f"\nEvent Time: {time_str}, \nEvent Date: {date_str}, " \
                           f"\nEvent Input: {self.input_text}"
@@ -70,7 +71,14 @@ class HandleResponse:
         
         self.event_details.response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    def parse_response(self): #format response in a more accessible way
+    def parse_response(self): 
+        """Parses the model's response into structured event details.
+
+        Raises:
+            TypeError: If the response is not a string.
+            ValueError: If the response format is incorrect.
+            ValueError: If any of the parsed values are empty.
+        """
         if not isinstance(self.event_details.response, str):
             raise TypeError("Response must be a string.")
         try:
@@ -85,7 +93,16 @@ class HandleResponse:
             print(f"Response: {self.event_details.response}")
             raise ValueError("Parsed values cannot be empty.")
 
-    def process_response(self) -> list[EventDetails]: #process all found responses as EventDetails obj
+    def process_response(self) -> list[EventDetails]: 
+        """Processes the model's response into a list of EventDetails objects.
+
+        Raises:
+            ValueError: if the input text is empty
+            ValueError: if the response format is incorrect
+
+        Returns:
+            list[EventDetails]: a list of EventDetails objects
+        """
         found_events = []
         if '.' in self.input_text:
             input_requests = self.input_text.split('.')
@@ -106,7 +123,6 @@ class HandleResponse:
             self.event_details = EventDetails(
                 input_text=self.input_text,
                 event_name="None",
-                datetime_objs=[],
                 action="None",
                 response="None",
             )
@@ -114,7 +130,15 @@ class HandleResponse:
             raise ValueError("No events were processed.")
         return found_events
     
-    def convert_response_to_speech(self, text): #enable the response to be spoken aloud for entertainment purposes
+    def convert_response_to_speech(self, text): 
+        """Converts the given text response to speech.
+
+        Args:
+            text (str): The text response to convert.
+
+        Raises:
+            ValueError: If no valid text is provided.
+        """
         if text == "None" or not text:
             raise ValueError("No response available to convert to speech.")
         tts = gTTS(text=text, lang='en')
@@ -130,9 +154,9 @@ class HandleResponse:
 
 
 if __name__ == "__main__":
-    example_input = "Can you change my plans to do a bible study at 3pm to 4pm tomorrow."
+    example_input = "Schedule my Church Ignition Event on September 13th from 11:00 AM to 6:00 PM."
     handler = HandleResponse(example_input)
     events = handler.process_response()
     for event in events:
         handler.convert_response_to_speech(event.response)
-        print(f"Event_name: {event.event_name}\nEvent Dates: {event.datetime_objs}\nAction: {event.action}\nResponse: {event.response}\n")
+        print(f"Event_name: {event.event_name}\n Dates: {handler.datetime_handler.datetime_set.dates}\nAction: {event.action}\nResponse: {event.response}\n")
