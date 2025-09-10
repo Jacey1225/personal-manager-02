@@ -154,7 +154,7 @@ class HandleResponse:
 
 
 if __name__ == "__main__":
-    example_input = "Schedule my Church Ignition Event on September 13th from 11:00 AM to 6:00 PM."
+    example_input = "Can you delete my work shift today?"
     handler = HandleResponse(example_input)
     events = handler.process_response()
     for event in events:

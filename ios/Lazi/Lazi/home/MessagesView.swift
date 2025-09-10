@@ -28,7 +28,7 @@ struct ChatMessagesView: View {
                 else {
                     Text(message.text)
                         .padding(10)
-                        .background(Color.white.opacity(0.8))
+                        .background(Color.gray.opacity(0.5))
                         .foregroundColor(.black)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .frame(maxWidth: .infinity, alignment: .trailing)

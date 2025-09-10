@@ -7,8 +7,7 @@ class DateTimeSet(BaseModel):
     times: list[time] = Field(default=[], description="A list of all the times found within an input text")
     dates: list[datetime] = Field(default=[], description="A list of all the dates found within an input text")
     datetimes: list[datetime] = Field(default=[], description="A list of all the datetime objects found within an input text")
-    target_datetimes: tuple = Field(default=(), description="A list of all the target datetime objects found within an input text as tuples representing start and end or due and None")
-    is_event: Optional[bool] = Field(default=False, description="Indicates whether the extracted datetimes are part of an event")
+    target_datetimes: list[tuple] = Field(default=[], description="A list of all the target datetime objects found within an input text as tuples representing start and end or due and None")
 
 
 def fetch_days_ahead(target_day: int, current_day=datetime.now()):
@@ -22,7 +21,7 @@ def fetch_days_ahead(target_day: int, current_day=datetime.now()):
 def fetch_year_month(current_month: int, target_month: int):
     if target_month < current_month:
         return datetime(datetime.now().year + 1, target_month, datetime.now().day).strftime('%Y-%m-%d')
-    return datetime(datetime.now().year, target_month, datetime.now().day).strftime('%Y-%m-%d')
+    return datetime(datetime.now().year, target_month, datetime.now().day).strftime('%Y-%m-%d') 
 
 DATE_KEYS = {
     "today": datetime.now().strftime('%Y-%m-%d'),
@@ -62,7 +61,7 @@ class DateTimeHandler:
             times=[],
             dates=[],
             datetimes=[],
-            target_datetimes=(),
+            target_datetimes=[],
         )
 
     def compile_datetimes(self):
@@ -72,14 +71,15 @@ class DateTimeHandler:
         for i, token in enumerate(self.datetime_set.input_tokens):
             token = token.lower()
             if token in self.date_keys:
-                if i < len(self.datetime_set.input_tokens) and self.datetime_set.input_tokens[i+1][0].isdigit():
-                    original_date = datetime.strptime(self.date_keys[token], '%Y-%m-%d')
-                    target_day = int(''.join(filter(str.isdigit, self.datetime_set.input_tokens[i+1])))
-                    original_date = original_date.replace(day=target_day)
-                    self.datetime_set.dates.append(original_date)
-                else:
-                    parsed_date = datetime.strptime(self.date_keys[token], '%Y-%m-%d')
-                    self.datetime_set.dates.append(parsed_date)
+                if i < len(self.datetime_set.input_tokens) - 1:
+                    if self.datetime_set.input_tokens[i+1][0].isdigit():
+                        original_date = datetime.strptime(self.date_keys[token], '%Y-%m-%d')
+                        target_day = int(''.join(filter(str.isdigit, self.datetime_set.input_tokens[i+1])))
+                        original_date = original_date.replace(day=target_day)
+                        self.datetime_set.dates.append(original_date)
+                        continue
+                parsed_date = datetime.strptime(self.date_keys[token], '%Y-%m-%d')
+                self.datetime_set.dates.append(parsed_date)
             if ":" in token:
                 hour, minute = token.split(":")
                 if "12:" in token and "am" in self.datetime_set.input_tokens[i+1].lower():
@@ -102,6 +102,10 @@ class DateTimeHandler:
 
         imply_dates = False
         imply_times = False
+        if len(self.datetime_set.dates) == 0 or len(self.datetime_set.times) == 0:
+            print("Insufficient date or time information.")
+            return
+        
         if len(self.datetime_set.dates) < len(self.datetime_set.times):
             imply_dates = True
             if len(self.datetime_set.times) % len(self.datetime_set.dates) != 0:
@@ -121,7 +125,7 @@ class DateTimeHandler:
                 for j in range(interval):
                     date_obj = self.datetime_set.dates[i // interval]
                     time_obj = self.datetime_set.times[i+j]
-                    if time_obj == time(0, 0, 0):
+                    if time_obj > time(0, 0, 0) and time_obj < time(5, 0, 0): #NOTE: for better logic
                         date_obj = date_obj.replace(day=date_obj.day+1)
                     self.datetime_set.datetimes.append(datetime.strptime(f"{date_obj.date()} {time_obj}", '%Y-%m-%d %H:%M:%S'))
 
