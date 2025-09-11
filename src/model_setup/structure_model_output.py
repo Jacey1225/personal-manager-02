@@ -1,9 +1,10 @@
 from transformers.models.t5 import T5Tokenizer, T5ForConditionalGeneration
-from src.handleDateTimes import DateTimeSet, DateTimeHandler
+from src.google_calendar.handleDateTimes import DateTimeSet, DateTimeHandler
 from proxy_bypass import _configure_proxy_bypass
 import os
 import torch
 from pydantic import BaseModel, Field
+from typing import Optional
 from gtts import gTTS
 import pygame
 import io
@@ -12,8 +13,9 @@ class EventDetails(BaseModel):
     input_text: str = Field(default="None", description="Raw input text from a user")
     event_name: str = Field(default="None", description="The identified name of the event inside the input text")
     datetime_obj: DateTimeSet = Field(default_factory=DateTimeSet, description="List of datetime objects extracted from the input text")
-    action: str
-    response: str
+    action: str = Field(default="None", description="The action to be performed on the event (add, delete, update)")
+    response: str = Field(default="None", description="The response generated for the event")
+
 
 class HandleResponse:
     def __init__(self, input_text, model_path='./model'):
@@ -49,6 +51,7 @@ class HandleResponse:
         """
         self.datetime_handler.compile_datetimes()
         self.datetime_handler.organize_for_datetimes()
+        self.datetime_handler.fetch_targets()
         self.event_details.datetime_obj = self.datetime_handler.datetime_set
         if len(self.datetime_handler.datetime_set.dates) < 1:
             date_str = "None"

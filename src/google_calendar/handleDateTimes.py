@@ -126,6 +126,7 @@ class DateTimeHandler:
                     date_obj = self.datetime_set.dates[i // interval]
                     time_obj = self.datetime_set.times[i+j]
                     if time_obj > time(0, 0, 0) and time_obj < time(5, 0, 0): #NOTE: for better logic
+                        print(f"Increasing {date_obj} by 1 day")
                         date_obj = date_obj.replace(day=date_obj.day+1)
                     self.datetime_set.datetimes.append(datetime.strptime(f"{date_obj.date()} {time_obj}", '%Y-%m-%d %H:%M:%S'))
 
@@ -136,4 +137,21 @@ class DateTimeHandler:
                     date_obj = self.datetime_set.dates[i+j]
                     time_obj = self.datetime_set.times[i // interval]
                     self.datetime_set.datetimes.append(datetime.strptime(f"{date_obj.date()} {time_obj}", '%Y-%m-%d %H:%M:%S'))
+        print(f"Organized DateTimes: {self.datetime_set.datetimes}")
         return self.datetime_set
+    
+    def fetch_targets(self):
+        if len(self.datetime_set.datetimes) < 2:
+            self.datetime_set.target_datetimes = [(dt, None) for dt in self.datetime_set.datetimes]
+        else:
+            for i in range(0, len(self.datetime_set.datetimes) - 1, 2):
+                start_datetime = self.datetime_set.datetimes[i]
+                end_datetime = self.datetime_set.datetimes[i + 1]
+
+                if end_datetime:
+                    if end_datetime > start_datetime:
+                        print(f"Found target datetime: {start_datetime} - {end_datetime}")
+                        self.datetime_set.target_datetimes.append((start_datetime, end_datetime))
+                else:
+                    print(f"Found target datetime: {start_datetime} - None")
+                    self.datetime_set.target_datetimes.append((start_datetime, None))
