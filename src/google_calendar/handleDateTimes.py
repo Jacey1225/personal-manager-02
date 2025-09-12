@@ -146,6 +146,8 @@ class DateTimeHandler:
     
 
     def fetch_targets(self):
+        """Fetch target datetimes for the event.
+        """
         if len(self.datetime_set.datetimes) < 2:
             self.datetime_set.target_datetimes = [(dt, None) for dt in self.datetime_set.datetimes]
         else:
@@ -165,6 +167,14 @@ class DateTimeHandler:
                     self.datetime_set.target_datetimes.append((start_datetime, None))
     
     def verify_event_time(self, event_start: Union[str, datetime]) -> bool:
+        """Verify if the event start time is valid.
+
+        Args:
+            event_start (Union[str, datetime]): The start time of the event.
+
+        Returns:
+            bool: True if the event start time is valid, False otherwise.
+        """
         current_date = datetime.now()
         if isinstance(event_start, str):
             event_start = datetime.fromisoformat(event_start)
