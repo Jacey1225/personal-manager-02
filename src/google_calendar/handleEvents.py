@@ -1,4 +1,5 @@
-from src.model_setup.structure_model_output import EventDetails, HandleResponse
+from src.model_setup.structure_model_output import EventDetails
+from src.google_calendar.handleDateTimes import DateTimeHandler
 from src.google_calendar.enable_google_api import enable_google_calendar_api
 from datetime import datetime, timezone
 import pytz
@@ -70,6 +71,7 @@ class RequestSetup:
         self.event_service, self.task_service = enable_google_calendar_api() 
         self.personal_email = personal_email
         self.event_details = event_details
+        self.datetime_handler = DateTimeHandler(self.event_details.input_text)
         self.task_list_id: str = '@default'
         self.event_list_id: str = 'primary'
 
@@ -87,18 +89,8 @@ class RequestSetup:
         )
         self.fetch_events_list()
         self.find_matching_events()
-        self.fetch_event_template()
-        
-    def verify_event_time(self, event_start: Union[str, datetime]):
-        current_date = datetime.now()
-        if isinstance(event_start, str):
-            event_start = datetime.fromisoformat(event_start)
 
-        if event_start.strftime('%Y-%m-%d') < current_date.strftime('%Y-%m-%d'):
-            return False
-        return True
-
-    def validate_event_obj(self, event_obj: CalendarEvent):
+    def validate_event_obj(self, event_obj: CalendarEvent) -> tuple[datetime, Optional[datetime]]:
         if isinstance(event_obj.start, str):
             event_obj.start = datetime.fromisoformat(event_obj.start)
         if isinstance(event_obj.end, str):
@@ -196,14 +188,42 @@ class RequestSetup:
                         "is_event": event.is_event,
                         "event_id": event.event_id
                     }
-                    self.calendar_insights.matching_events.append(event_dict)
+                    if self.datetime_handler.verify_event_time(event.start):
+                        self.calendar_insights.matching_events.append(event_dict)
+                    else:
+                        continue
         print(f"Found {len(self.calendar_insights.matching_events)} matching events.")
         return self.calendar_insights.matching_events
+    
+    def classify_request(self, target_datetime: Optional[tuple] = None, event_id: Optional[str]=None):
+        """Classify the request based on the target datetime and event ID.
 
+        Args:
+            target_datetime (tuple): The target datetime for the event.
+            event_id (Optional[str], optional): The ID of the event. Defaults to None.
+        """
+        if not event_id and not target_datetime:
+            raise ValueError("Either event_id or target_datetime must be provided to classify the request.")
+
+        if event_id and self.calendar_insights.matching_events:
+            calendar_target = next((event for event in self.calendar_insights.matching_events if event['event_id'] == event_id), None)
+            if calendar_target:
+                if calendar_target['is_event']:
+                    self.calendar_insights.is_event = True
+                else:
+                    self.calendar_insights.is_event = False
+        else:
+            if target_datetime:
+                if target_datetime[1]:
+                    self.calendar_insights.is_event = True
+                else:
+                    self.calendar_insights.is_event = False
+
+#MARK: add
 class AddToCalendar(RequestSetup):
     def __init__(self, event_details: EventDetails, personal_email: str = "jaceysimps@gmail.com"):
         super().__init__(event_details, personal_email)
-
+        
     def add_event(self):
         """Add a new event to Google Calendar or a task to Google Tasks.
 
@@ -215,31 +235,28 @@ class AddToCalendar(RequestSetup):
         Returns:
             str: A message indicating the result of the operation.
         """
-        if not self.calendar_insights.template:
-            raise ValueError("Event template is not initialized.")
         if not self.event_details.datetime_obj or len(self.event_details.datetime_obj.datetimes) < 1:
             raise ValueError("At least one datetime object must be provided to add an event.")
         
         try:
-            if self.calendar_insights.is_event:
                 for start_time, end_time in self.event_details.datetime_obj.target_datetimes:
-                    self.calendar_insights.template['start']['dateTime'] = start_time
-                    self.calendar_insights.template['end']['dateTime'] = end_time
-                    if start_time and end_time:
-                        self.calendar_insights.validate_insight_vulnerabilities()
-                    self.event_service.events().insert(calendarId=self.event_list_id, body=self.calendar_insights.template).execute() #type: ignore
-                return f"Event '{self.event_details.event_name}' added on {self.event_details.datetime_obj.target_datetimes[0]}."
-            else:
-                for due_time, _ in self.event_details.datetime_obj.target_datetimes:
-                    local_tz = pytz.timezone('America/Los_Angeles')
-                    due_datetime = local_tz.localize(due_time)
-                    self.calendar_insights.template['due'] = due_datetime.isoformat().split("T")[0]
-                    print(f"Due date for task '{self.event_details.event_name}': {due_datetime.isoformat()}")
-                    if due_datetime:
-                        self.calendar_insights.validate_insight_vulnerabilities()
-                    self.task_service.tasks().insert(tasklist=self.task_list_id, body=self.calendar_insights.template).execute() #type: ignore
+                    self.classify_request((start_time, end_time))
+                    self.fetch_event_template()
+                    if self.calendar_insights.is_event:
+                        self.calendar_insights.template['start']['dateTime'] = start_time.isoformat()
+                        self.calendar_insights.template['end']['dateTime'] = end_time.isoformat()
+                        if start_time and end_time:
+                            self.calendar_insights.validate_insight_vulnerabilities()
+                        self.event_service.events().insert(calendarId=self.event_list_id, body=self.calendar_insights.template).execute() #type: ignore
+                    else:
+                        local_tz = pytz.timezone('America/Los_Angeles')
+                        due_datetime = local_tz.localize(start_time)
+                        self.calendar_insights.template['due'] = due_datetime.isoformat()
+                        print(f"Due date for task '{self.event_details.event_name}': {due_datetime.isoformat()}")
+                        if due_datetime:
+                            self.calendar_insights.validate_insight_vulnerabilities()
+                        self.task_service.tasks().insert(tasklist=self.task_list_id, body=self.calendar_insights.template).execute() #type: ignore
 
-                return f"Task '{self.event_details.event_name}' added with due date {due_datetime}."
         except Exception as e:
             raise RuntimeError(f"An error occurred while adding the event/task: {e}")
         
@@ -267,6 +284,8 @@ class DeleteFromCalendar(RequestSetup):
                         self.calendar_insights.is_event = True
                 if not calendar_event:
                     raise ValueError(f"No event found with ID '{event_id}'.")
+
+                self.classify_request(event_id=event_id)
                 if self.calendar_insights.is_event:
                     self.event_service.events().delete(calendarId=self.event_list_id, eventId=event_id).execute() #type: ignore
                 else:
@@ -291,8 +310,7 @@ class UpdateFromCalendar(RequestSetup):
         """
         calendar_target = next((event for event in self.calendar_insights.matching_events if event['event_id'] == event_id), None)
         if calendar_target:
-            if calendar_target['is_event']:
-                self.calendar_insights.is_event = True
+            self.classify_request(event_id=event_id)
 
         all_target_datetimes = self.event_details.datetime_obj.target_datetimes.copy()
         for target_datetime in all_target_datetimes:
@@ -336,7 +354,7 @@ class UpdateFromCalendar(RequestSetup):
                         original_task = self.task_service.tasks().get(tasklist=self.task_list_id, task=event_id).execute() #type: ignore
                         local_tz = pytz.timezone('America/Los_Angeles')
                         due_datetime = local_tz.localize(due_time)
-                        original_task['due'] = due_datetime.isoformat().split("T")[0]  # Use 'due' field for task due date/time
+                        original_task['due'] = due_datetime.isoformat()  # Use 'due' field for task due date/time
                     self.task_service.tasks().update(tasklist=self.task_list_id, task=event_id, body=original_task).execute() #type: ignore
                 return f"Event '{event_details.event_name}' updated successfully."
             else:

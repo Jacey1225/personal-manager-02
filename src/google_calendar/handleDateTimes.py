@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, time
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Union
 
 class DateTimeSet(BaseModel):
     input_tokens: list[str] = Field(default=[], description="A list of all the input tokens found within an input text")
@@ -80,17 +80,27 @@ class DateTimeHandler:
                         continue
                 parsed_date = datetime.strptime(self.date_keys[token], '%Y-%m-%d')
                 self.datetime_set.dates.append(parsed_date)
-            if ":" in token:
+            elif ":" in token:
                 hour, minute = token.split(":")
-                if "12:" in token and "am" in self.datetime_set.input_tokens[i+1].lower():
+                if hour == "12" and "am" in self.datetime_set.input_tokens[i+1].lower():
                     hour = 0
-                if i < len(self.datetime_set.input_tokens) - 1 and "pm" in self.datetime_set.input_tokens[i+1].lower() and "12:" not in token:
+                if i < len(self.datetime_set.input_tokens) - 1 and "pm" in self.datetime_set.input_tokens[i+1].lower() and "12" not in token:
                     hour = int(hour) + 12
                 self.datetime_set.times.append(time(int(hour), int(minute)))
-        
+            elif token.isdigit() and i < len(self.datetime_set.input_tokens) - 1:
+                if self.datetime_set.input_tokens[i+1] in ["am", "pm"]:
+                    hour = int(token)
+                    minute = 0
+                if hour == 12 and "am" in self.datetime_set.input_tokens[i+1].lower():
+                    hour = 0
+                if i < len(self.datetime_set.input_tokens) - 1 and "pm" in self.datetime_set.input_tokens[i+1].lower() and "12" not in token:
+                    hour = int(hour) + 12
+                self.datetime_set.times.append(time(int(hour), int(minute)))
+            else:
+                continue
 
     def organize_for_datetimes(self):
-        """Organizes dates and times into datetime objects within the datetime_set.
+        """Organizes dates and times into datetime objects within the datetime_set. The problem here is that we need to ensure that each date has a corresponding time.
 
         Raises:
             ValueError: The number of times is not a multiple of the number of dates when implying dates,
@@ -102,10 +112,13 @@ class DateTimeHandler:
 
         imply_dates = False
         imply_times = False
-        if len(self.datetime_set.dates) == 0 or len(self.datetime_set.times) == 0:
-            print("Insufficient date or time information.")
+        if len(self.datetime_set.dates) == 0:
+            print(f"No date: Implying today")
+            self.datetime_set.dates.append(datetime.now())
+        if len(self.datetime_set.times) == 0:
+            print(f"A time is needed, cannot imply times.")
             return
-        
+
         if len(self.datetime_set.dates) < len(self.datetime_set.times):
             imply_dates = True
             if len(self.datetime_set.times) % len(self.datetime_set.dates) != 0:
@@ -125,9 +138,6 @@ class DateTimeHandler:
                 for j in range(interval):
                     date_obj = self.datetime_set.dates[i // interval]
                     time_obj = self.datetime_set.times[i+j]
-                    if time_obj > time(0, 0, 0) and time_obj < time(5, 0, 0): #NOTE: for better logic
-                        print(f"Increasing {date_obj} by 1 day")
-                        date_obj = date_obj.replace(day=date_obj.day+1)
                     self.datetime_set.datetimes.append(datetime.strptime(f"{date_obj.date()} {time_obj}", '%Y-%m-%d %H:%M:%S'))
 
         if imply_times:
@@ -152,6 +162,18 @@ class DateTimeHandler:
                     if end_datetime > start_datetime:
                         print(f"Found target datetime: {start_datetime} - {end_datetime}")
                         self.datetime_set.target_datetimes.append((start_datetime, end_datetime))
+                    else:
+                        end_datetime = end_datetime.replace(day=end_datetime.day+1)
+                        self.datetime_set.target_datetimes.append((start_datetime, end_datetime))
                 else:
                     print(f"Found target datetime: {start_datetime} - None")
                     self.datetime_set.target_datetimes.append((start_datetime, None))
+    
+    def verify_event_time(self, event_start: Union[str, datetime]) -> bool:
+        current_date = datetime.now()
+        if isinstance(event_start, str):
+            event_start = datetime.fromisoformat(event_start)
+
+        if event_start.strftime('%Y-%m-%d') < current_date.strftime('%Y-%m-%d'):
+            return False
+        return True
