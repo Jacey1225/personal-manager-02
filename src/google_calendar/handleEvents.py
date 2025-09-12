@@ -1,10 +1,13 @@
 from src.model_setup.structure_model_output import EventDetails
 from src.google_calendar.handleDateTimes import DateTimeHandler
 from src.google_calendar.enable_google_api import enable_google_calendar_api
+from src.validators.validators import ValidateEventHandling
 from datetime import datetime, timezone
 import pytz
 from pydantic import BaseModel, Field
 from typing import Optional, Union
+
+validator = ValidateEventHandling()
 
 def check_service(event_service, task_service):
     if event_service is None:
@@ -27,12 +30,6 @@ class CalendarEvent(BaseModel):
     is_event: bool = Field(default=False, description="Determines whether we want to handle the request as an event or task")
     event_id: str = Field(default="None", description="The unique identifier for the event")
 
-    def validate_event_vulnerabilities(self):
-        if not self.start or not isinstance(self.start, datetime):
-            raise TypeError("Start time must be a datetime object.")
-        if not isinstance(self.end, Union[datetime, type(None)]):
-            raise TypeError("End time must be a datetime object if provided.")
-
 class CalendarInsights(BaseModel): 
     """used to store additional information on the requested event regarding what already exists in the calendar 
 
@@ -47,22 +44,6 @@ class CalendarInsights(BaseModel):
     template: dict = Field(default={}, description="A template used to send the calendar API event info")
     is_event: bool = Field(default=False, description="Determines whether we want to handle the request as an event or task")
     selected_event_id: Optional[str] = Field(default="None", description="The event ID of the selected event to be updated or deleted")
-
-    def validate_insight_vulnerabilities(self):
-        for event in self.scheduled_events:
-            if not isinstance(event, CalendarEvent):
-                raise TypeError("Scheduled events must be instances of CalendarEvent.")
-        if self.is_event:
-            start_value = self.template['start'] 
-            end_value = self.template['end']
-            if not start_value or not isinstance(start_value["dateTime"], str) or "T" not in start_value["dateTime"]:
-                raise TypeError(f"Template start dateTime must be a string in ISO format: {start_value['dateTime']}")
-            if not end_value or not isinstance(end_value["dateTime"], str) or "T" not in end_value["dateTime"]:
-                raise TypeError(f"Template end dateTime must be a string in ISO format: {end_value['dateTime']}")
-        else:
-            due_value = self.template['due']
-            if not due_value or not isinstance(due_value, str) or "T" not in due_value:
-                raise TypeError(f"Template due dateTime must be a string in ISO format: {due_value}")
 
 class RequestSetup:
     """Handles event setup for Google Calendar and Google Tasks.
@@ -97,6 +78,7 @@ class RequestSetup:
             event_obj.end = datetime.fromisoformat(event_obj.end)
         return event_obj.start, event_obj.end
 
+    @validator.validate_events_list
     def fetch_events_list(self):
         """Fetch the list of events from Google Calendar and Google Tasks.
 
@@ -136,7 +118,6 @@ class RequestSetup:
                     continue
 
                 self.calendar_insights.scheduled_events.append(event_obj)
-                self.calendar_insights.scheduled_events[-1].validate_event_vulnerabilities()
             print(f"Fetched {len(self.calendar_insights.scheduled_events)} events from calendar and tasks.")
         except AttributeError as e:
             print(f"Service attribute error: {e}")
@@ -150,8 +131,6 @@ class RequestSetup:
         Raises:
             ValueError: If event name or personal email is not provided.
         """
-        if not self.event_details.event_name or not self.personal_email:
-            raise ValueError("Event name and personal email must be provided.")
         if not self.calendar_insights.is_event:
             self.calendar_insights.template = {
                 'title': self.event_details.event_name,
@@ -195,16 +174,14 @@ class RequestSetup:
         print(f"Found {len(self.calendar_insights.matching_events)} matching events.")
         return self.calendar_insights.matching_events
     
-    def classify_request(self, target_datetime: Optional[tuple] = None, event_id: Optional[str]=None):
+    @validator.validate_request_classifier
+    def classify_request(self, target_datetime: Optional[tuple]=None, event_id: Optional[str]=None):
         """Classify the request based on the target datetime and event ID.
 
         Args:
             target_datetime (tuple): The target datetime for the event.
             event_id (Optional[str], optional): The ID of the event. Defaults to None.
         """
-        if not event_id and not target_datetime:
-            raise ValueError("Either event_id or target_datetime must be provided to classify the request.")
-
         if event_id and self.calendar_insights.matching_events:
             calendar_target = next((event for event in self.calendar_insights.matching_events if event['event_id'] == event_id), None)
             if calendar_target:
@@ -223,7 +200,8 @@ class RequestSetup:
 class AddToCalendar(RequestSetup):
     def __init__(self, event_details: EventDetails, personal_email: str = "jaceysimps@gmail.com"):
         super().__init__(event_details, personal_email)
-        
+
+    @validator.validate_request_status
     def add_event(self):
         """Add a new event to Google Calendar or a task to Google Tasks.
 
@@ -235,9 +213,6 @@ class AddToCalendar(RequestSetup):
         Returns:
             str: A message indicating the result of the operation.
         """
-        if not self.event_details.datetime_obj or len(self.event_details.datetime_obj.datetimes) < 1:
-            raise ValueError("At least one datetime object must be provided to add an event.")
-        
         try:
                 for start_time, end_time in self.event_details.datetime_obj.target_datetimes:
                     self.classify_request((start_time, end_time))
@@ -246,26 +221,26 @@ class AddToCalendar(RequestSetup):
                         self.calendar_insights.template['start']['dateTime'] = start_time.isoformat()
                         self.calendar_insights.template['end']['dateTime'] = end_time.isoformat()
                         if start_time and end_time:
-                            self.calendar_insights.validate_insight_vulnerabilities()
-                        self.event_service.events().insert(calendarId=self.event_list_id, body=self.calendar_insights.template).execute() #type: ignore
+                            self.event_service.events().insert(calendarId=self.event_list_id, body=self.calendar_insights.template).execute() #type: ignore
                     else:
                         local_tz = pytz.timezone('America/Los_Angeles')
                         due_datetime = local_tz.localize(start_time)
                         self.calendar_insights.template['due'] = due_datetime.isoformat()
                         print(f"Due date for task '{self.event_details.event_name}': {due_datetime.isoformat()}")
                         if due_datetime:
-                            self.calendar_insights.validate_insight_vulnerabilities()
-                        self.task_service.tasks().insert(tasklist=self.task_list_id, body=self.calendar_insights.template).execute() #type: ignore
+                            self.task_service.tasks().insert(tasklist=self.task_list_id, body=self.calendar_insights.template).execute() #type: ignore
 
+                return {"status": "success"}
         except Exception as e:
-            raise RuntimeError(f"An error occurred while adding the event/task: {e}")
-        
+            print(f"An error occurred while adding the event/task: {e}")
+            return {"status": "error", "message": str(e)}
 
 #MARK: delete
 class DeleteFromCalendar(RequestSetup):
     def __init__(self, event_details: EventDetails, personal_email: str = "jaceysimps@gmail.com"):
         super().__init__(event_details, personal_email)
 
+    @validator.validate_request_status
     def delete_event(self, event_id: str):
         """Delete an event from Google Calendar or a task from Google Tasks.
 
@@ -328,6 +303,7 @@ class UpdateFromCalendar(RequestSetup):
                         self.event_details.datetime_obj.target_datetimes.remove(target_datetime)
         print(f"Remaining target datetimes: {self.event_details.datetime_obj.target_datetimes}")
 
+    @validator.validate_request_status
     def update_event(self, event_id: str, event_details: EventDetails, calendar_insights: CalendarInsights):
         """Update an existing event in Google Calendar or a task in Google Tasks.
 

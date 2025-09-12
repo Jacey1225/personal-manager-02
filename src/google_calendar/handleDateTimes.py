@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta, time
 from pydantic import BaseModel, Field
-from typing import Optional, Union
+from typing import Union
+from src.validators.validators import ValidateDateTimeSet
+
+validator = ValidateDateTimeSet()
 
 class DateTimeSet(BaseModel):
     input_tokens: list[str] = Field(default=[], description="A list of all the input tokens found within an input text")
@@ -64,10 +67,10 @@ class DateTimeHandler:
             target_datetimes=[],
         )
 
+    @validator.validate_time_expressions
     def compile_datetimes(self):
         """Compiles the input text into a set of datetime objects.
         """
-        self.datetime_set.input_tokens = self.input_text.split(" ")
         for i, token in enumerate(self.datetime_set.input_tokens):
             token = token.lower()
             if token in self.date_keys:
@@ -80,25 +83,26 @@ class DateTimeHandler:
                         continue
                 parsed_date = datetime.strptime(self.date_keys[token], '%Y-%m-%d')
                 self.datetime_set.dates.append(parsed_date)
-            elif ":" in token:
-                hour, minute = token.split(":")
-                if hour == "12" and "am" in self.datetime_set.input_tokens[i+1].lower():
-                    hour = 0
-                if i < len(self.datetime_set.input_tokens) - 1 and "pm" in self.datetime_set.input_tokens[i+1].lower() and "12" not in token:
-                    hour = int(hour) + 12
-                self.datetime_set.times.append(time(int(hour), int(minute)))
-            elif token.isdigit() and i < len(self.datetime_set.input_tokens) - 1:
-                if self.datetime_set.input_tokens[i+1] in ["am", "pm"]:
+            elif i < len(self.datetime_set.input_tokens) - 1 and token[0].isdigit() and self.datetime_set.input_tokens[i+1].lower() in ["am", "pm"]:
+                if ":" in token:
+                    hour = int(token[0:token.find(":")])
+                else:
                     hour = int(token)
+                
+                if len(token) > 4:
+                        minute = int(token[3:5])
+                else:
                     minute = 0
+
                 if hour == 12 and "am" in self.datetime_set.input_tokens[i+1].lower():
                     hour = 0
-                if i < len(self.datetime_set.input_tokens) - 1 and "pm" in self.datetime_set.input_tokens[i+1].lower() and "12" not in token:
+                if "12" not in token and "pm" in self.datetime_set.input_tokens[i+1].lower():
                     hour = int(hour) + 12
                 self.datetime_set.times.append(time(int(hour), int(minute)))
             else:
                 continue
 
+    @validator.validate_datetime_params
     def organize_for_datetimes(self):
         """Organizes dates and times into datetime objects within the datetime_set. The problem here is that we need to ensure that each date has a corresponding time.
 
@@ -112,21 +116,11 @@ class DateTimeHandler:
 
         imply_dates = False
         imply_times = False
-        if len(self.datetime_set.dates) == 0:
-            print(f"No date: Implying today")
-            self.datetime_set.dates.append(datetime.now())
-        if len(self.datetime_set.times) == 0:
-            print(f"A time is needed, cannot imply times.")
-            return
 
         if len(self.datetime_set.dates) < len(self.datetime_set.times):
             imply_dates = True
-            if len(self.datetime_set.times) % len(self.datetime_set.dates) != 0:
-                raise ValueError("The number of times must be a multiple of the number of dates to imply dates correctly.")
         elif len(self.datetime_set.dates) > len(self.datetime_set.times):
             imply_times = True
-            if len(self.datetime_set.dates) % len(self.datetime_set.times) != 0:
-                raise ValueError("The number of dates must be a multiple of the number of times to imply times correctly.")
         else:
             for date_obj, time_obj in zip(self.datetime_set.dates, self.datetime_set.times):
                 self.datetime_set.datetimes.append(datetime.strptime(f"{date_obj.date()} {time_obj}", '%Y-%m-%d %H:%M:%S'))
@@ -150,6 +144,7 @@ class DateTimeHandler:
         print(f"Organized DateTimes: {self.datetime_set.datetimes}")
         return self.datetime_set
     
+
     def fetch_targets(self):
         if len(self.datetime_set.datetimes) < 2:
             self.datetime_set.target_datetimes = [(dt, None) for dt in self.datetime_set.datetimes]

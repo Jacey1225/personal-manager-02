@@ -1,16 +1,19 @@
 from transformers.models.t5 import T5Tokenizer, T5ForConditionalGeneration
+from src.validators.validators import ValidateModelOutput
 from src.google_calendar.handleDateTimes import DateTimeSet, DateTimeHandler
 from proxy_bypass import _configure_proxy_bypass
 import os
 import torch
 from pydantic import BaseModel, Field
-from typing import Optional
 from gtts import gTTS
 import pygame
 import io
 
+validator = ValidateModelOutput()
+
 class EventDetails(BaseModel):
     input_text: str = Field(default="None", description="Raw input text from a user")
+    raw_output: str = Field(default="None", description="The raw output from the model")
     event_name: str = Field(default="None", description="The identified name of the event inside the input text")
     datetime_obj: DateTimeSet = Field(default_factory=DateTimeSet, description="List of datetime objects extracted from the input text")
     action: str = Field(default="None", description="The action to be performed on the event (add, delete, update)")
@@ -42,6 +45,7 @@ class HandleResponse:
 
         self.datetime_handler = DateTimeHandler(self.input_text)
 
+    @validator.validate_event_details
     def generate_response(self): 
         """Generates a response from the model based on the input text.
 
@@ -53,14 +57,9 @@ class HandleResponse:
         self.datetime_handler.organize_for_datetimes()
         self.datetime_handler.fetch_targets()
         self.event_details.datetime_obj = self.datetime_handler.datetime_set
-        if len(self.datetime_handler.datetime_set.dates) < 1:
-            date_str = "None"
-        else:
-            date_str = ' | '.join([dt.strftime("%Y-%m-%d") for dt in self.datetime_handler.datetime_set.dates]) #type: ignore
-        if len(self.datetime_handler.datetime_set.times) < 1:
-            time_str = "None"
-        else:
-            time_str = ' | '.join([dt.strftime("%I:%M %p") for dt in self.datetime_handler.datetime_set.times])
+        
+        date_str = ' | '.join([dt.strftime("%Y-%m-%d") for dt in self.datetime_handler.datetime_set.dates]) #type: ignore
+        time_str = ' | '.join([dt.strftime("%I:%M %p") for dt in self.datetime_handler.datetime_set.times]) if len(self.datetime_handler.datetime_set.times) > 0 else "None"
 
         feature_context = f"\nEvent Time: {time_str}, \nEvent Date: {date_str}, " \
                           f"\nEvent Input: {self.input_text}"
@@ -72,7 +71,7 @@ class HandleResponse:
         with torch.no_grad():
             outputs = self.model.generate(input_ids=inputs['input_ids'], attention_mask=inputs['attention_mask'], max_length=250)
         
-        self.event_details.response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        self.event_details.raw_output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     def parse_response(self): 
         """Parses the model's response into structured event details.
@@ -82,20 +81,15 @@ class HandleResponse:
             ValueError: If the response format is incorrect.
             ValueError: If any of the parsed values are empty.
         """
-        if not isinstance(self.event_details.response, str):
-            raise TypeError("Response must be a string.")
         try:
-            self.event_details.event_name = self.event_details.response.split("Action: ")[0].split("Event: ")[1].strip().rstrip(',')
-            self.event_details.action = self.event_details.response.split("Action: ")[1].split("Desired Response: ")[0].strip()
-            self.event_details.response = self.event_details.response.split("Desired Response: ")[1].strip()
+            self.event_details.event_name = self.event_details.raw_output.split("Action: ")[0].split("Event: ")[1].strip().rstrip(',')
+            self.event_details.action = self.event_details.raw_output.split("Action: ")[1].split("Desired Response: ")[0].strip()
+            self.event_details.response = self.event_details.raw_output.split("Desired Response: ")[1].strip()
         except IndexError as e:
-            print(f"Response: {self.event_details.response}")
+            print(f"Response: {self.event_details.raw_output}")
             raise ValueError("Response format is incorrect. Unable to parse.") from e
 
-        if self.event_details.event_name == '' or self.event_details.action == '' or self.event_details.response == '':
-            print(f"Response: {self.event_details.response}")
-            raise ValueError("Parsed values cannot be empty.")
-
+    @validator.validate_response_process
     def process_response(self) -> list[EventDetails]: 
         """Processes the model's response into a list of EventDetails objects.
 
@@ -112,10 +106,6 @@ class HandleResponse:
         elif '?' in self.input_text:
             input_requests = self.input_text.split('?')
 
-        if not input_requests:
-            print(f"Input Text: {self.input_text}")
-            print(f"Input Requests: {input_requests}")
-            raise ValueError("No valid input requests found.")
         for text in input_requests:
             if not text.strip():
                 continue
@@ -129,10 +119,9 @@ class HandleResponse:
                 action="None",
                 response="None",
             )
-        if not found_events:
-            raise ValueError("No events were processed.")
         return found_events
     
+    @validator.validate_text_to_speech
     def convert_response_to_speech(self, text): 
         """Converts the given text response to speech.
 
@@ -142,8 +131,6 @@ class HandleResponse:
         Raises:
             ValueError: If no valid text is provided.
         """
-        if text == "None" or not text:
-            raise ValueError("No response available to convert to speech.")
         tts = gTTS(text=text, lang='en')
         fp = io.BytesIO()
         tts.write_to_fp(fp)
