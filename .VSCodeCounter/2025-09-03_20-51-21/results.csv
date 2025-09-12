@@ -1,0 +1,23 @@
+"filename", "language", "Python", "Swift", "JSON", "pip requirements", "comment", "blank", "total"
+"/Users/jaceysimpson/Vscode/personal-manager-02/api/app.py", "Python", 14, 0, 0, 0, 0, 4, 18
+"/Users/jaceysimpson/Vscode/personal-manager-02/api/schedule_router.py", "Python", 25, 0, 0, 0, 0, 1, 26
+"/Users/jaceysimpson/Vscode/personal-manager-02/ios/Lazi/Lazi/Assets.xcassets/AccentColor.colorset/Contents.json", "JSON", 0, 0, 11, 0, 0, 1, 12
+"/Users/jaceysimpson/Vscode/personal-manager-02/ios/Lazi/Lazi/Assets.xcassets/AppIcon.appiconset/Contents.json", "JSON", 0, 0, 35, 0, 0, 1, 36
+"/Users/jaceysimpson/Vscode/personal-manager-02/ios/Lazi/Lazi/Assets.xcassets/Contents.json", "JSON", 0, 0, 6, 0, 0, 1, 7
+"/Users/jaceysimpson/Vscode/personal-manager-02/ios/Lazi/Lazi/ContentView.swift", "Swift", 0, 34, 0, 0, 0, 5, 39
+"/Users/jaceysimpson/Vscode/personal-manager-02/ios/Lazi/Lazi/LaziApp.swift", "Swift", 0, 9, 0, 0, 6, 3, 18
+"/Users/jaceysimpson/Vscode/personal-manager-02/ios/Lazi/Lazi/home/HomePage.swift", "Swift", 0, 52, 0, 0, 0, 7, 59
+"/Users/jaceysimpson/Vscode/personal-manager-02/ios/Lazi/LaziTests/LaziTests.swift", "Swift", 0, 6, 0, 0, 7, 5, 18
+"/Users/jaceysimpson/Vscode/personal-manager-02/ios/Lazi/LaziUITests/LaziUITests.swift", "Swift", 0, 19, 0, 0, 13, 10, 42
+"/Users/jaceysimpson/Vscode/personal-manager-02/ios/Lazi/LaziUITests/LaziUITestsLaunchTests.swift", "Swift", 0, 18, 0, 0, 8, 8, 34
+"/Users/jaceysimpson/Vscode/personal-manager-02/proxy_bypass.py", "Python", 10, 0, 0, 0, 3, 4, 17
+"/Users/jaceysimpson/Vscode/personal-manager-02/requirements.txt", "pip requirements", 0, 0, 0, 6, 0, 1, 7
+"/Users/jaceysimpson/Vscode/personal-manager-02/src/TrainingSetup.py", "Python", 92, 0, 0, 0, 0, 12, 104
+"/Users/jaceysimpson/Vscode/personal-manager-02/src/google_calendar/enable_google_api.py", "Python", 31, 0, 0, 0, 0, 7, 38
+"/Users/jaceysimpson/Vscode/personal-manager-02/src/google_calendar/handleEvents.py", "Python", 193, 0, 0, 0, 6, 18, 217
+"/Users/jaceysimpson/Vscode/personal-manager-02/src/manage_projects/set_project.py", "Python", 48, 0, 0, 0, 0, 11, 59
+"/Users/jaceysimpson/Vscode/personal-manager-02/src/set_goals/manage_goals.py", "Python", 0, 0, 0, 0, 0, 1, 1
+"/Users/jaceysimpson/Vscode/personal-manager-02/src/structureData.py", "Python", 104, 0, 0, 0, 1, 18, 123
+"/Users/jaceysimpson/Vscode/personal-manager-02/src/structure_model_output.py", "Python", 120, 0, 0, 0, 0, 19, 139
+"/Users/jaceysimpson/Vscode/personal-manager-02/src/test_model_accuracy.py", "Python", 47, 0, 0, 0, 0, 7, 54
+"Total", "-", 684, 138, 52, 6, 44, 144, 1068

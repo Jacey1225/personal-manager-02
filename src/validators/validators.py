@@ -36,8 +36,9 @@ class ValidateDateTimeSet:
                 self.datetime_set.dates.append(datetime.now())
             if len(self.datetime_set.times) == 0:
                 print(f"Defaulting to now.")
-                self.datetime_set.times.append(datetime.now().time())
+                self.datetime_set.times.append(time(datetime.now().hour, datetime.now().minute))
 
+            print(f"Dates: {self.datetime_set.dates}, Times: {self.datetime_set.times}")
             return result
         return wrapper
 
@@ -60,9 +61,20 @@ class ValidateDateTimeSet:
             len(self.datetime_set.dates) % len(self.datetime_set.times) != 0:
                 raise ValueError("The number of dates must be a multiple of the number of times to imply times correctly.")
 
-            return func(self)
+            result = func(self)
+
+            print(f"Organized datetimes: {self.datetime_set.datetimes}")
+            return result
         return wrapper
     
+    @staticmethod
+    def log_target_datetimes(func: Callable):
+        def wrapper(self):
+            result = func(self)
+            print(f"Target Datetimes: {self.datetime_set.target_datetimes}")
+            return result
+        return wrapper
+
 class ValidateModelOutput:
     @staticmethod
     def validate_event_details(func: Callable):
@@ -75,6 +87,8 @@ class ValidateModelOutput:
             Returns:
                 Callable: The wrapped function with validated event details.
             """
+            result = func(self)
+
             if len(self.event_details.datetime_obj.target_datetimes) < 1:
                 print(f"Event Input: {self.event_details.input_text}")
                 raise ValueError("No valid target datetimes found.")
@@ -84,8 +98,6 @@ class ValidateModelOutput:
             if len(self.event_details.datetime_obj.times) < 1:
                 print(f"Event Input: {self.event_details.input_text}")
                 raise ValueError("No valid target times found.")
-            
-            result = func(self)
 
             if not self.event_details.action or len(self.event_details.event_name) < 1 or len(self.event_details.response) < 1:
                 print(f"Model Response: {self.event_details.raw_output}")
@@ -125,6 +137,7 @@ class ValidateEventHandling:
             result = func(self)
 
             if len(self.calendar_insights.scheduled_events) < 1:
+                print(f"No events found")
                 print(f"Calendar Insights: {self.calendar_insights.scheduled_events}")
                 raise ValueError("No scheduled events found.")
 
@@ -133,10 +146,18 @@ class ValidateEventHandling:
                     raise ValueError("Invalid event details found.")
                 if event.event_name == '' or event.event_id == '':
                     raise ValueError("Empty event name or ID found.")
-                
+            print(f"Fetched {len(self.calendar_insights.scheduled_events)} events from calendar and tasks.")
             return result
         return wrapper
-    
+
+    @staticmethod
+    def log_matching_events(func: Callable):
+        def wrapper(self):
+            result = func(self)
+            print(f"Matching Events: {self.calendar_insights.matching_events}")
+            return result
+        return wrapper
+
     @staticmethod
     def validate_request_classifier(func: Callable):
         def wrapper(self, *args, **kwargs):
@@ -148,9 +169,20 @@ class ValidateEventHandling:
             if num_null > 1:
                 raise ValueError("Too many null values found.")
             
-            return func(self, *args, **kwargs)
+            result = func(self, *args, **kwargs)
+
+            print(f"Request Classifier Result: {self.calendar_insights.is_event}")
+            return result
         return wrapper
     
+    @staticmethod
+    def log_target_elimination(func: Callable):
+        def wrapper(self, *args, **kwargs):
+            result = func(self, *args, **kwargs)
+            print(f"Remaining target datetimes: {self.event_details.datetime_obj.target_datetimes}")
+            return result
+        return wrapper
+
     @staticmethod
     def validate_request_status(func: Callable):
         def wrapper(self, *args, **kwargs):
@@ -158,5 +190,7 @@ class ValidateEventHandling:
             if result['status'] == 'error':
                 print(f"Error occurred: {result['message']}")
                 raise ValueError("An error occurred during request processing.")
+
+            print(f"Request Status Result: {result['status']}")
             return result
         return wrapper

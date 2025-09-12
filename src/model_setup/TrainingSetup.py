@@ -54,7 +54,15 @@ class ModelTrainer:
         if not os.path.exists(self.config.logging_dir):
             os.makedirs(self.config.logging_dir)
 
-    def load_data(self, data_path='data/processed_event_data.pt'):
+    def load_data(self, data_path: str='data/processed_event_data.pt'):
+        """Loads the training data from a specified file.
+
+        Args:
+            data_path (str, optional): The path to the data file. Defaults to 'data/processed_event_data.pt'.
+
+        Raises:
+            FileNotFoundError: If the data file does not exist.
+        """
         if not os.path.exists(data_path):
             raise FileNotFoundError(f"The file '{data_path}' does not exist.")
         data = torch.load(data_path)
@@ -69,6 +77,8 @@ class ModelTrainer:
         logger.info(f"Loaded dataset with {len(self.train_dataset)} training samples and {len(self.val_dataset)} validation samples.")
 
     def train(self):
+        """Trains the model on the loaded dataset.
+        """
         training_args = Seq2SeqTrainingArguments(
             output_dir=self.config.output_dir,
             num_train_epochs=self.config.num_train_epochs,

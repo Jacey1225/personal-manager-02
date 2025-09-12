@@ -1,6 +1,6 @@
 from src.model_setup.structure_model_output import EventDetails
 from src.google_calendar.handleDateTimes import DateTimeHandler
-from src.google_calendar.enable_google_api import enable_google_calendar_api
+from src.google_calendar.enable_google_api import MultiUserGoogleAPI
 from src.validators.validators import ValidateEventHandling
 from datetime import datetime, timezone
 import pytz
@@ -48,8 +48,14 @@ class CalendarInsights(BaseModel):
 class RequestSetup:
     """Handles event setup for Google Calendar and Google Tasks.
     """
-    def __init__(self, event_details: EventDetails, personal_email: str = "jaceysimps@gmail.com"):
-        self.event_service, self.task_service = enable_google_calendar_api() 
+    def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com"):
+        self.user_id = user_id
+        self.multi_user_google_api = MultiUserGoogleAPI()
+        try:
+            self.event_service = self.multi_user_google_api.get_calendar_service(self.user_id)
+            self.task_service = self.multi_user_google_api.get_tasks_service(self.user_id)
+        except Exception as e:
+            print(f"Error initializing Google API services: {e}")
         self.personal_email = personal_email
         self.event_details = event_details
         self.datetime_handler = DateTimeHandler(self.event_details.input_text)
@@ -118,7 +124,6 @@ class RequestSetup:
                     continue
 
                 self.calendar_insights.scheduled_events.append(event_obj)
-            print(f"Fetched {len(self.calendar_insights.scheduled_events)} events from calendar and tasks.")
         except AttributeError as e:
             print(f"Service attribute error: {e}")
             pass
@@ -151,6 +156,7 @@ class RequestSetup:
                 'attendees': [{'email': self.personal_email}],
             }
 
+    @validator.log_matching_events
     def find_matching_events(self) -> list[dict]:
         """Fetch the events currently in the calendar that closely match the event of interest 
 
@@ -171,7 +177,6 @@ class RequestSetup:
                         self.calendar_insights.matching_events.append(event_dict)
                     else:
                         continue
-        print(f"Found {len(self.calendar_insights.matching_events)} matching events.")
         return self.calendar_insights.matching_events
     
     @validator.validate_request_classifier
@@ -198,8 +203,8 @@ class RequestSetup:
 
 #MARK: add
 class AddToCalendar(RequestSetup):
-    def __init__(self, event_details: EventDetails, personal_email: str = "jaceysimps@gmail.com"):
-        super().__init__(event_details, personal_email)
+    def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com"):
+        super().__init__(event_details, user_id, personal_email)
 
     @validator.validate_request_status
     def add_event(self):
@@ -226,7 +231,6 @@ class AddToCalendar(RequestSetup):
                         local_tz = pytz.timezone('America/Los_Angeles')
                         due_datetime = local_tz.localize(start_time)
                         self.calendar_insights.template['due'] = due_datetime.isoformat()
-                        print(f"Due date for task '{self.event_details.event_name}': {due_datetime.isoformat()}")
                         if due_datetime:
                             self.task_service.tasks().insert(tasklist=self.task_list_id, body=self.calendar_insights.template).execute() #type: ignore
 
@@ -237,8 +241,8 @@ class AddToCalendar(RequestSetup):
 
 #MARK: delete
 class DeleteFromCalendar(RequestSetup):
-    def __init__(self, event_details: EventDetails, personal_email: str = "jaceysimps@gmail.com"):
-        super().__init__(event_details, personal_email)
+    def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com"):
+        super().__init__(event_details, user_id, personal_email)
 
     @validator.validate_request_status
     def delete_event(self, event_id: str):
@@ -265,7 +269,7 @@ class DeleteFromCalendar(RequestSetup):
                     self.event_service.events().delete(calendarId=self.event_list_id, eventId=event_id).execute() #type: ignore
                 else:
                     self.task_service.tasks().delete(tasklist=self.task_list_id, task=event_id).execute() #type: ignore
-                return f"Event '{event_id}' deleted successfully."
+                return {"status": "success"}
             else:
                 raise ValueError(f"No event found with ID '{event_id}'.")
 
@@ -274,9 +278,10 @@ class DeleteFromCalendar(RequestSetup):
         
 #MARK: Update
 class UpdateFromCalendar(RequestSetup):
-    def __init__(self, event_details: EventDetails, personal_email: str = "jaceysimps@gmail.com"):
-        super().__init__(event_details, personal_email)
+    def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com"):
+        super().__init__(event_details, user_id, personal_email)
 
+    @validator.log_target_elimination
     def eliminate_targets(self, event_id: str):
         """Eliminate target datetimes for a specific event ID to avoid irrelevant datetime instances
 
@@ -301,7 +306,6 @@ class UpdateFromCalendar(RequestSetup):
                 if calendar_start and not calendar_end:
                     if calendar_start == start_target:
                         self.event_details.datetime_obj.target_datetimes.remove(target_datetime)
-        print(f"Remaining target datetimes: {self.event_details.datetime_obj.target_datetimes}")
 
     @validator.validate_request_status
     def update_event(self, event_id: str, event_details: EventDetails, calendar_insights: CalendarInsights):
@@ -332,7 +336,7 @@ class UpdateFromCalendar(RequestSetup):
                         due_datetime = local_tz.localize(due_time)
                         original_task['due'] = due_datetime.isoformat()  # Use 'due' field for task due date/time
                     self.task_service.tasks().update(tasklist=self.task_list_id, task=event_id, body=original_task).execute() #type: ignore
-                return f"Event '{event_details.event_name}' updated successfully."
+                return {"status": "success"}
             else:
                 raise ValueError(f"No event found with ID '{event_id}'.")
 

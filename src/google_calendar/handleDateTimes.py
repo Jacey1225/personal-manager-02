@@ -85,13 +85,10 @@ class DateTimeHandler:
                 self.datetime_set.dates.append(parsed_date)
             elif i < len(self.datetime_set.input_tokens) - 1 and token[0].isdigit() and self.datetime_set.input_tokens[i+1].lower() in ["am", "pm"]:
                 if ":" in token:
-                    hour = int(token[0:token.find(":")])
+                    hour = int(token[0:token.index(":")])
+                    minute = int(token[token.index(":")+1:token.index(":")+3])
                 else:
                     hour = int(token)
-                
-                if len(token) > 4:
-                        minute = int(token[3:5])
-                else:
                     minute = 0
 
                 if hour == 12 and "am" in self.datetime_set.input_tokens[i+1].lower():
@@ -141,10 +138,9 @@ class DateTimeHandler:
                     date_obj = self.datetime_set.dates[i+j]
                     time_obj = self.datetime_set.times[i // interval]
                     self.datetime_set.datetimes.append(datetime.strptime(f"{date_obj.date()} {time_obj}", '%Y-%m-%d %H:%M:%S'))
-        print(f"Organized DateTimes: {self.datetime_set.datetimes}")
         return self.datetime_set
     
-
+    @validator.log_target_datetimes
     def fetch_targets(self):
         """Fetch target datetimes for the event.
         """
@@ -157,13 +153,11 @@ class DateTimeHandler:
 
                 if end_datetime:
                     if end_datetime > start_datetime:
-                        print(f"Found target datetime: {start_datetime} - {end_datetime}")
                         self.datetime_set.target_datetimes.append((start_datetime, end_datetime))
                     else:
                         end_datetime = end_datetime.replace(day=end_datetime.day+1)
                         self.datetime_set.target_datetimes.append((start_datetime, end_datetime))
                 else:
-                    print(f"Found target datetime: {start_datetime} - None")
                     self.datetime_set.target_datetimes.append((start_datetime, None))
     
     def verify_event_time(self, event_start: Union[str, datetime]) -> bool:

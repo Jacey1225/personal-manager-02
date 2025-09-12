@@ -16,7 +16,7 @@ class EventRequest(BaseModel):
     feature_response: str = '' #context for the model (expected response)
 
 class EventScheduler:
-    def __init__(self, filename='event_scheduling', batch_size=8):
+    def __init__(self, filename: str='event_scheduling', batch_size: int=8):
         _configure_proxy_bypass() #bypass proxy for huggingface
         self.tokenizer = T5Tokenizer.from_pretrained('t5-small')
         self.batch_size = batch_size
@@ -44,7 +44,12 @@ class EventScheduler:
         self.clean_data = self.data.dropna(subset=columns).reset_index(drop=True) #drop rows with missing values
 
     def fetch_feature(self):
-        # check input types
+        """Fetch features from the event data.
+
+        Raises:
+            TypeError: If any of the event fields are not strings.
+            ValueError: If feature_context and feature_response are not provided.
+        """
         for col, content in self.event:
             if not isinstance(content, str):
                 raise TypeError(f"Field {content} is not of type str")
@@ -62,6 +67,14 @@ class EventScheduler:
             raise ValueError("feature_context and feature_response must be provided.")
             
     def tokenize_feature(self):
+        """Tokenizes the feature context and response for model input.
+
+        Raises:
+            ValueError: If feature_context and feature_response are not set.
+
+        Returns:
+            Tuple[Dict[str, Tensor], Dict[str, Tensor]]: The tokenized context and response.
+        """
         if self.event.feature_context == '' or self.event.feature_response == '':
             raise ValueError("feature_context and feature_response must be set before tokenization.")
         
@@ -84,6 +97,12 @@ class EventScheduler:
         return context_encoding, response_encoding
 
     def process_batch(self):
+        """Processes a batch of event data.
+
+        Raises:
+            ValueError: If the batch data is empty.
+            ValueError: If the tokenized sequences are not of the expected length.
+        """
         if self.clean_data.empty:
             raise ValueError("No data available to process.")
         for i in range(0, len(self.clean_data), self.batch_size):
