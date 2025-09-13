@@ -54,6 +54,8 @@ class RequestSetup:
         try:
             result = self.multi_user_google_api.enable_google_calendar_api()
             
+            self.event_service = None
+            self.task_service = None
             if isinstance(result, str):
                 # Auth URL returned - user needs to authenticate
                 raise ConnectionError(f"User authentication required. Please complete Google OAuth first. Auth URL: {result}")
@@ -83,7 +85,6 @@ class RequestSetup:
             is_event=False
         )
         self.fetch_events_list()
-        self.find_matching_events()
 
     def validate_event_obj(self, event_obj: CalendarEvent) -> tuple[datetime, Optional[datetime]]:
         if isinstance(event_obj.start, str):
@@ -130,8 +131,8 @@ class RequestSetup:
                 else:
                     Warning(f"No valid start or end time found for event: {event}")
                     continue
-
-                self.calendar_insights.scheduled_events.append(event_obj)
+                if self.datetime_handler.verify_event_time(event_obj.start):
+                    self.calendar_insights.scheduled_events.append(event_obj)
         except AttributeError as e:
             print(f"Service attribute error: {e}")
             pass
@@ -181,7 +182,7 @@ class RequestSetup:
                         "is_event": event.is_event,
                         "event_id": event.event_id
                     }
-                    if self.datetime_handler.verify_event_time(event.start):
+                    if event_dict not in self.calendar_insights.matching_events:
                         self.calendar_insights.matching_events.append(event_dict)
                     else:
                         continue
@@ -266,12 +267,9 @@ class DeleteFromCalendar(RequestSetup):
         try:
             if event_id:
                 calendar_event = next((event for event in self.calendar_insights.matching_events if event['event_id'] == event_id), None)
-                if calendar_event:
-                    if calendar_event['is_event']:
-                        self.calendar_insights.is_event = True
                 if not calendar_event:
-                    raise ValueError(f"No event found with ID '{event_id}'.")
-
+                    raise ValueError(f"No matching event found with ID '{event_id}'.")
+                
                 self.classify_request(event_id=event_id)
                 if self.calendar_insights.is_event:
                     self.event_service.events().delete(calendarId=self.event_list_id, eventId=event_id).execute() #type: ignore
@@ -310,9 +308,11 @@ class UpdateFromCalendar(RequestSetup):
                 calendar_end = datetime.fromisoformat(calendar_target['end']).replace(tzinfo=timezone.utc).astimezone(tz=None).isoformat() if calendar_target['end'] else None
                 if calendar_start and calendar_end:
                     if start_target == calendar_start and end_target == calendar_end:
+                        print(f"Removing target datetime: {target_datetime} -> {calendar_target} == {start_target}, {end_target}")
                         self.event_details.datetime_obj.target_datetimes.remove(target_datetime)
                 if calendar_start and not calendar_end:
                     if calendar_start == start_target:
+                        print(f"Removing target datetime: {target_datetime} -> {calendar_target} == {start_target}")
                         self.event_details.datetime_obj.target_datetimes.remove(target_datetime)
 
     @validator.validate_request_status

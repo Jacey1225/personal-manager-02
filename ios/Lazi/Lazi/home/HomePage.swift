@@ -46,6 +46,23 @@ struct SelectableEvent: Identifiable {
     let endDate: String?
 }
 
+// Response structure matching the API
+struct ResponseRequest {
+    var userId: String?
+    var status: String
+    var message: String
+    var eventRequested: [String: Any]
+    var calendarInsights: [String: Any]?
+    
+    init(userId: String? = nil, status: String, message: String, eventRequested: [String: Any], calendarInsights: [String: Any]? = nil) {
+        self.userId = userId
+        self.status = status
+        self.message = message
+        self.eventRequested = eventRequested
+        self.calendarInsights = calendarInsights
+    }
+}
+
 struct EventSelectionView: View {
     let selectableEvents: [SelectableEvent]
     let onEventSelected: (SelectableEvent) -> Void
@@ -101,7 +118,7 @@ struct EventSelectionView: View {
 }
 
 struct HomePage: View {
-    let userId: String  // Add this parameter
+    let userId: String
     
     @State private var userInput: String = ""
     @State private var responseMessage: String = ""
@@ -109,12 +126,14 @@ struct HomePage: View {
     @State private var buttonTapped: Bool = false
     @State private var status: String = ""
     
-    // Event selection states
+    // Store all response requests from the first API call
+    @State private var storedResponseRequests: [ResponseRequest] = []
+    
+    // Event selection states - storing complete responseRequest data
     @State private var showEventSelection = false
     @State private var selectableEvents: [SelectableEvent] = []
     @State private var pendingAction: String = ""
-    @State private var pendingEventDetails: [String: Any] = [:]
-    @State private var pendingCalendarInsights: [String: Any] = [:]
+    @State private var currentResponseRequest: ResponseRequest? = nil
     
     // Speech recognition properties
     @State private var isRecording = false
@@ -164,8 +183,7 @@ struct HomePage: View {
                             showEventSelection = false
                             selectableEvents = []
                             pendingAction = ""
-                            pendingEventDetails = [:]
-                            pendingCalendarInsights = [:]
+                            currentResponseRequest = nil
                         }
                     )
                 }
@@ -296,12 +314,12 @@ struct HomePage: View {
     
     func clearChatMessages() {
         messages.removeAll()
-        // Also clear any pending event selection state
+        // Clear all stored state
+        storedResponseRequests.removeAll()
         showEventSelection = false
         selectableEvents = []
         pendingAction = ""
-        pendingEventDetails = [:]
-        pendingCalendarInsights = [:]
+        currentResponseRequest = nil
     }
     
     func formatDate(_ dateString: String) -> String {
@@ -318,25 +336,29 @@ struct HomePage: View {
     func selectEvent(_ event: SelectableEvent) {
         showEventSelection = false
         
+        guard let responseRequest = currentResponseRequest else {
+            messages.append(ChatMessage(text: "Error: No pending request found.", isUserMessage: false))
+            return
+        }
+        
         if pendingAction == "delete" {
-            callDeleteEvent(eventId: event.eventId, eventDetails: pendingEventDetails)
+            callDeleteEvent(eventId: event.eventId, selectedEvent: event, responseRequest: responseRequest)
         } else if pendingAction == "update" {
-            callUpdateEvent(eventId: event.eventId, eventDetails: pendingEventDetails, calendarInsights: pendingCalendarInsights)
+            callUpdateEvent(eventId: event.eventId, selectedEvent: event, responseRequest: responseRequest)
         }
         
         // Clear pending state
         pendingAction = ""
-        pendingEventDetails = [:]
-        pendingCalendarInsights = [:]
+        currentResponseRequest = nil
         selectableEvents = []
     }
 
-    // MARK: - Handle Delete Action (Fixed)
-    func handleDeleteAction(responseObj: [String: Any], message: String) {
-        self.messages.append(ChatMessage(text: message, isUserMessage: false))
+    // MARK: - Handle Delete Action (Updated to use ResponseRequest structure)
+    func handleDeleteAction(responseRequest: ResponseRequest) {
+        self.messages.append(ChatMessage(text: responseRequest.message, isUserMessage: false))
         
         // Extract calendar insights to show available events
-        if let calendarInsights = responseObj["calendar_insights"] as? [String: Any],
+        if let calendarInsights = responseRequest.calendarInsights,
            let matchingEvents = calendarInsights["matching_events"] as? [[String: Any]] {
             
             // Show available events to user
@@ -362,10 +384,9 @@ struct HomePage: View {
                     )
                 }
                 
-                // Store pending action details
+                // Store pending action and current responseRequest
                 pendingAction = "delete"
-                pendingEventDetails = responseObj["event_requested"] as? [String: Any] ?? [:]
-                pendingCalendarInsights = calendarInsights
+                currentResponseRequest = responseRequest
                 
                 // Show selection UI
                 showEventSelection = true
@@ -376,12 +397,12 @@ struct HomePage: View {
         }
     }
 
-    // MARK: - Handle Update Action (Fixed)
-    func handleUpdateAction(responseObj: [String: Any], message: String) {
-        self.messages.append(ChatMessage(text: message, isUserMessage: false))
+    // MARK: - Handle Update Action (Updated to use ResponseRequest structure)
+    func handleUpdateAction(responseRequest: ResponseRequest) {
+        self.messages.append(ChatMessage(text: responseRequest.message, isUserMessage: false))
         
         // Extract calendar insights to show available events
-        if let calendarInsights = responseObj["calendar_insights"] as? [String: Any],
+        if let calendarInsights = responseRequest.calendarInsights,
            let matchingEvents = calendarInsights["matching_events"] as? [[String: Any]] {
             
             // Show available events to user
@@ -407,10 +428,9 @@ struct HomePage: View {
                     )
                 }
                 
-                // Store pending action details
+                // Store pending action and current responseRequest
                 pendingAction = "update"
-                pendingEventDetails = responseObj["event_requested"] as? [String: Any] ?? [:]
-                pendingCalendarInsights = calendarInsights
+                currentResponseRequest = responseRequest
                 
                 // Show selection UI
                 showEventSelection = true
@@ -585,36 +605,24 @@ struct HomePage: View {
                 do {
                     // Parse as array of ResponseRequest objects
                     if let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-                        for responseObj in jsonArray {
-                            if let status = responseObj["status"] as? String,
-                               let message = responseObj["message"] as? String,
-                               let eventRequested = responseObj["event_requested"] as? [String: Any],
-                               let action = eventRequested["action"] as? String {
-                                
-                                // Handle different actions
-                                switch action.lowercased() {
-                                case "add":
-                                    // For add actions, just show the message
-                                    self.messages.append(ChatMessage(text: message, isUserMessage: false))
-                                    
-                                case "delete":
-                                    // For delete actions, show available events and call delete endpoint
-                                    self.handleDeleteAction(responseObj: responseObj, message: message)
-                                    
-                                case "update":
-                                    // For update actions, show available events and call update endpoint
-                                    self.handleUpdateAction(responseObj: responseObj, message: message)
-                                    
-                                default:
-                                    self.messages.append(ChatMessage(text: message, isUserMessage: false))
-                                }
-                            }
+                        // Convert raw JSON to ResponseRequest objects
+                        self.storedResponseRequests = jsonArray.compactMap { jsonObj in
+                            self.parseResponseRequest(from: jsonObj)
+                        }
+                        
+                        // Process each stored response request
+                        for responseRequest in self.storedResponseRequests {
+                            self.processResponseRequest(responseRequest)
                         }
                     } else {
                         // Fallback for single response object
-                        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let message = json["message"] as? String {
-                            self.messages.append(ChatMessage(text: message, isUserMessage: false))
+                        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            if let responseRequest = self.parseResponseRequest(from: json) {
+                                self.storedResponseRequests = [responseRequest]
+                                self.processResponseRequest(responseRequest)
+                            } else if let message = json["message"] as? String {
+                                self.messages.append(ChatMessage(text: message, isUserMessage: false))
+                            }
                         }
                     }
                 } catch {
@@ -625,9 +633,56 @@ struct HomePage: View {
         }
         task.resume()
     }
+    
+    // MARK: - Helper function to parse ResponseRequest from JSON
+    func parseResponseRequest(from json: [String: Any]) -> ResponseRequest? {
+        guard let status = json["status"] as? String,
+              let message = json["message"] as? String,
+              let eventRequested = json["event_requested"] as? [String: Any] else {
+            print("Failed to parse required fields from response: \(json)")
+            return nil
+        }
+        
+        let userId = json["user_id"] as? String
+        let calendarInsights = json["calendar_insights"] as? [String: Any]
+        
+        return ResponseRequest(
+            userId: userId,
+            status: status,
+            message: message,
+            eventRequested: eventRequested,
+            calendarInsights: calendarInsights
+        )
+    }
+    
+    // MARK: - Process individual ResponseRequest based on status and action
+    func processResponseRequest(_ responseRequest: ResponseRequest) {
+        // Check if status indicates success (completed action)
+        if responseRequest.status.lowercased() == "completed" {
+            // For completed actions, just show the message
+            self.messages.append(ChatMessage(text: responseRequest.message, isUserMessage: false))
+            return
+        }
+        
+        // For non-success status, check if we need to handle delete/update actions
+        if let action = responseRequest.eventRequested["action"] as? String {
+            switch action.lowercased() {
+            case "delete":
+                handleDeleteAction(responseRequest: responseRequest)
+            case "update":
+                handleUpdateAction(responseRequest: responseRequest)
+            default:
+                // For other actions or unknown statuses, just show the message
+                self.messages.append(ChatMessage(text: responseRequest.message, isUserMessage: false))
+            }
+        } else {
+            // If no action found, just show the message
+            self.messages.append(ChatMessage(text: responseRequest.message, isUserMessage: false))
+        }
+    }
 
-    // MARK: - Call Delete Event API
-    func callDeleteEvent(eventId: String, eventDetails: [String: Any]) {
+    // MARK: - Call Delete Event API (Updated to pass complete responseRequest)
+    func callDeleteEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
         guard let url = URL(string: "https://f8cb321bfd70.ngrok-free.app/scheduler/delete_event/\(eventId)") else {
             messages.append(ChatMessage(text: "Invalid delete URL.", isUserMessage: false))
             return
@@ -637,11 +692,24 @@ struct HomePage: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Include user_id in the request body
-        let requestBody: [String: Any] = [
-            "event_details": eventDetails,
-            "user_id": userId
+        // Create the request body with the complete responseRequest data plus event details
+        var requestBody: [String: Any] = [
+            "user_id": userId,
+            "status": responseRequest.status,
+            "message": responseRequest.message,
+            "event_requested": responseRequest.eventRequested,
+            "event_details": [
+                "event_name": selectedEvent.eventName,
+                "start_date": selectedEvent.startDate ?? "",
+                "end_date": selectedEvent.endDate ?? ""
+            ]
         ]
+        
+        if let calendarInsights = responseRequest.calendarInsights {
+            requestBody["calendar_insights"] = calendarInsights
+        }
+
+        print("Sending delete request with complete responseRequest: \(requestBody)")
 
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
@@ -664,8 +732,17 @@ struct HomePage: View {
 
                 do {
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let message = json["message"] as? String {
-                        self.messages.append(ChatMessage(text: "✅ \(message)", isUserMessage: false))
+                       let status = json["status"] as? String {
+                        if status == "success" {
+                            if let message = json["message"] as? String {
+                                self.messages.append(ChatMessage(text: "✅ \(message)", isUserMessage: false))
+                            } else {
+                                self.messages.append(ChatMessage(text: "✅ Event deleted successfully", isUserMessage: false))
+                            }
+                        } else {
+                            let errorMsg = json["message"] as? String ?? "Delete failed"
+                            self.messages.append(ChatMessage(text: "❌ \(errorMsg)", isUserMessage: false))
+                        }
                     }
                 } catch {
                     let rawResponse = String(data: data, encoding: .utf8) ?? "Delete completed"
@@ -676,8 +753,8 @@ struct HomePage: View {
         task.resume()
     }
 
-    // MARK: - Call Update Event API
-    func callUpdateEvent(eventId: String, eventDetails: [String: Any], calendarInsights: [String: Any]) {
+    // MARK: - Call Update Event API (Updated to pass complete responseRequest)
+    func callUpdateEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
         guard let url = URL(string: "https://f8cb321bfd70.ngrok-free.app/scheduler/update_event/\(eventId)") else {
             messages.append(ChatMessage(text: "Invalid update URL.", isUserMessage: false))
             return
@@ -687,12 +764,25 @@ struct HomePage: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Combine event details, calendar insights, and user_id for the request body
-        let requestBody: [String: Any] = [
-            "event_details": eventDetails,
-            "calendar_insights": calendarInsights,
-            "user_id": userId
+        // Create the request body with the complete responseRequest data plus event details
+        var requestBody: [String: Any] = [
+            "user_id": userId,
+            "status": responseRequest.status,
+            "message": responseRequest.message,
+            "event_requested": responseRequest.eventRequested,
+            "event_details": [
+                "event_name": selectedEvent.eventName,
+                "event_id": selectedEvent.eventId,
+                "start_date": selectedEvent.startDate ?? "",
+                "end_date": selectedEvent.endDate ?? ""
+            ]
         ]
+        
+        if let calendarInsights = responseRequest.calendarInsights {
+            requestBody["calendar_insights"] = calendarInsights
+        }
+
+        print("Sending update request with complete responseRequest: \(requestBody)")
 
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
@@ -715,8 +805,17 @@ struct HomePage: View {
 
                 do {
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let message = json["message"] as? String {
-                        self.messages.append(ChatMessage(text: "🔄 \(message)", isUserMessage: false))
+                       let status = json["status"] as? String {
+                        if status == "success" {
+                            if let message = json["message"] as? String {
+                                self.messages.append(ChatMessage(text: "🔄 \(message)", isUserMessage: false))
+                            } else {
+                                self.messages.append(ChatMessage(text: "🔄 Event updated successfully", isUserMessage: false))
+                            }
+                        } else {
+                            let errorMsg = json["message"] as? String ?? "Update failed"
+                            self.messages.append(ChatMessage(text: "❌ \(errorMsg)", isUserMessage: false))
+                        }
                     }
                 } catch {
                     let rawResponse = String(data: data, encoding: .utf8) ?? "Update completed"

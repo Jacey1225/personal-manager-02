@@ -15,9 +15,10 @@ class ValidateDateTimeSet:
                 Callable: The wrapped function with validated time expressions.
             """
             if not isinstance(self.input_text, str) or not isinstance(self.datetime_set.input_tokens, list):
+                print(f"Invalid input types: {type(self.input_text)}, {type(self.datetime_set.input_tokens)}")
                 raise ValueError("Invalid input types")
         
-            input_text = self.input_text
+            input_text = self.input_text.strip()
             input_tokens = input_text.split(" ")
             for i, token in enumerate(input_tokens):
                 if token[0].isdigit() and ("am" in token.lower() or "pm" in token.lower()):
@@ -103,6 +104,7 @@ class ValidateModelOutput:
                 print(f"Model Response: {self.event_details.raw_output}")
                 raise ValueError("Invalid event details.")
 
+            print(f"Validated EventDetails: {self.event_details}")
             return result
         return wrapper
     
@@ -168,9 +170,9 @@ class ValidateEventHandling:
 
             if num_null > 1:
                 raise ValueError("Too many null values found.")
-            
-            result = func(self, *args, **kwargs)
 
+            print(f"Matching Events: {self.calendar_insights.matching_events}")
+            result = func(self, *args, **kwargs)
             print(f"Request Classifier Result: {self.calendar_insights.is_event}")
             return result
         return wrapper
@@ -192,5 +194,34 @@ class ValidateEventHandling:
                 raise ValueError("An error occurred during request processing.")
 
             print(f"Request Status Result: {result['status']}")
+            return result
+        return wrapper
+
+class ValidateCoordinator:
+    @staticmethod
+    def validate_coordinator(func: Callable):
+        def wrapper(self):
+            if not self.event_details.datetime_obj.target_datetimes:
+                print(f"No target datetimes found: {self.request_start}, {self.request_end}")
+                raise ValueError("Invalid event details.")
+            if isinstance(self.request_start, str):
+                if "T" in self.request_start:
+                    self.request_start = datetime.fromisoformat(self.request_start)
+                else:
+                    print(f"Invalid start datetime format: {self.request_start}")
+                    raise ValueError("Invalid start datetime format.")
+            if isinstance(self.request_end, str):
+                if "T" in self.request_end:
+                    self.request_end = datetime.fromisoformat(self.request_end)
+                else:
+                    print(f"Invalid end datetime format: {self.request_end}")
+                    raise ValueError("Invalid end datetime format.")
+
+            if len(self.calendar_insights.scheduled_events) < 1:
+                print(f"No events found")
+                print(f"Calendar Insights: {self.calendar_insights.scheduled_events}")
+                raise ValueError("No scheduled events found.")
+
+            result = func(self)     
             return result
         return wrapper

@@ -13,6 +13,16 @@ class OAuthCompleteRequest(BaseModel):
 
 @router.get("/auth/signup")
 def signup(username: str, email: str, password: str):
+    """Sign up a new user.
+
+    Args:
+        username (str): Username for the new user.
+        email (str): Email address for the new user.
+        password (str): Password for the new user.
+
+    Returns:
+        dict: A dictionary containing the status and user ID.
+    """
     if not os.path.exists('data/users'):
         os.makedirs('data/users')
 
@@ -33,7 +43,16 @@ def signup(username: str, email: str, password: str):
     return {"status": "success", "user_id": user_data.get("user_id")}
 
 @router.get("/auth/login")
-def login(username: str, password: str):
+def login(username: str, password: str) -> dict:
+    """Log in an existing user.
+
+    Args:
+        username (str): Username of the user.
+        password (str): Password of the user.
+
+    Returns:
+        dict: A dictionary containing the login status and user ID if successful.
+    """
     user_file = f'data/users/{username}.json'
     if not os.path.exists(user_file):
         return {"status": "failed", "message": "User not found"}
@@ -46,7 +65,7 @@ def login(username: str, password: str):
             return {"status": "failed", "message": "Invalid password"}
 
 @router.get("/auth/google")
-def google_auth(user_id: str):
+def google_auth(user_id: str) -> dict:
     """Get Google OAuth authorization URL for the user"""
     try:
         print(f"Google auth request for user_id: {user_id}")

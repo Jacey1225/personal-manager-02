@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from src.model_setup.structure_model_output import EventDetails, HandleResponse
 from src.google_calendar.handleDateTimes import DateTimeSet
-from src.google_calendar.handleEvents import CalendarInsights, AddToCalendar, DeleteFromCalendar, UpdateFromCalendar
+from src.google_calendar.handleEvents import CalendarInsights, RequestSetup, AddToCalendar, DeleteFromCalendar, UpdateFromCalendar
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import uvicorn
@@ -47,7 +47,18 @@ async def midnight_refresh():
     local_now = utc_now.astimezone(local_tz)
     print(f"Midnight refresh executed at {local_now.strftime('%Y-%m-%d %H:%M:%S %Z%z')}")
 
-def process_response(status, message, event_requested, calendar_insights=None):
+def process_response(status: str, message: str, event_requested: dict, calendar_insights: dict = {}) -> dict:
+    """Processes the response for the user request.
+
+    Args:
+        status (str): The status of the response (e.g., "success", "error").
+        message (str): A message providing additional information about the response.
+        event_requested (dict): The event details that were requested by the user.
+        calendar_insights (dict, optional): Insights from the calendar regarding the event. Defaults to None.
+
+    Returns:
+        dict: The processed response containing the status, message, event details, and any calendar insights.
+    """
     response = {
         "status": status,
         "message": message,
@@ -73,8 +84,6 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
     try:
         input_text = input_request.input_text
         user_id = input_request.user_id
-        if not "." in input_text and not "?" in input_text:
-            input_text += "."
         
         response_handler = HandleResponse(input_text)
         events = response_handler.process_response() 
@@ -99,6 +108,7 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
 
             elif event.action.lower() == "delete":
                 delete_handler = DeleteFromCalendar(event, user_id)
+                delete_handler.find_matching_events()
                 calendar_insights_dict = {
                     "matching_events": delete_handler.calendar_insights.matching_events,
                     "is_event": delete_handler.calendar_insights.is_event   
@@ -109,6 +119,7 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
 
             elif event.action.lower() == "update":
                 update_handler = UpdateFromCalendar(event, user_id)
+                update_handler.find_matching_events()
                 calendar_insights_dict = {
                     "matching_events": update_handler.calendar_insights.matching_events,
                     "is_event": update_handler.calendar_insights.is_event
@@ -129,12 +140,12 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
         return [{"status": "failed", "message": f"Something went wrong please try again."}]
 
 @app.post("/scheduler/delete_event/{event_id}")
-async def delete_event(event_id: str, event_request: EventRequest) -> dict:
+async def delete_event(event_id: str, request_body: dict) -> dict:
     """Delete an event from the calendar.
 
     Args:
         event_id (str): The ID of the event to delete.
-        event_details (EventDetails): The details of the event which is needed to produce a response that was generated.
+        request_body (dict): The request body containing event details and calendar insights.
 
     Raises:
         HTTPException: If an error occurs while deleting the event.
@@ -143,14 +154,57 @@ async def delete_event(event_id: str, event_request: EventRequest) -> dict:
         dict: A dictionary containing the status and message of the delete operation.
     """
     try:
-        event_details = event_request.event_details
-        user_id = event_request.user_id
+        event_requested = request_body.get("event_requested", {})
+        
+        datetime_set = DateTimeSet(
+            target_datetimes=event_requested.get("target_dates", [])
+        )
+        
+        event_details = EventDetails(
+            event_name=event_requested.get("event_name", "None"),
+            datetime_obj=datetime_set,
+            action=event_requested.get("action", "None"),
+            response=event_requested.get("response", "None")
+        )
+        
+        if event_details.event_name == "None" or not event_details.event_name:
+            raise ValueError("Event name must be provided.")
+        
+        user_id = request_body.get("user_id", "None")
+        calendar_insights_dict = request_body.get("calendar_insights", {})        
+        calendar_insights = CalendarInsights(
+            matching_events=calendar_insights_dict.get("matching_events", []),
+            is_event=calendar_insights_dict.get("is_event", False)
+        )
+    
         delete_handler = DeleteFromCalendar(event_details, user_id)
+        delete_handler.calendar_insights = calendar_insights
+
         delete_handler.delete_event(event_id)  
         return {"status": "success", "message": event_details.response}
     except Exception as e:
         print(f"I'm sorry, something went wrong. Please try again: {e}")
         return {"status": "failed", "message": f"Something went wrong please try again."}
+    
+@app.post("/scheduler/list_events")
+async def list_events(event_request: EventRequest) -> list[dict]:
+    event_details = event_request.event_details
+    event_details.event_name = "None"
+    event_details.action = "None"
+    user_id = event_request.user_id
+    request_setup = RequestSetup(event_details, user_id)
+    events_list = request_setup.calendar_insights.scheduled_events
+    events_json = []
+    for event in events_list:
+        event_dict = {
+            "event_name": event.event_name,
+            "start_time": event.start,
+            "end_time": event.end,
+            "event_id": event.event_id
+        }
+        print(f"Event JSON: {event_dict}")
+        events_json.append(event_dict)
+    return events_json
 
 @app.post("/scheduler/update_event/{event_id}")
 async def update_event(event_id: str, request_body: dict) -> dict:
@@ -167,21 +221,20 @@ async def update_event(event_id: str, request_body: dict) -> dict:
         dict: A dictionary containing the status and message of the update operation.
     """
     try:
-        event_details_dict = request_body.get("event_details", {})
+        event_requested = request_body.get("event_requested", {})
+        
+        datetime_set = DateTimeSet(
+            target_datetimes=event_requested.get("target_dates", [])
+        )
+        
+        event_details = EventDetails(
+            event_name=event_requested.get("event_name", "None"),
+            datetime_obj=datetime_set,
+            action=event_requested.get("action", "None"),
+            response=event_requested.get("response", "None")
+        )
         calendar_insights_dict = request_body.get("calendar_insights", {})
         user_id = request_body.get("user_id", "None")
-
-        print(f"Received event_details: {event_details_dict}")
-
-        datetime_set = DateTimeSet(
-            target_datetimes=event_details_dict.get("target_dates", [])
-        )
-        event_details = EventDetails(
-            event_name=event_details_dict.get("event_name", "None"),
-            datetime_obj=datetime_set,
-            action=event_details_dict.get("action", "None"),
-            response=event_details_dict.get("response", "None")
-        )
         calendar_insights = CalendarInsights(**calendar_insights_dict)
         
         update_handler = UpdateFromCalendar(event_details, user_id)

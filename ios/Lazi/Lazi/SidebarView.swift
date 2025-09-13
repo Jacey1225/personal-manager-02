@@ -37,7 +37,7 @@ struct SidebarView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 
-                NavigationLink(destination: TasksView(userId: userId)) {
+                NavigationLink(destination: TasksListView(userId: userId)) {
                     SidebarRow(icon: "checklist", title: "Tasks")
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -115,27 +115,6 @@ struct CalendarView: View {
                 .foregroundColor(.secondary)
         }
         .navigationTitle("Calendar")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct TasksView: View {
-    let userId: String
-    
-    var body: some View {
-        VStack {
-            Text("Tasks View")
-                .font(.largeTitle)
-                .padding()
-            
-            Text("User ID: \(userId)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            Text("Tasks functionality coming soon...")
-                .foregroundColor(.secondary)
-        }
-        .navigationTitle("Tasks")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
