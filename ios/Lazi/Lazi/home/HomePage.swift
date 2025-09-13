@@ -101,6 +101,8 @@ struct EventSelectionView: View {
 }
 
 struct HomePage: View {
+    let userId: String  // Add this parameter
+    
     @State private var userInput: String = ""
     @State private var responseMessage: String = ""
     @State private var messages: [ChatMessage] = []
@@ -180,7 +182,7 @@ struct HomePage: View {
                     }
                 
                 HStack {
-                    SidebarView(isPresented: $showSidebar)
+                    SidebarView(isPresented: $showSidebar, userId: userId)
                         .transition(.move(edge: .leading))
                     
                     Spacer()
@@ -555,7 +557,11 @@ struct HomePage: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let requestBody = ["input_text": currentInput]
+        // Include user_id in the request body
+        let requestBody = [
+            "input_text": currentInput,
+            "user_id": userId
+        ]
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
@@ -631,8 +637,14 @@ struct HomePage: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // Include user_id in the request body
+        let requestBody: [String: Any] = [
+            "event_details": eventDetails,
+            "user_id": userId
+        ]
+
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: eventDetails)
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
             messages.append(ChatMessage(text: "Failed to encode delete request.", isUserMessage: false))
             return
@@ -675,10 +687,11 @@ struct HomePage: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Combine event details and calendar insights for the request body
+        // Combine event details, calendar insights, and user_id for the request body
         let requestBody: [String: Any] = [
             "event_details": eventDetails,
-            "calendar_insights": calendarInsights
+            "calendar_insights": calendarInsights,
+            "user_id": userId
         ]
 
         do {
@@ -717,6 +730,6 @@ struct HomePage: View {
 
 struct HomePage_Previews: PreviewProvider {
     static var previews: some View {
-        HomePage()
+        HomePage(userId: "preview-user-id")
     }
 }

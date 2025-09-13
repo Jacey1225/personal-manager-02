@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @Binding var isPresented: Bool
+    let userId: String  // Add userId parameter
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -14,6 +15,11 @@ struct SidebarView: View {
                 Text("Personal Manager")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.7))
+                
+                // Optional: Show user ID (first 8 characters for brevity)
+                Text("User: \(String(userId.prefix(8)))...")
+                    .font(.system(size: 10, weight: .light))
+                    .foregroundColor(.white.opacity(0.5))
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -21,22 +27,22 @@ struct SidebarView: View {
             
             // Navigation Items
             VStack(alignment: .leading, spacing: 0) {
-                NavigationLink(destination: HomePage()) {
+                NavigationLink(destination: HomePage(userId: userId)) {
                     SidebarRow(icon: "house.fill", title: "Home", isSelected: true)
                 }
                 .buttonStyle(PlainButtonStyle())
                 
-                NavigationLink(destination: Text("Calendar View").foregroundColor(.white)) {
+                NavigationLink(destination: CalendarView(userId: userId)) {
                     SidebarRow(icon: "calendar", title: "Calendar")
                 }
                 .buttonStyle(PlainButtonStyle())
                 
-                NavigationLink(destination: Text("Tasks View").foregroundColor(.white)) {
+                NavigationLink(destination: TasksView(userId: userId)) {
                     SidebarRow(icon: "checklist", title: "Tasks")
                 }
                 .buttonStyle(PlainButtonStyle())
                 
-                NavigationLink(destination: Text("Settings View").foregroundColor(.white)) {
+                NavigationLink(destination: SettingsView(userId: userId)) {
                     SidebarRow(icon: "gearshape.fill", title: "Settings")
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -90,8 +96,73 @@ struct SidebarRow: View {
     }
 }
 
+// MARK: - Placeholder Views for Navigation
+
+struct CalendarView: View {
+    let userId: String
+    
+    var body: some View {
+        VStack {
+            Text("Calendar View")
+                .font(.largeTitle)
+                .padding()
+            
+            Text("User ID: \(userId)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Text("Calendar functionality coming soon...")
+                .foregroundColor(.secondary)
+        }
+        .navigationTitle("Calendar")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct TasksView: View {
+    let userId: String
+    
+    var body: some View {
+        VStack {
+            Text("Tasks View")
+                .font(.largeTitle)
+                .padding()
+            
+            Text("User ID: \(userId)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Text("Tasks functionality coming soon...")
+                .foregroundColor(.secondary)
+        }
+        .navigationTitle("Tasks")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct SettingsView: View {
+    let userId: String
+    
+    var body: some View {
+        VStack {
+            Text("Settings View")
+                .font(.largeTitle)
+                .padding()
+            
+            Text("User ID: \(userId)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Text("Settings functionality coming soon...")
+                .foregroundColor(.secondary)
+        }
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 struct SidebarView_Previews: PreviewProvider {
     static var previews: some View {
-        SidebarView(isPresented: .constant(true))
+        SidebarView(isPresented: .constant(true), userId: "preview-user-id")
     }
 }

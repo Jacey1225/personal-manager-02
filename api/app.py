@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
+from api.auth_router import router
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 from src.model_setup.structure_model_output import EventDetails, HandleResponse
 from src.google_calendar.handleDateTimes import DateTimeSet
 from src.google_calendar.handleEvents import CalendarInsights, AddToCalendar, DeleteFromCalendar, UpdateFromCalendar
@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import pytz
 
 
-app = FastAPI()
+app = FastAPI() 
 scheduler = AsyncIOScheduler()
 
 # More restrictive CORS for production
@@ -23,11 +23,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(router)
 
 class InputRequest(BaseModel):
     input_text: str
+    user_id: str
+
+class EventRequest(BaseModel):
+    event_details: EventDetails
+    user_id: str
 
 responseRequest = {
+    "user_id": str,
     "status": str,
     "message": str,
     "event_requested": dict,
@@ -65,6 +72,7 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
     """
     try:
         input_text = input_request.input_text
+        user_id = input_request.user_id
         if not "." in input_text and not "?" in input_text:
             input_text += "."
         
@@ -82,7 +90,7 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
             }
 
             if event.action.lower() == "add":
-                add_handler = AddToCalendar(event)
+                add_handler = AddToCalendar(event, user_id)
                 add_handler.add_event()
                 result = add_handler.event_details.response
 
@@ -90,7 +98,7 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
                 requests.append(responseRequest)
 
             elif event.action.lower() == "delete":
-                delete_handler = DeleteFromCalendar(event)
+                delete_handler = DeleteFromCalendar(event, user_id)
                 calendar_insights_dict = {
                     "matching_events": delete_handler.calendar_insights.matching_events,
                     "is_event": delete_handler.calendar_insights.is_event   
@@ -100,7 +108,7 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
                 requests.append(responseRequest)
 
             elif event.action.lower() == "update":
-                update_handler = UpdateFromCalendar(event)
+                update_handler = UpdateFromCalendar(event, user_id)
                 calendar_insights_dict = {
                     "matching_events": update_handler.calendar_insights.matching_events,
                     "is_event": update_handler.calendar_insights.is_event
@@ -121,7 +129,7 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
         return [{"status": "failed", "message": f"Something went wrong please try again."}]
 
 @app.post("/scheduler/delete_event/{event_id}")
-async def delete_event(event_id: str, event_details: EventDetails) -> dict:
+async def delete_event(event_id: str, event_request: EventRequest) -> dict:
     """Delete an event from the calendar.
 
     Args:
@@ -135,7 +143,9 @@ async def delete_event(event_id: str, event_details: EventDetails) -> dict:
         dict: A dictionary containing the status and message of the delete operation.
     """
     try:
-        delete_handler = DeleteFromCalendar(event_details)
+        event_details = event_request.event_details
+        user_id = event_request.user_id
+        delete_handler = DeleteFromCalendar(event_details, user_id)
         delete_handler.delete_event(event_id)  
         return {"status": "success", "message": event_details.response}
     except Exception as e:
@@ -159,6 +169,8 @@ async def update_event(event_id: str, request_body: dict) -> dict:
     try:
         event_details_dict = request_body.get("event_details", {})
         calendar_insights_dict = request_body.get("calendar_insights", {})
+        user_id = request_body.get("user_id", "None")
+
         print(f"Received event_details: {event_details_dict}")
 
         datetime_set = DateTimeSet(
@@ -172,7 +184,7 @@ async def update_event(event_id: str, request_body: dict) -> dict:
         )
         calendar_insights = CalendarInsights(**calendar_insights_dict)
         
-        update_handler = UpdateFromCalendar(event_details)
+        update_handler = UpdateFromCalendar(event_details, user_id)
         update_handler.calendar_insights = calendar_insights
         update_handler.eliminate_targets(event_id)
         update_handler.fetch_event_template()

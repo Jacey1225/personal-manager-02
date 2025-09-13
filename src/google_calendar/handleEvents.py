@@ -1,6 +1,6 @@
 from src.model_setup.structure_model_output import EventDetails
 from src.google_calendar.handleDateTimes import DateTimeHandler
-from src.google_calendar.enable_google_api import MultiUserGoogleAPI
+from src.google_calendar.enable_google_api import ConfigureGoogleAPI
 from src.validators.validators import ValidateEventHandling
 from datetime import datetime, timezone
 import pytz
@@ -50,10 +50,18 @@ class RequestSetup:
     """
     def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com"):
         self.user_id = user_id
-        self.multi_user_google_api = MultiUserGoogleAPI()
+        self.multi_user_google_api = ConfigureGoogleAPI(user_id)
         try:
-            self.event_service = self.multi_user_google_api.get_calendar_service(self.user_id)
-            self.task_service = self.multi_user_google_api.get_tasks_service(self.user_id)
+            result = self.multi_user_google_api.enable_google_calendar_api()
+            
+            if isinstance(result, str):
+                # Auth URL returned - user needs to authenticate
+                raise ConnectionError(f"User authentication required. Please complete Google OAuth first. Auth URL: {result}")
+            elif result is not None and len(result) == 2:
+                # Services returned - user is authenticated
+                self.event_service, self.task_service = result
+            else:
+                raise ConnectionError("Failed to initialize Google API services")
         except Exception as e:
             print(f"Error initializing Google API services: {e}")
         self.personal_email = personal_email
