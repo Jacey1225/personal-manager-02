@@ -185,26 +185,6 @@ async def delete_event(event_id: str, request_body: dict) -> dict:
     except Exception as e:
         print(f"I'm sorry, something went wrong. Please try again: {e}")
         return {"status": "failed", "message": f"Something went wrong please try again."}
-    
-@app.post("/scheduler/list_events")
-async def list_events(event_request: EventRequest) -> list[dict]:
-    event_details = event_request.event_details
-    event_details.event_name = "None"
-    event_details.action = "None"
-    user_id = event_request.user_id
-    request_setup = RequestSetup(event_details, user_id)
-    events_list = request_setup.calendar_insights.scheduled_events
-    events_json = []
-    for event in events_list:
-        event_dict = {
-            "event_name": event.event_name,
-            "start_time": event.start,
-            "end_time": event.end,
-            "event_id": event.event_id
-        }
-        print(f"Event JSON: {event_dict}")
-        events_json.append(event_dict)
-    return events_json
 
 @app.post("/scheduler/update_event/{event_id}")
 async def update_event(event_id: str, request_body: dict) -> dict:
@@ -213,6 +193,12 @@ async def update_event(event_id: str, request_body: dict) -> dict:
     Args:
         event_id (str): ID of the event to update.
         request_body (dict): The updated event details.
+            {
+                "event_name": "Updated Event",
+                "target_dates": ["2023-10-01T10:00:00Z", "2023-10-01T11:00:00Z"],
+                "action": "update",
+                "response": "Event updated successfully"
+            }
 
     Raises:
         HTTPException: If an error occurs while updating the event.
@@ -251,6 +237,38 @@ async def update_event(event_id: str, request_body: dict) -> dict:
     except Exception as e:
         print(f"I'm sorry, something went wrong. Please try again: {e}")
         return {"status": "failed", "message": f"Something went wrong please try again."}
+
+@app.post("/scheduler/list_events")
+async def list_events(event_request: EventRequest) -> list[dict]:
+    event_details = event_request.event_details
+    event_details.event_name = "None"
+    event_details.action = "None"
+    user_id = event_request.user_id
+    request_setup = RequestSetup(event_details, user_id)
+    events_list = request_setup.calendar_insights.scheduled_events
+    events_json = []
+    for event in events_list:
+        formatted_times = format_datetimes(event.start, event.end if event.end else None)
+        event_dict = {
+            "event_name": event.event_name,
+            "start_time": formatted_times["start_time"],
+            "end_time": formatted_times["end_time"],
+            "event_id": event.event_id
+        }
+        events_json.append(event_dict)
+    return events_json
+
+
+def format_datetimes(event_start: datetime, event_end: Optional[datetime]) -> dict:
+    start_formatted = event_start.strftime("%A, %B %d, %Y %I:%M %p")
+    if event_end:
+        end_formatted = event_end.strftime("%A, %B %d, %Y %I:%M %p")
+    else:
+        end_formatted = None
+    return {
+        "start_time": start_formatted,
+        "end_time": end_formatted
+    }
 
 
 @app.get("/")

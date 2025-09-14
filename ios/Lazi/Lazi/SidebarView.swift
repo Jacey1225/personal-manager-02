@@ -47,6 +47,7 @@ struct SidebarView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
+            .padding(.top, 60) // Add padding to avoid overlap with sidebar button
             
             Spacer()
             

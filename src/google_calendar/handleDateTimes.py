@@ -176,3 +176,19 @@ class DateTimeHandler:
         if event_start.strftime('%Y-%m-%d') < current_date.strftime('%Y-%m-%d'):
             return False
         return True
+    
+    def sort_datetimes(self, scheduled_events: list) -> list:
+        sorted_events = scheduled_events.copy()
+        count = 0
+        while count < len(sorted_events):
+            for i in range(len(sorted_events) - 1 - count):
+                event_i_start = sorted_events[i].start if isinstance(sorted_events[i].start, datetime) else datetime.fromisoformat(sorted_events[i].start)
+                event_next_start = sorted_events[i + 1].start if isinstance(sorted_events[i + 1].start, datetime) else datetime.fromisoformat(sorted_events[i + 1].start)
+                if event_i_start > event_next_start:
+                    sorted_events[i], sorted_events[i + 1] = sorted_events[i + 1], sorted_events[i]
+            count += 1
+
+
+        for event in sorted_events:
+            print(f"Event: {event.event_name} starting at {event.start}")
+        return sorted_events
