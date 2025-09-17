@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, time
 from pydantic import BaseModel, Field
-from typing import Union
+from typing import Union, Optional
 from src.validators.validators import ValidateDateTimeSet
 
 validator = ValidateDateTimeSet()
@@ -178,6 +178,14 @@ class DateTimeHandler:
         return True
     
     def sort_datetimes(self, scheduled_events: list) -> list:
+        """Sorts the scheduled events by their start times.
+
+        Args:
+            scheduled_events (list): A list of scheduled events to sort.
+
+        Returns:
+            list: A list of sorted scheduled events.
+        """
         sorted_events = scheduled_events.copy()
         count = 0
         while count < len(sorted_events):
@@ -188,7 +196,24 @@ class DateTimeHandler:
                     sorted_events[i], sorted_events[i + 1] = sorted_events[i + 1], sorted_events[i]
             count += 1
 
-
-        for event in sorted_events:
-            print(f"Event: {event.event_name} starting at {event.start}")
         return sorted_events
+    
+    def format_datetimes(self, event_start: datetime, event_end: Optional[datetime]) -> dict:
+        """Formats the start and end times of an event.
+
+        Args:
+            event_start (datetime): The start time of the event.
+            event_end (Optional[datetime]): The end time of the event.
+
+        Returns:
+            dict: A dictionary containing the formatted start and end times.
+        """
+        start_formatted = event_start.strftime("%A, %B %d, %Y %I:%M %p")
+        if event_end:
+            end_formatted = event_end.strftime("%A, %B %d, %Y %I:%M %p")
+        else:
+            end_formatted = None
+        return {
+            "start_time": start_formatted,
+            "end_time": end_formatted
+        }

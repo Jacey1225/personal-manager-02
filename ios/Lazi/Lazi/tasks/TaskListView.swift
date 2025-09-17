@@ -43,6 +43,8 @@ struct TasksListView: View {
     @State private var errorMessage = ""
     @State private var showingError = false
     @State private var deletingEventId: String? = nil
+    @State private var editingEventId: String? = nil
+    @State private var updatingEventId: String? = nil
     
     var body: some View {
         NavigationView {
@@ -82,7 +84,12 @@ struct TasksListView: View {
                             EventRowView(
                                 event: event,
                                 isDeleting: deletingEventId == event.event_id,
-                                onDelete: { deleteEvent(event) }
+                                isEditing: editingEventId == event.event_id,
+                                isUpdating: updatingEventId == event.event_id,
+                                onDelete: { deleteEvent(event) },
+                                onStartEdit: { startEditingEvent(event) },
+                                onFinishEdit: { newName in finishEditingEvent(event, newName: newName) },
+                                onCancelEdit: { cancelEditingEvent() }
                             )
                         }
                     }
@@ -121,7 +128,7 @@ struct TasksListView: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "https://f8cb321bfd70.ngrok-free.app/scheduler/list_events") else {
+    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/task_list/list_events") else {
             errorMessage = "Invalid URL"
             isLoading = false
             showingError = true
@@ -215,7 +222,7 @@ struct TasksListView: View {
     private func deleteEvent(_ event: TaskEvent) {
         deletingEventId = event.event_id
         
-        guard let url = URL(string: "https://f8cb321bfd70.ngrok-free.app/scheduler/delete_event/\(event.event_id)") else {
+    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/delete_event/\(event.event_id)") else {
             errorMessage = "Invalid URL"
             showingError = true
             deletingEventId = nil
@@ -317,6 +324,145 @@ struct TasksListView: View {
         }.resume()
     }
     
+    // MARK: - Event Editing Functions
+    
+    private func startEditingEvent(_ event: TaskEvent) {
+        editingEventId = event.event_id
+        print("Started editing event: \(event.event_name)")
+    }
+    
+    private func cancelEditingEvent() {
+        editingEventId = nil
+        print("Cancelled editing")
+    }
+    
+    private func finishEditingEvent(_ event: TaskEvent, newName: String) {
+        guard !newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            cancelEditingEvent()
+            return
+        }
+        
+        let trimmedName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Don't make API call if name hasn't changed
+        if trimmedName == event.event_name {
+            cancelEditingEvent()
+            return
+        }
+        
+        updatingEventId = event.event_id
+        editingEventId = nil
+        
+        updateEventName(event, newName: trimmedName)
+    }
+    
+    private func updateEventName(_ event: TaskEvent, newName: String) {
+    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/update_event/\(event.event_id)") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            updatingEventId = nil
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Create complete responseRequest structure with updated event name
+        let responseRequest: [String: Any] = [
+            "user_id": userId,
+            "status": "request event ID",
+            "message": "Event '\(event.event_name)' selected for update from task list",
+            "event_requested": [
+                "event_name": newName, // Use the new name here
+                "target_dates": createTargetDatetimes(from: event),
+                "action": "update",
+                "response": "Event updated to '\(newName)' successfully"
+            ],
+            "calendar_insights": [
+                "matching_events": [
+                    [
+                        "event_name": event.event_name, // Keep original name for matching
+                        "event_id": event.event_id,
+                        "start": event.start_time,
+                        "end": event.end_time.isEmpty ? event.start_time : event.end_time,
+                        "is_event": determineIsEvent(from: event)
+                    ]
+                ],
+                "is_event": determineIsEvent(from: event),
+                "template": [:],
+                "selected_event_id": event.event_id
+            ]
+        ]
+        
+        print("Sending update request to rename '\(event.event_name)' to '\(newName)'")
+        print("- Event ID: \(event.event_id)")
+        print("- Full Request: \(responseRequest)")
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: responseRequest)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            updatingEventId = nil
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                updatingEventId = nil
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                guard let data = data else {
+                    errorMessage = "No data received"
+                    showingError = true
+                    return
+                }
+                
+                // Log the raw response for debugging
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("Update API Response: \(responseString)")
+                }
+                
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let status = json["status"] as? String {
+                        if status == "success" {
+                            // Update the event name in the local list
+                            if let index = events.firstIndex(where: { $0.event_id == event.event_id }) {
+                                let updatedEvent = TaskEvent(
+                                    event_name: newName,
+                                    start_time: event.start_time,
+                                    end_time: event.end_time,
+                                    event_id: event.event_id
+                                )
+                                events[index] = updatedEvent
+                                print("Successfully updated event name to: \(newName)")
+                            }
+                        } else {
+                            errorMessage = json["message"] as? String ?? "Failed to update event"
+                            showingError = true
+                            print("Update failed: \(errorMessage)")
+                        }
+                    } else {
+                        errorMessage = "Invalid response format"
+                        showingError = true
+                        print("Invalid response format from update API")
+                    }
+                } catch {
+                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
+                    showingError = true
+                    print("Failed to parse update response: \(error)")
+                }
+            }
+        }.resume()
+    }
+    
     // MARK: - Helper Functions for Event Details Compilation (Updated)
     
     private func createTargetDatetimes(from event: TaskEvent) -> [[String]] {
@@ -351,7 +497,15 @@ struct TasksListView: View {
 struct EventRowView: View {
     let event: TaskEvent
     let isDeleting: Bool
+    let isEditing: Bool
+    let isUpdating: Bool
     let onDelete: () -> Void
+    let onStartEdit: () -> Void
+    let onFinishEdit: (String) -> Void
+    let onCancelEdit: () -> Void
+    
+    @State private var editingText: String = ""
+    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         HStack(spacing: 12) {
@@ -368,15 +522,71 @@ struct EventRowView: View {
                 }
             }
             .frame(width: 30, height: 30)
-            .disabled(isDeleting)
+            .disabled(isDeleting || isEditing || isUpdating)
             
             // Event details
             VStack(alignment: .leading, spacing: 4) {
-                Text(event.event_name)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .lineLimit(2)
+                // Event name - editable when in editing mode
+                if isEditing {
+                    HStack {
+                        TextField("Event name", text: $editingText)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .focused($isTextFieldFocused)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .onSubmit {
+                                onFinishEdit(editingText)
+                            }
+                        
+                        // Cancel button
+                        Button("Cancel") {
+                            onCancelEdit()
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        
+                        // Save button
+                        Button("Save") {
+                            onFinishEdit(editingText)
+                        }
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                        .disabled(editingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                } else {
+                    HStack {
+                        // Event name with tap to edit
+                        Button(action: {
+                            editingText = event.event_name
+                            onStartEdit()
+                        }) {
+                            HStack {
+                                Text(event.event_name)
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                    .lineLimit(2)
+                                    .foregroundColor(.primary)
+                                    .multilineTextAlignment(.leading)
+                                
+                                if isUpdating {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "pencil")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
+                        .disabled(isDeleting || isUpdating)
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        Spacer()
+                    }
+                }
                 
+                // Time information (always shown)
                 HStack {
                     Image(systemName: "clock")
                         .font(.caption)
@@ -403,7 +613,14 @@ struct EventRowView: View {
             Spacer()
         }
         .padding(.vertical, 8)
-        .opacity(isDeleting ? 0.6 : 1.0)
+        .opacity((isDeleting || isUpdating) ? 0.6 : 1.0)
+        .onChange(of: isEditing) { isNowEditing in
+            if isNowEditing {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isTextFieldFocused = true
+                }
+            }
+        }
     }
 }
 

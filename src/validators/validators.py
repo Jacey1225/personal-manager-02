@@ -1,7 +1,6 @@
 from typing import Callable
 from datetime import datetime, time
 
-
 class ValidateDateTimeSet:
     @staticmethod
     def validate_time_expressions(func: Callable):
@@ -197,7 +196,7 @@ class ValidateEventHandling:
             return result
         return wrapper
 
-class ValidateCoordinator:
+class ValidateProjectHandler:
     @staticmethod
     def validate_coordinator(func: Callable):
         def wrapper(self):
@@ -223,5 +222,62 @@ class ValidateCoordinator:
                 raise ValueError("No scheduled events found.")
 
             result = func(self)     
+            return result
+        return wrapper
+    
+    @staticmethod
+    def validate_project_identifier(func: Callable):
+        def wrapper(self, *args, **kwargs):
+            if not self.user_data or not self.username:
+                print(f"User data or username is missing")
+                raise ValueError("User data or username is missing")
+
+            if not self.user_data.get("projects"):
+                print(f"No projects found for user: {self.username} before call {func.__name__}")
+                result = self.event_details
+            else:
+                result = func(self, *args, **kwargs)
+
+            print(f"Result: {result}")
+            return result
+        return wrapper
+    
+    @staticmethod
+    def validate_project_events(func: Callable):
+        def wrapper(self, *args, **kwargs):
+            if not self.calendar_insights.scheduled_events:
+                print(f"No scheduled events found.")
+                raise ValueError("No scheduled events found.")
+            
+            result = func(self, *args, **kwargs)
+
+            if not self.calendar_insights.project_events:
+                print(f"No project events found after call {func.__name__}.")
+                pass
+
+            for i, project_event in enumerate(self.calendar_insights.project_events):
+                event_start = project_event['start']
+                event_end = project_event['end']
+                if isinstance(event_start, datetime):
+                    event_start = event_start.strftime("%A, %B %d, %Y %I:%M %p")
+                    self.calendar_insights.project_events[i]['start'] = event_start
+                elif isinstance(event_start, str):
+                    event_start = datetime.strptime(event_start, "%A, %B %d, %Y %I:%M %p")
+                    if not event_start:
+                        print(f"Invalid start datetime format: {event_start}")
+                        raise ValueError("Invalid start datetime format.")
+                    self.calendar_insights.project_events[i]['start'] = event_start
+
+                if isinstance(event_end, datetime):
+                    event_end = event_end.strftime("%A, %B %d, %Y %I:%M %p")
+                    self.calendar_insights.project_events[i]['end'] = event_end
+                elif isinstance(event_end, str):
+                    event_end = datetime.strptime(event_end, "%A, %B %d, %Y %I:%M %p")
+                    if not event_end:
+                        print(f"Invalid end datetime format: {event_end}")
+                        raise ValueError("Invalid end datetime format.")
+                    self.calendar_insights.project_events[i]['end'] = event_end
+
+            print(f"Project Events: {self.calendar_insights.project_events}")
             return result
         return wrapper

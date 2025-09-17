@@ -1,10 +1,14 @@
 from fastapi import FastAPI, HTTPException
-from api.auth_router import router
+from api.auth_router import auth_router
+from api.tasklist_router import task_list_router
+from api.project_router import project_router
+from api.coordination_router import router as coordination_router
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from src.model_setup.structure_model_output import EventDetails, HandleResponse
 from src.google_calendar.handleDateTimes import DateTimeSet
-from src.google_calendar.handleEvents import CalendarInsights, RequestSetup, AddToCalendar, DeleteFromCalendar, UpdateFromCalendar
+from src.google_calendar.handleEvents import CalendarInsights, AddToCalendar, DeleteFromCalendar, UpdateFromCalendar
+from src.track_projects.handleProjects import FetchProject
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import uvicorn
@@ -22,8 +26,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
-app.include_router(router)
+app.include_router(auth_router)
+app.include_router(task_list_router)
+app.include_router(project_router)
+app.include_router(coordination_router)
 
 class InputRequest(BaseModel):
     input_text: str
@@ -67,9 +75,40 @@ def process_response(status: str, message: str, event_requested: dict, calendar_
     }
     return response
 
+@app.post("/scheduler/fetch_events")
+async def fetch_events(input_request: InputRequest) -> list[dict]:
+    """Fetch events from the calendar based on user input.
+
+    Args:
+        input_request (InputRequest): The user input request containing the input text.
+
+    Returns:
+        list[dict]: A list of dictionaries containing the fetched events.
+    """
+    input_text = input_request.input_text
+    user_id = input_request.user_id
+
+    response_handler = HandleResponse(input_text)
+    events = response_handler.process_response() 
+    list_events_dict = []
+    for event in events:
+        event_dict = {
+            "user_id": user_id,
+            "input_text": input_text,
+            "event_name": event.event_name,
+            "target_dates": event.datetime_obj.target_datetimes,
+            "action": event.action,
+            "response": event.response,
+            "transparency": event.transparency,
+            "guestsCanModify": event.guestsCanModify,
+            "description": event.description
+        }
+        list_events_dict.append(event_dict)
+    return list_events_dict
+
 
 @app.post("/scheduler/process_input")
-async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
+async def process_input(events: list[dict]) -> list[Dict[str, Any]]:
     """Processes user input, generates, a response, and returns that response as a list of dictionaries for either further processing or user feedback.
 
     Args:
@@ -82,55 +121,55 @@ async def process_input(input_request: InputRequest) -> list[Dict[str, Any]]:
         list[Dict[str, Any]]: A list of dictionaries containing the response for each processed event. This is needed if the system needs to request additional information
     """
     try:
-        input_text = input_request.input_text
-        user_id = input_request.user_id
-        
-        response_handler = HandleResponse(input_text)
-        events = response_handler.process_response() 
         requests = []
-        
         for event in events:
-            print(f"Processing Event: {event}")
-            event_dict = {
-                "event_name": event.event_name,
-                "target_dates": event.datetime_obj.target_datetimes,
-                "action": event.action,
-                "response": event.response
-            }
+            user_id = event['user_id']
+            event_details = EventDetails(
+                input_text=event['input_text'],
+                event_name=event['event_name'],
+                datetime_obj=DateTimeSet(target_datetimes=event['target_dates']),
+                action=event['action'],
+                response=event['response'],
+                transparency=event['transparency'],
+                guestsCanModify=event['guestsCanModify'],
+                description=event['description']
+            )
+            event_details = FetchProject(user_id, event_details).tie_project()
 
-            if event.action.lower() == "add":
-                add_handler = AddToCalendar(event, user_id)
+            print(f"Event Details: {event_details}")
+            if event_details.action.lower() == "add":
+                add_handler = AddToCalendar(event_details, user_id)
                 add_handler.add_event()
                 result = add_handler.event_details.response
 
-                responseRequest = process_response("completed", result, event_dict)
+                responseRequest = process_response("completed", result, event)
                 requests.append(responseRequest)
 
-            elif event.action.lower() == "delete":
-                delete_handler = DeleteFromCalendar(event, user_id)
+            elif event_details.action.lower() == "delete":
+                delete_handler = DeleteFromCalendar(event_details, user_id)
                 delete_handler.find_matching_events()
                 calendar_insights_dict = {
                     "matching_events": delete_handler.calendar_insights.matching_events,
                     "is_event": delete_handler.calendar_insights.is_event   
                 }
 
-                responseRequest = process_response("request event ID", f"Please select an event to delete as {event.event_name.upper()}", event_dict, calendar_insights_dict)
+                responseRequest = process_response("request event ID", f"Please select an event to delete as {event_details.event_name.upper()}", event, calendar_insights_dict)
                 requests.append(responseRequest)
 
-            elif event.action.lower() == "update":
-                update_handler = UpdateFromCalendar(event, user_id)
+            elif event_details.action.lower() == "update":
+                update_handler = UpdateFromCalendar(event_details, user_id)
                 update_handler.find_matching_events()
                 calendar_insights_dict = {
                     "matching_events": update_handler.calendar_insights.matching_events,
                     "is_event": update_handler.calendar_insights.is_event
                 }
-                event_dict['target_dates'] = [(start, end) for start, end in update_handler.event_details.datetime_obj.target_datetimes]
-                responseRequest = process_response("request event ID", f"Please select an event to update as {event.event_name.upper()}", event_dict, calendar_insights_dict)
+                event_details.datetime_obj.target_datetimes = [(start, end) for start, end in update_handler.event_details.datetime_obj.target_datetimes]
+                responseRequest = process_response("request event ID", f"Please select an event to update as {event_details.event_name.upper()}", event, calendar_insights_dict)
                 requests.append(responseRequest)
 
             else:
-                result = f"Unknown action '{event.action}' for event '{event.event_name}'."
-                responseRequest = process_response("failed", result, event_dict)    
+                result = f"Unknown action '{event_details.action}' for event '{event_details.event_name}'."
+                responseRequest = process_response("failed", result, event)
                 requests.append(responseRequest)
 
         return requests
@@ -155,7 +194,7 @@ async def delete_event(event_id: str, request_body: dict) -> dict:
     """
     try:
         event_requested = request_body.get("event_requested", {})
-        
+
         datetime_set = DateTimeSet(
             target_datetimes=event_requested.get("target_dates", [])
         )
@@ -176,7 +215,7 @@ async def delete_event(event_id: str, request_body: dict) -> dict:
             matching_events=calendar_insights_dict.get("matching_events", []),
             is_event=calendar_insights_dict.get("is_event", False)
         )
-    
+
         delete_handler = DeleteFromCalendar(event_details, user_id)
         delete_handler.calendar_insights = calendar_insights
 
@@ -185,6 +224,35 @@ async def delete_event(event_id: str, request_body: dict) -> dict:
     except Exception as e:
         print(f"I'm sorry, something went wrong. Please try again: {e}")
         return {"status": "failed", "message": f"Something went wrong please try again."}
+    
+def convert_to_iso(og_target_dates: list[tuple[str, Optional[str]]]) -> list[tuple[str, Optional[str]]]:
+    """Convert original target dates to ISO format.
+
+    Args:
+        og_target_dates (list[tuple[str, Optional[str]]]): Original target dates.
+
+    Returns:
+        list[tuple[str, Optional[str]]]: Converted target dates in ISO format.
+    """
+    pdt = pytz.timezone('America/Los_Angeles')
+    iso_dates = []
+    for start, end in og_target_dates:
+        try:
+            start_dt = datetime.strptime(start, "%A, %B %d, %Y %I:%M %p")
+            start_pdt = pdt.localize(start_dt).isoformat()
+            if end:
+                end_dt = datetime.strptime(end, "%A, %B %d, %Y %I:%M %p")
+                end_pdt = pdt.localize(end_dt).isoformat()
+            else:
+                end_pdt = None
+            print(f"Converted {start} and {end} to PDT: {start_pdt}, {end_pdt}")
+        except Exception as e:
+            print(f"Datetimes do not conform to format: {e}")
+            start_pdt = start
+            end_pdt = end
+
+        iso_dates.append((start_pdt, end_pdt))
+    return iso_dates
 
 @app.post("/scheduler/update_event/{event_id}")
 async def update_event(event_id: str, request_body: dict) -> dict:
@@ -208,9 +276,10 @@ async def update_event(event_id: str, request_body: dict) -> dict:
     """
     try:
         event_requested = request_body.get("event_requested", {})
-        
+        target_dates = convert_to_iso(event_requested.get("target_dates", []))
+
         datetime_set = DateTimeSet(
-            target_datetimes=event_requested.get("target_dates", [])
+            target_datetimes=target_dates
         )
         
         event_details = EventDetails(
@@ -219,56 +288,27 @@ async def update_event(event_id: str, request_body: dict) -> dict:
             action=event_requested.get("action", "None"),
             response=event_requested.get("response", "None")
         )
+        print(f"Event Details Target Datetimes: {event_details.datetime_obj.target_datetimes}")
+
         calendar_insights_dict = request_body.get("calendar_insights", {})
         user_id = request_body.get("user_id", "None")
         calendar_insights = CalendarInsights(**calendar_insights_dict)
-        
+
         update_handler = UpdateFromCalendar(event_details, user_id)
         update_handler.calendar_insights = calendar_insights
-        update_handler.eliminate_targets(event_id)
-        update_handler.fetch_event_template()
         update_handler.event_details = event_details
+        print(f"Event Details: {update_handler.event_details}")
+        print(f"Calendar Insights: {update_handler.calendar_insights}")
 
-        print(f"Event Details: {event_details}")
-        print(f"Calendar Insights: {calendar_insights}")
-        update_handler.update_event(event_id, event_details, calendar_insights)
+        if len(target_dates) > 1:
+            update_handler.eliminate_targets(event_id)
+
+        update_handler.update_event(event_id)
 
         return {"status": "success", "message": event_details.response}
     except Exception as e:
         print(f"I'm sorry, something went wrong. Please try again: {e}")
         return {"status": "failed", "message": f"Something went wrong please try again."}
-
-@app.post("/scheduler/list_events")
-async def list_events(event_request: EventRequest) -> list[dict]:
-    event_details = event_request.event_details
-    event_details.event_name = "None"
-    event_details.action = "None"
-    user_id = event_request.user_id
-    request_setup = RequestSetup(event_details, user_id)
-    events_list = request_setup.calendar_insights.scheduled_events
-    events_json = []
-    for event in events_list:
-        formatted_times = format_datetimes(event.start, event.end if event.end else None)
-        event_dict = {
-            "event_name": event.event_name,
-            "start_time": formatted_times["start_time"],
-            "end_time": formatted_times["end_time"],
-            "event_id": event.event_id
-        }
-        events_json.append(event_dict)
-    return events_json
-
-
-def format_datetimes(event_start: datetime, event_end: Optional[datetime]) -> dict:
-    start_formatted = event_start.strftime("%A, %B %d, %Y %I:%M %p")
-    if event_end:
-        end_formatted = event_end.strftime("%A, %B %d, %Y %I:%M %p")
-    else:
-        end_formatted = None
-    return {
-        "start_time": start_formatted,
-        "end_time": end_formatted
-    }
 
 
 @app.get("/")

@@ -555,7 +555,7 @@ struct HomePage: View {
         isRecording = false
     }
 
-    // MARK: - API Functions (keeping your existing implementation with minor updates)
+    // MARK: - API Functions (Updated for new two-step process)
     
     func sendToAPI() {
         guard !userInput.isEmpty else {
@@ -568,8 +568,14 @@ struct HomePage: View {
         let currentInput = userInput
         userInput = ""  // Clear the input field only after sending
 
-        guard let url = URL(string: "https://f8cb321bfd70.ngrok-free.app/scheduler/process_input") else {
-            messages.append(ChatMessage(text: "Invalid URL.", isUserMessage: false))
+        // Step 1: Call fetch_events to extract events from the input text
+        fetchEventsFromInput(inputText: currentInput)
+    }
+    
+    // MARK: - Step 1: Fetch Events from Input Text
+    func fetchEventsFromInput(inputText: String) {
+    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/fetch_events") else {
+            messages.append(ChatMessage(text: "Invalid fetch_events URL.", isUserMessage: false))
             return
         }
 
@@ -577,40 +583,97 @@ struct HomePage: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Include user_id in the request body
+        // Create request body for fetch_events
         let requestBody = [
-            "input_text": currentInput,
+            "input_text": inputText,
             "user_id": userId
         ]
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
-            messages.append(ChatMessage(text: "Failed to encode request.", isUserMessage: false))
+            messages.append(ChatMessage(text: "Failed to encode fetch_events request.", isUserMessage: false))
             return
         }
+
+        print("Step 1: Calling fetch_events with input: \(inputText)")
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    self.messages.append(ChatMessage(text: "Error: \(error.localizedDescription)", isUserMessage: false))
+                    self.messages.append(ChatMessage(text: "Fetch events error: \(error.localizedDescription)", isUserMessage: false))
                     return
                 }
 
                 guard let data = data else {
-                    self.messages.append(ChatMessage(text: "No data received.", isUserMessage: false))
+                    self.messages.append(ChatMessage(text: "No data received from fetch_events.", isUserMessage: false))
                     return
                 }
 
                 do {
-                    // Parse as array of ResponseRequest objects
+                    // Parse the events array from fetch_events response
+                    if let eventsArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                        print("Step 1 completed: Received \(eventsArray.count) events from fetch_events")
+                        print("Events data: \(eventsArray)")
+                        
+                        // Step 2: Pass the events to process_input
+                        self.processEventsInput(events: eventsArray)
+                    } else {
+                        self.messages.append(ChatMessage(text: "Invalid response format from fetch_events.", isUserMessage: false))
+                    }
+                } catch {
+                    let rawResponse = String(data: data, encoding: .utf8) ?? "Failed to parse fetch_events response"
+                    self.messages.append(ChatMessage(text: "Fetch events parsing error: \(rawResponse)", isUserMessage: false))
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    // MARK: - Step 2: Process Events Input
+    func processEventsInput(events: [[String: Any]]) {
+    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/process_input") else {
+            messages.append(ChatMessage(text: "Invalid process_input URL.", isUserMessage: false))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Pass the events array directly to process_input
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: events)
+        } catch {
+            messages.append(ChatMessage(text: "Failed to encode process_input request.", isUserMessage: false))
+            return
+        }
+
+        print("Step 2: Calling process_input with \(events.count) events")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.messages.append(ChatMessage(text: "Process input error: \(error.localizedDescription)", isUserMessage: false))
+                    return
+                }
+
+                guard let data = data else {
+                    self.messages.append(ChatMessage(text: "No data received from process_input.", isUserMessage: false))
+                    return
+                }
+
+                do {
+                    // Parse as array of ResponseRequest objects (same as before)
                     if let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                         // Convert raw JSON to ResponseRequest objects
                         self.storedResponseRequests = jsonArray.compactMap { jsonObj in
                             self.parseResponseRequest(from: jsonObj)
                         }
                         
-                        // Process each stored response request
+                        print("Step 2 completed: Received \(self.storedResponseRequests.count) response requests")
+                        
+                        // Process each stored response request (same as before)
                         for responseRequest in self.storedResponseRequests {
                             self.processResponseRequest(responseRequest)
                         }
@@ -626,7 +689,137 @@ struct HomePage: View {
                         }
                     }
                 } catch {
-                    let rawResponse = String(data: data, encoding: .utf8) ?? "Failed to parse response"
+                    let rawResponse = String(data: data, encoding: .utf8) ?? "Failed to parse process_input response"
+                    self.messages.append(ChatMessage(text: "Process input parsing error: \(rawResponse)", isUserMessage: false))
+                }
+            }
+        }
+        task.resume()
+    }
+
+    // MARK: - Call Delete Event API (Updated URL to match new API structure)
+    func callDeleteEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
+    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/delete_event/\(eventId)") else {
+            messages.append(ChatMessage(text: "Invalid delete URL.", isUserMessage: false))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Create the request body matching the API expectations
+        var requestBody: [String: Any] = [
+            "user_id": userId,
+            "event_requested": responseRequest.eventRequested
+        ]
+        
+        if let calendarInsights = responseRequest.calendarInsights {
+            requestBody["calendar_insights"] = calendarInsights
+        }
+
+        print("Sending delete request for event \(eventId): \(requestBody)")
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            messages.append(ChatMessage(text: "Failed to encode delete request.", isUserMessage: false))
+            return
+        }
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.messages.append(ChatMessage(text: "Delete error: \(error.localizedDescription)", isUserMessage: false))
+                    return
+                }
+
+                guard let data = data else {
+                    self.messages.append(ChatMessage(text: "No response from delete.", isUserMessage: false))
+                    return
+                }
+
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let status = json["status"] as? String {
+                        if status == "success" {
+                            if let message = json["message"] as? String {
+                                self.messages.append(ChatMessage(text: "✅ \(message)", isUserMessage: false))
+                            } else {
+                                self.messages.append(ChatMessage(text: "✅ Event deleted successfully", isUserMessage: false))
+                            }
+                        } else {
+                            let errorMsg = json["message"] as? String ?? "Delete failed"
+                            self.messages.append(ChatMessage(text: "❌ \(errorMsg)", isUserMessage: false))
+                        }
+                    }
+                } catch {
+                    let rawResponse = String(data: data, encoding: .utf8) ?? "Delete completed"
+                    self.messages.append(ChatMessage(text: rawResponse, isUserMessage: false))
+                }
+            }
+        }
+        task.resume()
+    }
+
+    // MARK: - Call Update Event API (Updated URL to match new API structure)
+    func callUpdateEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
+    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/update_event/\(eventId)") else {
+            messages.append(ChatMessage(text: "Invalid update URL.", isUserMessage: false))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Create the request body matching the API expectations
+        var requestBody: [String: Any] = [
+            "user_id": userId,
+            "event_requested": responseRequest.eventRequested
+        ]
+        
+        if let calendarInsights = responseRequest.calendarInsights {
+            requestBody["calendar_insights"] = calendarInsights
+        }
+
+        print("Sending update request for event \(eventId): \(requestBody)")
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            messages.append(ChatMessage(text: "Failed to encode update request.", isUserMessage: false))
+            return
+        }
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.messages.append(ChatMessage(text: "Update error: \(error.localizedDescription)", isUserMessage: false))
+                    return
+                }
+
+                guard let data = data else {
+                    self.messages.append(ChatMessage(text: "No response from update.", isUserMessage: false))
+                    return
+                }
+
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let status = json["status"] as? String {
+                        if status == "success" {
+                            if let message = json["message"] as? String {
+                                self.messages.append(ChatMessage(text: "🔄 \(message)", isUserMessage: false))
+                            } else {
+                                self.messages.append(ChatMessage(text: "🔄 Event updated successfully", isUserMessage: false))
+                            }
+                        } else {
+                            let errorMsg = json["message"] as? String ?? "Update failed"
+                            self.messages.append(ChatMessage(text: "❌ \(errorMsg)", isUserMessage: false))
+                        }
+                    }
+                } catch {
+                    let rawResponse = String(data: data, encoding: .utf8) ?? "Update completed"
                     self.messages.append(ChatMessage(text: rawResponse, isUserMessage: false))
                 }
             }
@@ -679,151 +872,6 @@ struct HomePage: View {
             // If no action found, just show the message
             self.messages.append(ChatMessage(text: responseRequest.message, isUserMessage: false))
         }
-    }
-
-    // MARK: - Call Delete Event API (Updated to pass complete responseRequest)
-    func callDeleteEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
-        guard let url = URL(string: "https://f8cb321bfd70.ngrok-free.app/scheduler/delete_event/\(eventId)") else {
-            messages.append(ChatMessage(text: "Invalid delete URL.", isUserMessage: false))
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Create the request body with the complete responseRequest data plus event details
-        var requestBody: [String: Any] = [
-            "user_id": userId,
-            "status": responseRequest.status,
-            "message": responseRequest.message,
-            "event_requested": responseRequest.eventRequested,
-            "event_details": [
-                "event_name": selectedEvent.eventName,
-                "start_date": selectedEvent.startDate ?? "",
-                "end_date": selectedEvent.endDate ?? ""
-            ]
-        ]
-        
-        if let calendarInsights = responseRequest.calendarInsights {
-            requestBody["calendar_insights"] = calendarInsights
-        }
-
-        print("Sending delete request with complete responseRequest: \(requestBody)")
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-        } catch {
-            messages.append(ChatMessage(text: "Failed to encode delete request.", isUserMessage: false))
-            return
-        }
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.messages.append(ChatMessage(text: "Delete error: \(error.localizedDescription)", isUserMessage: false))
-                    return
-                }
-
-                guard let data = data else {
-                    self.messages.append(ChatMessage(text: "No response from delete.", isUserMessage: false))
-                    return
-                }
-
-                do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let status = json["status"] as? String {
-                        if status == "success" {
-                            if let message = json["message"] as? String {
-                                self.messages.append(ChatMessage(text: "✅ \(message)", isUserMessage: false))
-                            } else {
-                                self.messages.append(ChatMessage(text: "✅ Event deleted successfully", isUserMessage: false))
-                            }
-                        } else {
-                            let errorMsg = json["message"] as? String ?? "Delete failed"
-                            self.messages.append(ChatMessage(text: "❌ \(errorMsg)", isUserMessage: false))
-                        }
-                    }
-                } catch {
-                    let rawResponse = String(data: data, encoding: .utf8) ?? "Delete completed"
-                    self.messages.append(ChatMessage(text: rawResponse, isUserMessage: false))
-                }
-            }
-        }
-        task.resume()
-    }
-
-    // MARK: - Call Update Event API (Updated to pass complete responseRequest)
-    func callUpdateEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
-        guard let url = URL(string: "https://f8cb321bfd70.ngrok-free.app/scheduler/update_event/\(eventId)") else {
-            messages.append(ChatMessage(text: "Invalid update URL.", isUserMessage: false))
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Create the request body with the complete responseRequest data plus event details
-        var requestBody: [String: Any] = [
-            "user_id": userId,
-            "status": responseRequest.status,
-            "message": responseRequest.message,
-            "event_requested": responseRequest.eventRequested,
-            "event_details": [
-                "event_name": selectedEvent.eventName,
-                "event_id": selectedEvent.eventId,
-                "start_date": selectedEvent.startDate ?? "",
-                "end_date": selectedEvent.endDate ?? ""
-            ]
-        ]
-        
-        if let calendarInsights = responseRequest.calendarInsights {
-            requestBody["calendar_insights"] = calendarInsights
-        }
-
-        print("Sending update request with complete responseRequest: \(requestBody)")
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-        } catch {
-            messages.append(ChatMessage(text: "Failed to encode update request.", isUserMessage: false))
-            return
-        }
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.messages.append(ChatMessage(text: "Update error: \(error.localizedDescription)", isUserMessage: false))
-                    return
-                }
-
-                guard let data = data else {
-                    self.messages.append(ChatMessage(text: "No response from update.", isUserMessage: false))
-                    return
-                }
-
-                do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let status = json["status"] as? String {
-                        if status == "success" {
-                            if let message = json["message"] as? String {
-                                self.messages.append(ChatMessage(text: "🔄 \(message)", isUserMessage: false))
-                            } else {
-                                self.messages.append(ChatMessage(text: "🔄 Event updated successfully", isUserMessage: false))
-                            }
-                        } else {
-                            let errorMsg = json["message"] as? String ?? "Update failed"
-                            self.messages.append(ChatMessage(text: "❌ \(errorMsg)", isUserMessage: false))
-                        }
-                    }
-                } catch {
-                    let rawResponse = String(data: data, encoding: .utf8) ?? "Update completed"
-                    self.messages.append(ChatMessage(text: rawResponse, isUserMessage: false))
-                }
-            }
-        }
-        task.resume()
     }
 }
 

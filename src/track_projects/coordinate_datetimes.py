@@ -2,9 +2,9 @@ from src.google_calendar.handleEvents import RequestSetup
 from src.google_calendar.handleDateTimes import DateTimeSet
 from src.model_setup.structure_model_output import EventDetails
 from datetime import datetime
-from src.validators.validators import ValidateCoordinator
+from src.validators.validators import ValidateProjectHandler
 
-validator = ValidateCoordinator()
+validator = ValidateProjectHandler()
 class CoordinateDateTimes(RequestSetup):
     def __init__(self, user_id: str, request_start: datetime, request_end: datetime):
         self.request_start = request_start

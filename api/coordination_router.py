@@ -1,4 +1,4 @@
-from src.coordinate_datetimes.coordinate_datetimes import CoordinateDateTimes
+from src.track_projects.coordinate_datetimes import CoordinateDateTimes
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
 import json
@@ -7,26 +7,27 @@ import os
 router = APIRouter()
 
 @router.get("/coordinate/fetch-users")
-def fetch_users(usernames: list[str]):
+def fetch_users(emails: list[str]):
     """Fetch user data from the local JSON files.
 
     Args:
-        usernames (list[str]): A list of usernames to fetch data for.
+        emails (list[str]): A list of emails to fetch data for.
 
     Returns:
         dict: A dictionary containing the fetched user data.
     """
     users = []
-    for username in usernames:
-        if not os.path.exists(f'data/users/{username}.json'):
-            continue
-        with open(f'data/users/{username}.json', 'r') as f:
+    list_files = os.listdir("data/users")
+    for filename in list_files:
+        with open(f"data/users/{filename}", "r") as f:
             user_data = json.load(f)
-            users.append(user_data)
+            for email in emails:
+                if user_data.get("email") == email:
+                    users.append(user_data)
 
     return {"users": users}
 
-@router.post("/coordinate/get-availability")
+@router.post("/coordinate/get_availability")
 def get_availability(users: list[dict], request_start: str, request_end: str):
     """Get the availability of users for a specific time range.
 

@@ -22,9 +22,9 @@ class CalendarEvent(BaseModel):
         TypeError: End time conflict
     """
     event_name: str = Field(default="None", description="The title of the event or task")
-    is_project: Optional[bool] = Field(default=False, description="Indicates that the event or task is contained within a project")
     start: datetime = Field(default=datetime.now(), description="The start datetime of the event")
     end: Optional[datetime] = Field(default=None, description="The end datetime of the event only if classified as an event")
+    description: str = Field(default="None", description="A brief description of the event")
     is_event: bool = Field(default=False, description="Determines whether we want to handle the request as an event or task")
     event_id: str = Field(default="None", description="The unique identifier for the event")
 
@@ -39,6 +39,7 @@ class CalendarInsights(BaseModel):
     """
     scheduled_events: list[CalendarEvent] = Field(default=[], description="List of all processed events existing in the calendar")
     matching_events: list[dict] = Field(default=[], description="List of all matching events found in the calendar")
+    project_events: list[dict] = Field(default=[], description="List of all project events found in the calendar")
     template: dict = Field(default={}, description="A template used to send the calendar API event info")
     is_event: bool = Field(default=False, description="Determines whether we want to handle the request as an event or task")
     selected_event_id: Optional[str] = Field(default="None", description="The event ID of the selected event to be updated or deleted")
@@ -55,10 +56,8 @@ class RequestSetup:
             self.event_service = None
             self.task_service = None
             if isinstance(result, str):
-                # Auth URL returned - user needs to authenticate
                 raise ConnectionError(f"User authentication required. Please complete Google OAuth first. Auth URL: {result}")
             elif result is not None and len(result) == 2:
-                # Services returned - user is authenticated
                 self.event_service, self.task_service = result
             else:
                 raise ConnectionError("Failed to initialize Google API services")
@@ -85,8 +84,15 @@ class RequestSetup:
         self.fetch_events_list()
         self.calendar_insights.scheduled_events = self.datetime_handler.sort_datetimes(self.calendar_insights.scheduled_events)
 
-
     def validate_event_obj(self, event_obj: CalendarEvent) -> tuple[datetime, Optional[datetime]]:
+        """Validates and formats the start and end times of a calendar event.
+
+        Args:
+            event_obj (CalendarEvent): The event object to validate.
+
+        Returns:
+            tuple[datetime, Optional[datetime]]: The validated start and end times.
+        """
         if isinstance(event_obj.start, str):
             event_obj.start = datetime.fromisoformat(event_obj.start)
         if isinstance(event_obj.end, str):
@@ -120,10 +126,12 @@ class RequestSetup:
                     event_obj.is_event = True
                     event_obj.start = (event.get('start', {}).get('dateTime'))
                     event_obj.end = event.get('end', {}).get('dateTime')
+                    event_obj.description = event.get('description', 'No description provided')
                     event_obj.event_id = event.get('id')
                 elif 'title' in event:
                     event_obj.event_name = event['title']
                     event_obj.start = event.get('due')
+                    event_obj.description = event.get('description', 'No description provided')
                     event_obj.event_id = event.get('id')
 
                 if event_obj.start:
@@ -138,7 +146,7 @@ class RequestSetup:
             pass
         except Exception as e:
             raise RuntimeError(f"An error occurred while fetching events: {e}")
-    
+
     def fetch_event_template(self):
         """Fetch the event template for creating a new event.
 
@@ -153,7 +161,9 @@ class RequestSetup:
         else:
             self.calendar_insights.template = {
                 'summary': self.event_details.event_name,
-                'description': '',
+                'description': self.event_details.description,
+                'transparency': self.event_details.transparency,
+                'guestsCanModify': self.event_details.guestsCanModify,
                 'start': {
                     'dateTime': None,
                     'timeZone': 'America/Los_Angeles',

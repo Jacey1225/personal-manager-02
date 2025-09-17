@@ -1,7 +1,6 @@
 from transformers.models.t5 import T5Tokenizer, T5ForConditionalGeneration
 from src.validators.validators import ValidateModelOutput
 from src.google_calendar.handleDateTimes import DateTimeSet, DateTimeHandler
-from proxy_bypass import _configure_proxy_bypass
 import os
 import torch
 from pydantic import BaseModel, Field
@@ -18,6 +17,10 @@ class EventDetails(BaseModel):
     datetime_obj: DateTimeSet = Field(default_factory=DateTimeSet, description="List of datetime objects extracted from the input text")
     action: str = Field(default="None", description="The action to be performed on the event (add, delete, update)")
     response: str = Field(default="None", description="The response generated for the event")
+    transparency: str = Field(default="opaque", description="The transparency of the event (opaque, transparent, etc.)")
+    guestsCanModify: bool = Field(default=False, description="Indicates if guests can modify the event")
+    description: str = Field(default="None", description="The description of the event")
+    attendees: list[str] = Field(default_factory=list, description="List of attendees for the event")
 
 
 class HandleResponse:
@@ -28,7 +31,6 @@ class HandleResponse:
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"The model path '{model_path}' does not exist.")
         
-        _configure_proxy_bypass() #bypass proxy for huggingface
         self.tokenizer = T5Tokenizer.from_pretrained('t5-small')
         self.model = T5ForConditionalGeneration.from_pretrained(model_path)
         self.model.eval()

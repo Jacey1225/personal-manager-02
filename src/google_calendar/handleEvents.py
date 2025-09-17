@@ -3,8 +3,6 @@ from src.google_calendar.eventSetup import RequestSetup, CalendarInsights
 from src.validators.validators import ValidateEventHandling
 from datetime import datetime, timezone
 import pytz
-from pydantic import BaseModel, Field
-from typing import Optional, Union
 
 validator = ValidateEventHandling()
 
@@ -30,8 +28,8 @@ class AddToCalendar(RequestSetup):
                     self.classify_request((start_time, end_time))
                     self.fetch_event_template()
                     if self.calendar_insights.is_event:
-                        self.calendar_insights.template['start']['dateTime'] = start_time.isoformat()
-                        self.calendar_insights.template['end']['dateTime'] = end_time.isoformat()
+                        self.calendar_insights.template['start']['dateTime'] = start_time
+                        self.calendar_insights.template['end']['dateTime'] = end_time
                         if start_time and end_time:
                             self.event_service.events().insert(calendarId=self.event_list_id, body=self.calendar_insights.template).execute() #type: ignore
                     else:
@@ -93,8 +91,6 @@ class UpdateFromCalendar(RequestSetup):
             event_id (str): The ID of the event to eliminate targets for.
         """
         calendar_target = next((event for event in self.calendar_insights.matching_events if event['event_id'] == event_id), None)
-        if calendar_target:
-            self.classify_request(event_id=event_id)
 
         all_target_datetimes = self.event_details.datetime_obj.target_datetimes.copy()
         for target_datetime in all_target_datetimes:
@@ -114,7 +110,7 @@ class UpdateFromCalendar(RequestSetup):
                         self.event_details.datetime_obj.target_datetimes.remove(target_datetime)
 
     @validator.validate_request_status
-    def update_event(self, event_id: str, event_details: EventDetails, calendar_insights: CalendarInsights):
+    def update_event(self, event_id: str):
         """Update an existing event in Google Calendar or a task in Google Tasks.
 
         Raises:
@@ -124,20 +120,25 @@ class UpdateFromCalendar(RequestSetup):
         Returns:
             str: A message indicating the result of the operation.
         """
-        if not event_details.datetime_obj.target_datetimes:
+        if not self.event_details.datetime_obj.target_datetimes:
             raise ValueError("At least one datetime object must be provided to update an event.")
         
         try:
             if event_id:
-                if calendar_insights.is_event:
-                    for start_time, end_time in event_details.datetime_obj.target_datetimes:
+                self.classify_request(event_id=event_id)
+                if self.calendar_insights.is_event:
+                    for start_time, end_time in self.event_details.datetime_obj.target_datetimes:
                         original_event = self.event_service.events().get(calendarId=self.event_list_id, eventId=event_id).execute() #type: ignore
+                        if original_event['summary'] != self.event_details.event_name:
+                            original_event['summary'] = self.event_details.event_name
                         original_event['start']['dateTime'] = start_time
                         original_event['end']['dateTime'] = end_time
                         self.event_service.events().update(calendarId=self.event_list_id, eventId=event_id, body=original_event).execute() #type: ignore
                 else:
-                    for due_time, _ in event_details.datetime_obj.target_datetimes:
+                    for due_time, _ in self.event_details.datetime_obj.target_datetimes:
                         original_task = self.task_service.tasks().get(tasklist=self.task_list_id, task=event_id).execute() #type: ignore
+                        if original_task['title'] != self.event_details.event_name:
+                            original_task['title'] = self.event_details.event_name
                         local_tz = pytz.timezone('America/Los_Angeles')
                         due_datetime = local_tz.localize(due_time)
                         original_task['due'] = due_datetime.isoformat()  # Use 'due' field for task due date/time

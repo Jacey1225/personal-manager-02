@@ -5,13 +5,13 @@ import os
 import uuid
 import json
 
-router = APIRouter()
+auth_router = APIRouter()
 
 class OAuthCompleteRequest(BaseModel):
     user_id: str
     authorization_code: str
 
-@router.get("/auth/signup")
+@auth_router.get("/auth/signup")
 def signup(username: str, email: str, password: str):
     """Sign up a new user.
 
@@ -25,24 +25,31 @@ def signup(username: str, email: str, password: str):
     """
     if not os.path.exists('data/users'):
         os.makedirs('data/users')
+    user_id = str(uuid.uuid4())
 
     # Check if user already exists
-    if os.path.exists(f'data/users/{username}.json'):
-        return {"status": "failed", "message": "Username already exists"}
+    while os.path.exists(f'data/users/{user_id}.json'):
+        user_id = str(uuid.uuid4())
+    files = os.listdir('data/users')
+    for filename in files:
+        with open(f'data/users/{filename}', 'r') as f:
+            existing_user_data = json.load(f)
+            if existing_user_data.get("email") == email:
+                return {"status": "failed", "message": "Email already exists"}
 
     user_data = {
         "username": username,
         "email": email,
         "password": password,
-        "user_id": str(uuid.uuid4()),
+        "user_id": user_id,
     }
 
-    with open(f'data/users/{username}.json', 'w') as f:
+    with open(f'data/users/{user_id}.json', 'w') as f:
         f.write(json.dumps(user_data))
 
     return {"status": "success", "user_id": user_data.get("user_id")}
 
-@router.get("/auth/login")
+@auth_router.get("/auth/login")
 def login(username: str, password: str) -> dict:
     """Log in an existing user.
 
@@ -53,8 +60,15 @@ def login(username: str, password: str) -> dict:
     Returns:
         dict: A dictionary containing the login status and user ID if successful.
     """
-    user_file = f'data/users/{username}.json'
-    if not os.path.exists(user_file):
+    user_list = os.listdir('data/users')
+    user_file = None
+    for file in user_list:
+        with open(f'data/users/{file}', 'r') as f:
+            user_data = json.load(f)
+            if user_data.get("username") == username:
+                user_file = f'data/users/{file}'
+                break
+    if not user_file:
         return {"status": "failed", "message": "User not found"}
 
     with open(user_file, 'r') as f:
@@ -64,7 +78,7 @@ def login(username: str, password: str) -> dict:
         else:
             return {"status": "failed", "message": "Invalid password"}
 
-@router.get("/auth/google")
+@auth_router.get("/auth/google")
 def google_auth(user_id: str) -> dict:
     """Get Google OAuth authorization URL for the user"""
     try:
@@ -95,7 +109,7 @@ def google_auth(user_id: str) -> dict:
         print(f"Error in google_auth: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error initializing Google auth: {str(e)}")
 
-@router.post("/auth/google/complete")
+@auth_router.post("/auth/google/complete")
 def complete_google_auth(request: OAuthCompleteRequest):
     """Complete Google OAuth flow with authorization code"""
     try:

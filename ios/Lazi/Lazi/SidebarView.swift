@@ -42,6 +42,11 @@ struct SidebarView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 
+                NavigationLink(destination: ProjectsView(userId: userId)) {
+                    SidebarRow(icon: "folder", title: "Projects")
+                }
+                .buttonStyle(PlainButtonStyle())
+                
                 NavigationLink(destination: SettingsView(userId: userId)) {
                     SidebarRow(icon: "gearshape.fill", title: "Settings")
                 }
