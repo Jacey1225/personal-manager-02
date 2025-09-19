@@ -18,7 +18,6 @@ class FetchProject(RequestSetup):
     def __init__(self, user_id, event_details: EventDetails = EventDetails()):
         self.event_details = event_details
         super().__init__(self.event_details, user_id)
-        self.project_id = str(uuid.uuid4())
         self.host_user = user_id
         self.user_path = f"data/users/{self.host_user}.json"
         with open(self.user_path, 'r') as f:
@@ -26,6 +25,10 @@ class FetchProject(RequestSetup):
             self.username = self.user_data['username']
             self.email = self.user_data['email']
             self.members = self.user_data.get("project_members", [])
+            self.project_id = str(uuid.uuid4())
+            while self.user_data["projects"].get(self.project_id):
+                self.project_id = str(uuid.uuid4())
+
         self.all_events = self.calendar_insights.scheduled_events
 
     def list_projects(self):
@@ -89,15 +92,13 @@ class FetchProject(RequestSetup):
         Returns:
             list[dict]: A list of events associated with the project.
         """
-        list_filenames = os.listdir("data/users")
-        for filename in list_filenames:
-            with open(f"data/users/{filename}", "r") as f:
-                user_data = json.load(f)
-                for email, username in self.members:
-                    if user_data.get("email") == email and user_data.get("username") == username:
-                        user_id = user_data.get("user_id")
-                        request_setup = RequestSetup(EventDetails(), user_id)
-                        self.all_events.extend(request_setup.calendar_insights.scheduled_events)
+        with open("data/user_log.json", "r") as f:
+            user_log = json.load(f)
+        for email, username in self.members:
+            if username in user_log:
+                user_id = user_log[username].get("user_id")
+                request_setup = RequestSetup(EventDetails(), user_id)
+                self.all_events.extend(request_setup.calendar_insights.scheduled_events)
 
         for event in self.all_events:
             if event.description == f"Lazi: {project_id}":

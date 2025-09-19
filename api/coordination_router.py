@@ -6,35 +6,39 @@ import os
 
 router = APIRouter()
 
-@router.get("/coordinate/fetch-users")
-def fetch_users(emails: list[str]):
+@router.post("/coordinate/fetch_users")
+def fetch_users(request_body: dict):
     """Fetch user data from the local JSON files.
 
     Args:
-        emails (list[str]): A list of emails to fetch data for.
+        members (list[dict]): A list of dictionaries containing email and username to fetch data for.
 
     Returns:
         dict: A dictionary containing the fetched user data.
     """
     users = []
-    list_files = os.listdir("data/users")
-    for filename in list_files:
-        with open(f"data/users/{filename}", "r") as f:
-            user_data = json.load(f)
-            for email in emails:
-                if user_data.get("email") == email:
-                    users.append(user_data)
+    with open("data/user_log.json", "r") as f:
+        user_log = json.load(f)
 
+    members = request_body.get("members", [])
+    for member in members:
+        email = member.get("email")
+        username = member.get("username")
+        if username in user_log:
+            user_id = user_log[username]
+            with open(f"data/users/{user_id}.json", "r") as f:
+                user_data = json.load(f)
+                users.append(user_data)
+
+    print(f"Users fetched: {users}")
     return {"users": users}
 
 @router.post("/coordinate/get_availability")
-def get_availability(users: list[dict], request_start: str, request_end: str):
+def get_availability(request_body: dict):
     """Get the availability of users for a specific time range.
 
     Args:
-        users (list[dict]): A list of user dictionaries containing their information.
-        request_start (str): The start time of the availability request (ISO format).
-        request_end (str): The end time of the availability request (ISO format).
+        request_body (dict): The request body containing users, request_start, and request_end.
 
     Raises:
         HTTPException: If no users are available for the requested time range.
@@ -42,14 +46,32 @@ def get_availability(users: list[dict], request_start: str, request_end: str):
     Returns:
         dict: A dictionary containing the status and available users.
     """
+    users = request_body.get("users", [])
+    request_start = request_body.get("request_start", "")
+    request_end = request_body.get("request_end", "")
+    
+    print(f"Checking availability for users: {users} from {request_start} to {request_end}")
+    
+    if not users:
+        raise HTTPException(status_code=400, detail="No users provided")
+    if not request_start or not request_end:
+        raise HTTPException(status_code=400, detail="Missing request_start or request_end")
+    
     user_availability = []
     for user in users:
-        request_start_obj = datetime.fromisoformat(request_start)
-        request_end_obj = datetime.fromisoformat(request_end)
-        coordinator = CoordinateDateTimes(user['user_id'], request_start_obj, request_end_obj)
-        user_availability.append((user["username"], coordinator.coordinate()))
+        try:
+            request_start_obj = datetime.fromisoformat(request_start)
+            request_end_obj = datetime.fromisoformat(request_end)
+            coordinator = CoordinateDateTimes(user['user_id'], request_start_obj, request_end_obj)
+            user_availability.append((user["username"], coordinator.coordinate()))
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid datetime format: {e}")
+        except KeyError as e:
+            raise HTTPException(status_code=400, detail=f"Missing required user field: {e}")
 
     if len(user_availability) == 0:
         raise HTTPException(status_code=404, detail="No users are available for the requested time range.")
 
-    return {"status": "success", "users": user_availability}
+    percent_available = (len([username for username, available in user_availability if available]) / len(users)) * 100
+    print(f"User availability: {user_availability}, Percent available: {percent_available}%")
+    return {"status": "success", "users": user_availability, "percent_available": percent_available}

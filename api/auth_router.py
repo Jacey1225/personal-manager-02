@@ -34,8 +34,8 @@ def signup(username: str, email: str, password: str):
     for filename in files:
         with open(f'data/users/{filename}', 'r') as f:
             existing_user_data = json.load(f)
-            if existing_user_data.get("email") == email:
-                return {"status": "failed", "message": "Email already exists"}
+            if existing_user_data.get("email") == email or existing_user_data.get("username") == username:
+                return {"status": "failed", "message": "Email or username already exists"}
 
     user_data = {
         "username": username,
@@ -46,6 +46,9 @@ def signup(username: str, email: str, password: str):
 
     with open(f'data/users/{user_id}.json', 'w') as f:
         f.write(json.dumps(user_data))
+    
+    with open(f'data/user_log.json', 'w') as f:
+        f.write(json.dumps({username: user_id}))
 
     return {"status": "success", "user_id": user_data.get("user_id")}
 
@@ -60,14 +63,12 @@ def login(username: str, password: str) -> dict:
     Returns:
         dict: A dictionary containing the login status and user ID if successful.
     """
-    user_list = os.listdir('data/users')
+    with open('data/user_log.json', 'r') as f:
+        user_log = json.load(f)
     user_file = None
-    for file in user_list:
-        with open(f'data/users/{file}', 'r') as f:
-            user_data = json.load(f)
-            if user_data.get("username") == username:
-                user_file = f'data/users/{file}'
-                break
+    if username in user_log:
+        user_id = user_log[username]
+        user_file = f'data/users/{user_id}.json' 
     if not user_file:
         return {"status": "failed", "message": "User not found"}
 

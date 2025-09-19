@@ -100,11 +100,6 @@ struct UserAvailability: Codable {
     let isAvailable: Bool
 }
 
-struct AvailabilityResponse: Codable {
-    let status: String
-    let users: [UserAvailability]
-}
-
 // MARK: - Main Projects View
 
 struct ProjectsView: View {
@@ -577,6 +572,7 @@ struct ProjectDetailView: View {
     // Availability Check Sheet
     @State private var showingAvailabilityCheck = false
     @State private var availabilityResults: [UserAvailability] = []
+    @State private var availabilityPercentage: Double = 0.0
     @State private var showingAvailabilityResults = false
     
     var body: some View {
@@ -626,15 +622,19 @@ struct ProjectDetailView: View {
             .sheet(isPresented: $showingAvailabilityCheck) {
                 AvailabilityCheckSheet(
                     userId: userId,
-                    projectEmails: project.memberEmails,
-                    onAvailabilityChecked: { results in
+                    projectMembers: project.project_members,
+                    onAvailabilityChecked: { results, percentage in
                         availabilityResults = results
+                        availabilityPercentage = percentage
                         showingAvailabilityResults = true
                     }
                 )
             }
             .sheet(isPresented: $showingAvailabilityResults) {
-                AvailabilityResultsSheet(availability: availabilityResults)
+                AvailabilityResultsSheet(
+                    availability: availabilityResults,
+                    percentage: availabilityPercentage
+                )
             }
         }
     }
@@ -860,8 +860,8 @@ struct ProjectEventRowView: View {
 
 struct AvailabilityCheckSheet: View {
     let userId: String
-    let projectEmails: [String]
-    let onAvailabilityChecked: ([UserAvailability]) -> Void
+    let projectMembers: [(String, String)] // Changed from projectEmails to projectMembers
+    let onAvailabilityChecked: ([UserAvailability], Double) -> Void
     
     @Environment(\.presentationMode) var presentationMode
     @State private var startDateTime = Date()
@@ -879,9 +879,15 @@ struct AvailabilityCheckSheet: View {
                 }
                 
                 Section(header: Text("Members to Check")) {
-                    ForEach(projectEmails, id: \.self) { email in
-                        Text(email)
-                            .foregroundColor(.secondary)
+                    ForEach(projectMembers, id: \.0) { member in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(member.1) // Username
+                                .font(.caption)
+                                .fontWeight(.medium)
+                            Text(member.0) // Email
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }
@@ -930,32 +936,34 @@ struct AvailabilityCheckSheet: View {
     }
     
     private func fetchUsers(completion: @escaping ([[String: Any]]) -> Void) {
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/coordinate/fetch-users") else {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/coordinate/fetch_users") else {
             errorMessage = "Invalid URL"
             showingError = true
             isChecking = false
             return
         }
         
-        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        
-        // Convert emails array to query parameters
-        var queryItems: [URLQueryItem] = []
-        for email in projectEmails {
-            queryItems.append(URLQueryItem(name: "emails", value: email))
+        // Convert project members (tuples) to array of dictionaries
+        let membersArray = projectMembers.map { member in
+            return ["email": member.0, "username": member.1]
         }
-        urlComponents?.queryItems = queryItems
         
-        guard let finalUrl = urlComponents?.url else {
-            errorMessage = "Failed to create URL"
+        let requestBody: [String: Any] = [
+            "members": membersArray
+        ]
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request body"
             showingError = true
             isChecking = false
             return
         }
-        
-        var request = URLRequest(url: finalUrl)
-        request.httpMethod = "GET"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -967,9 +975,21 @@ struct AvailabilityCheckSheet: View {
                 return
             }
             
+            // Validate HTTP response
+            if let httpResponse = response as? HTTPURLResponse {
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    DispatchQueue.main.async {
+                        errorMessage = "Server error: HTTP \(httpResponse.statusCode)"
+                        showingError = true
+                        isChecking = false
+                    }
+                    return
+                }
+            }
+            
             guard let data = data else {
                 DispatchQueue.main.async {
-                    errorMessage = "No data received"
+                    errorMessage = "No data received from fetch_users"
                     showingError = true
                     isChecking = false
                 }
@@ -979,17 +999,28 @@ struct AvailabilityCheckSheet: View {
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let users = json["users"] as? [[String: Any]] {
+                    // Validate that we have users data
+                    guard !users.isEmpty else {
+                        DispatchQueue.main.async {
+                            errorMessage = "No users found for the provided members"
+                            showingError = true
+                            isChecking = false
+                        }
+                        return
+                    }
+                    
+                    // Pass the users to the completion handler
                     completion(users)
                 } else {
                     DispatchQueue.main.async {
-                        errorMessage = "Invalid response format"
+                        errorMessage = "Invalid response format from fetch_users"
                         showingError = true
                         isChecking = false
                     }
                 }
             } catch {
                 DispatchQueue.main.async {
-                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
+                    errorMessage = "Failed to parse fetch_users response: \(error.localizedDescription)"
                     showingError = true
                     isChecking = false
                 }
@@ -998,6 +1029,39 @@ struct AvailabilityCheckSheet: View {
     }
     
     private func getAvailability(users: [[String: Any]]) {
+        // Validate inputs first
+        guard !users.isEmpty else {
+            DispatchQueue.main.async {
+                errorMessage = "No users provided for availability check"
+                showingError = true
+                isChecking = false
+            }
+            return
+        }
+        
+        // Validate that all users have required fields
+        for user in users {
+            guard user["user_id"] != nil,
+                  user["username"] != nil else {
+                DispatchQueue.main.async {
+                    errorMessage = "Invalid user data: missing required fields"
+                    showingError = true
+                    isChecking = false
+                }
+                return
+            }
+        }
+        
+        // Validate date range
+        guard startDateTime < endDateTime else {
+            DispatchQueue.main.async {
+                errorMessage = "Start time must be before end time"
+                showingError = true
+                isChecking = false
+            }
+            return
+        }
+        
         guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/coordinate/get_availability") else {
             DispatchQueue.main.async {
                 errorMessage = "Invalid URL"
@@ -1007,16 +1071,30 @@ struct AvailabilityCheckSheet: View {
             return
         }
         
+        let formatter = ISO8601DateFormatter()
+        let startTimeString = formatter.string(from: startDateTime)
+        let endTimeString = formatter.string(from: endDateTime)
+        
+        // Validate ISO format strings
+        guard !startTimeString.isEmpty, !endTimeString.isEmpty else {
+            DispatchQueue.main.async {
+                errorMessage = "Failed to format date times"
+                showingError = true
+                isChecking = false
+            }
+            return
+        }
+        
+        // Create the request body with individual parameters as expected by FastAPI
+        let requestBody: [String: Any] = [
+            "users": users,
+            "request_start": startTimeString,
+            "request_end": endTimeString
+        ]
+        
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let formatter = ISO8601DateFormatter()
-        let requestBody: [String: Any] = [
-            "users": users,
-            "request_start": formatter.string(from: startDateTime),
-            "request_end": formatter.string(from: endDateTime)
-        ]
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
@@ -1039,17 +1117,44 @@ struct AvailabilityCheckSheet: View {
                     return
                 }
                 
+                // Validate HTTP response
+                if let httpResponse = response as? HTTPURLResponse {
+                    guard (200...299).contains(httpResponse.statusCode) else {
+                        errorMessage = "Server error: HTTP \(httpResponse.statusCode)"
+                        showingError = true
+                        return
+                    }
+                }
+                
                 guard let data = data else {
-                    errorMessage = "No data received"
+                    errorMessage = "No data received from server"
                     showingError = true
                     return
                 }
                 
                 do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let users = json["users"] as? [[Any]] {
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        // Validate response structure
+                        guard let status = json["status"] as? String,
+                              status == "success" else {
+                            errorMessage = "Server returned error status"
+                            showingError = true
+                            return
+                        }
                         
-                        let availability = users.compactMap { userArray -> UserAvailability? in
+                        guard let usersArray = json["users"] as? [[Any]] else {
+                            errorMessage = "Invalid response format: missing users array"
+                            showingError = true
+                            return
+                        }
+                        
+                        guard let percentAvailable = json["percent_available"] as? Double else {
+                            errorMessage = "Invalid response format: missing percent_available"
+                            showingError = true
+                            return
+                        }
+                        
+                        let availability = usersArray.compactMap { userArray -> UserAvailability? in
                             guard userArray.count >= 2,
                                   let username = userArray[0] as? String,
                                   let isAvailable = userArray[1] as? Bool else {
@@ -1058,14 +1163,21 @@ struct AvailabilityCheckSheet: View {
                             return UserAvailability(username: username, isAvailable: isAvailable)
                         }
                         
+                        // Validate that we got availability data
+                        guard !availability.isEmpty else {
+                            errorMessage = "No availability data received"
+                            showingError = true
+                            return
+                        }
+                        
                         presentationMode.wrappedValue.dismiss()
-                        onAvailabilityChecked(availability)
+                        onAvailabilityChecked(availability, percentAvailable)
                     } else {
-                        errorMessage = "Invalid response format"
+                        errorMessage = "Invalid response format: not a JSON object"
                         showingError = true
                     }
                 } catch {
-                    errorMessage = "Failed to parse availability: \(error.localizedDescription)"
+                    errorMessage = "Failed to parse availability response: \(error.localizedDescription)"
                     showingError = true
                 }
             }
@@ -1077,28 +1189,61 @@ struct AvailabilityCheckSheet: View {
 
 struct AvailabilityResultsSheet: View {
     let availability: [UserAvailability]
+    let percentage: Double
     
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
         NavigationView {
-            List(availability, id: \.username) { user in
-                HStack {
-                    Text(user.username)
+            VStack(spacing: 20) {
+                // Percentage display at the top
+                VStack(spacing: 8) {
+                    Text("Availability Overview")
                         .font(.headline)
+                        .fontWeight(.semibold)
                     
-                    Spacer()
-                    
-                    HStack {
-                        Image(systemName: user.isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(user.isAvailable ? .green : .red)
-                        
-                        Text(user.isAvailable ? "Available" : "Busy")
-                            .font(.caption)
-                            .foregroundColor(user.isAvailable ? .green : .red)
-                    }
+                    Text("\(Int(percentage.rounded()))% Available")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(percentage >= 50 ? .green : .red)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.gray.opacity(0.1))
+                        )
                 }
-                .padding(.vertical, 4)
+                .padding(.top)
+                
+                // User availability list
+                List(availability, id: \.username) { user in
+                    HStack {
+                        Text(user.username)
+                            .font(.headline)
+                            .foregroundColor(user.isAvailable ? .white : .white)
+                        
+                        Spacer()
+                        
+                        HStack {
+                            Image(systemName: user.isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundColor(.white)
+                                .font(.title3)
+                            
+                            Text(user.isAvailable ? "Available" : "Busy")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(user.isAvailable ? Color.green : Color.red)
+                    )
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
+                .listStyle(PlainListStyle())
             }
             .navigationTitle("Availability Results")
             .navigationBarTitleDisplayMode(.inline)

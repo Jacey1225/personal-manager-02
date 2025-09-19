@@ -18,7 +18,7 @@ class CoordinateDateTimes(RequestSetup):
         )
         super().__init__(event_details, user_id)
         self.user_events = self.calendar_insights.scheduled_events
-        self.available = False
+        self.available = True
 
     @validator.validate_coordinator
     def coordinate(self) -> bool:
@@ -27,13 +27,12 @@ class CoordinateDateTimes(RequestSetup):
         Returns:
             bool: Whether the events are available.
         """
-        for start_time, end_time in self.event_details.datetime_obj.target_datetimes:
+        for requested_start, requested_end in self.event_details.datetime_obj.target_datetimes:
             for event in self.user_events:
                 event_start = event.start
                 event_end = event.end if event.end else event.start
 
-                if (start_time < event_start and end_time < event_end) or \
-                (start_time > event_end):
+                if (requested_end > event_start and requested_end < event_end) or (requested_start > event_start and requested_start < event_end):
                     self.available = False
                     return self.available
                 
