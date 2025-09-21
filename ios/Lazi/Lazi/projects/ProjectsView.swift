@@ -118,6 +118,13 @@ struct ProjectsView: View {
     // Selected Project State
     @State private var selectedProject: Project? = nil
     
+    // Project Management
+    @State private var showingDeleteAlert = false
+    @State private var projectToDelete: Project? = nil
+    @State private var showingRenameSheet = false
+    @State private var projectToRename: Project? = nil
+    @State private var renameProjectName = ""
+    
     var body: some View {
         NavigationView {
             VStack {
@@ -192,9 +199,43 @@ struct ProjectsView: View {
             ProjectRowView(project: project) {
                 selectedProject = project
             }
+            .contextMenu {
+                Button {
+                    projectToRename = project
+                    renameProjectName = project.project_name
+                    showingRenameSheet = true
+                } label: {
+                    Label("Rename", systemImage: "pencil")
+                }
+                
+                Button(role: .destructive) {
+                    projectToDelete = project
+                    showingDeleteAlert = true
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
         }
         .refreshable {
             fetchProjects()
+        }
+        .alert("Delete Project", isPresented: $showingDeleteAlert, presenting: projectToDelete) { project in
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteProject(project)
+            }
+        } message: { project in
+            Text("Are you sure you want to delete '\(project.project_name)'? This action cannot be undone.")
+        }
+        .sheet(isPresented: $showingRenameSheet) {
+            RenameProjectSheet(
+                project: projectToRename,
+                currentName: renameProjectName,
+                userId: userId,
+                onProjectRenamed: {
+                    fetchProjects()
+                }
+            )
         }
     }
     
@@ -250,6 +291,53 @@ struct ProjectsView: View {
                     errorMessage = "Failed to decode projects: \(error.localizedDescription)"
                     showingError = true
                 }
+            }
+        }.resume()
+    }
+    
+    private func deleteProject(_ project: Project) {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/delete_project") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            return
+        }
+        
+        let requestBody: [String: Any] = [
+            "project_id": project.project_id,
+            "user_id": userId,
+            "project_name": project.project_name  // Backend expects project_name in ModifyProjectRequest
+        ]
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    guard (200...299).contains(httpResponse.statusCode) else {
+                        errorMessage = "Server error: HTTP \(httpResponse.statusCode)"
+                        showingError = true
+                        return
+                    }
+                }
+                
+                // Refresh projects list after successful deletion
+                fetchProjects()
             }
         }.resume()
     }
@@ -869,6 +957,7 @@ struct AvailabilityCheckSheet: View {
     @State private var isChecking = false
     @State private var errorMessage = ""
     @State private var showingError = false
+    @State private var selectedMembers: Set<String> = []
     
     var body: some View {
         NavigationView {
@@ -880,14 +969,53 @@ struct AvailabilityCheckSheet: View {
                 
                 Section(header: Text("Members to Check")) {
                     ForEach(projectMembers, id: \.0) { member in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(member.1) // Username
-                                .font(.caption)
-                                .fontWeight(.medium)
-                            Text(member.0) // Email
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(member.1) // Username
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                Text(member.0) // Email
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                if selectedMembers.contains(member.0) {
+                                    selectedMembers.remove(member.0)
+                                } else {
+                                    selectedMembers.insert(member.0)
+                                }
+                            }) {
+                                Image(systemName: selectedMembers.contains(member.0) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(selectedMembers.contains(member.0) ? .blue : .gray)
+                                    .font(.title2)
+                            }
                         }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if selectedMembers.contains(member.0) {
+                                selectedMembers.remove(member.0)
+                            } else {
+                                selectedMembers.insert(member.0)
+                            }
+                        }
+                    }
+                    
+                    // Select All / Deselect All buttons
+                    HStack {
+                        Button("Select All") {
+                            selectedMembers = Set(projectMembers.map { $0.0 })
+                        }
+                        .foregroundColor(.blue)
+                        
+                        Spacer()
+                        
+                        Button("Deselect All") {
+                            selectedMembers.removeAll()
+                        }
+                        .foregroundColor(.red)
                     }
                 }
             }
@@ -904,13 +1032,17 @@ struct AvailabilityCheckSheet: View {
                     Button("Check") {
                         checkAvailability()
                     }
-                    .disabled(isChecking || startDateTime >= endDateTime)
+                    .disabled(isChecking || startDateTime >= endDateTime || selectedMembers.isEmpty)
                 }
             }
             .alert("Error", isPresented: $showingError) {
                 Button("OK") { }
             } message: {
                 Text(errorMessage)
+            }
+            .onAppear {
+                // Select all members by default
+                selectedMembers = Set(projectMembers.map { $0.0 })
             }
         }
     }
@@ -943,8 +1075,11 @@ struct AvailabilityCheckSheet: View {
             return
         }
         
-        // Convert project members (tuples) to array of dictionaries
-        let membersArray = projectMembers.map { member in
+        // Filter project members to only include selected ones
+        let selectedProjectMembers = projectMembers.filter { selectedMembers.contains($0.0) }
+        
+        // Convert selected project members (tuples) to array of dictionaries
+        let membersArray = selectedProjectMembers.map { member in
             return ["email": member.0, "username": member.1]
         }
         
@@ -1255,6 +1390,115 @@ struct AvailabilityResultsSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Rename Project Sheet
+
+struct RenameProjectSheet: View {
+    let project: Project?
+    @State var currentName: String
+    let userId: String
+    let onProjectRenamed: () -> Void
+    
+    @Environment(\.presentationMode) var presentationMode
+    @State private var isRenaming = false
+    @State private var errorMessage = ""
+    @State private var showingError = false
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Project Name")) {
+                    TextField("Enter new project name", text: $currentName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+            }
+            .navigationTitle("Rename Project")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        renameProject()
+                    }
+                    .disabled(isRenaming || currentName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .alert("Error", isPresented: $showingError) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
+            }
+        }
+    }
+    
+    private func renameProject() {
+        guard let project = project else {
+            errorMessage = "No project selected"
+            showingError = true
+            return
+        }
+        
+        isRenaming = true
+        errorMessage = ""
+        
+        let trimmedName = currentName.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/rename_project") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            isRenaming = false
+            return
+        }
+        
+        let requestBody: [String: Any] = [
+            "project_id": project.project_id,
+            "user_id": userId,
+            "project_name": trimmedName  // Backend expects project_name, not new_name
+        ]
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            isRenaming = false
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isRenaming = false
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    guard (200...299).contains(httpResponse.statusCode) else {
+                        errorMessage = "Server error: HTTP \(httpResponse.statusCode)"
+                        showingError = true
+                        return
+                    }
+                }
+                
+                // Close sheet and refresh projects
+                presentationMode.wrappedValue.dismiss()
+                onProjectRenamed()
+            }
+        }.resume()
     }
 }
 

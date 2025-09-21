@@ -246,7 +246,16 @@ struct HomePage: View {
             .padding(.horizontal)
         }
         .frame(maxHeight: 400)
-        .background(Color(UIColor.systemGray6))
+        .background(
+            Color(UIColor.systemGray6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.clear, lineWidth: 0)
+                        .shadow(color: .white.opacity(0.8), radius: 10, x: 0, y: 0)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .blendMode(.screen)
+                )
+        )
         .cornerRadius(12)
     }
     
@@ -254,13 +263,22 @@ struct HomePage: View {
         VStack(spacing: 12) {
             HStack {
                 TextEditor(text: $userInput)
-                    .frame(minHeight: 40, maxHeight: 120)
+                    .frame(minHeight: 30, maxHeight: 80)
                     .padding(8)
-                    .background(Color(UIColor.systemGray5))
-                    .cornerRadius(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(UIColor.systemGray5))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.clear, lineWidth: 0)
+                                    .shadow(color: .white.opacity(0.8), radius: 8, x: 0, y: 0)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .blendMode(.screen)
+                            )
+                    )
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            .stroke(Color.clear, lineWidth: 0)
                     )
                 
                 VStack(spacing: 8) {

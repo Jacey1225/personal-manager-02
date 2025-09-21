@@ -1,10 +1,16 @@
+import typing
 from fastapi import FastAPI, HTTPException, APIRouter
 from src.google_calendar.enable_google_api import ConfigureGoogleAPI
 from pydantic import BaseModel
 import os
 import uuid
 import json
+from dotenv import load_dotenv
+from pymongo import MongoClient
+from typing import Optional
+from src.fetchMongo import MongoHandler
 
+mongo_client = MongoHandler()
 auth_router = APIRouter()
 
 class OAuthCompleteRequest(BaseModel):
@@ -23,19 +29,17 @@ def signup(username: str, email: str, password: str):
     Returns:
         dict: A dictionary containing the status and user ID.
     """
-    if not os.path.exists('data/users'):
-        os.makedirs('data/users')
-    user_id = str(uuid.uuid4())
 
     # Check if user already exists
-    while os.path.exists(f'data/users/{user_id}.json'):
+    user_id = str(uuid.uuid4())
+    while mongo_client.get_single_doc({"user_id": user_id}):
         user_id = str(uuid.uuid4())
-    files = os.listdir('data/users')
-    for filename in files:
-        with open(f'data/users/{filename}', 'r') as f:
-            existing_user_data = json.load(f)
-            if existing_user_data.get("email") == email or existing_user_data.get("username") == username:
-                return {"status": "failed", "message": "Email or username already exists"}
+
+    query_email = {"email": email}
+    query_username = {"username": username}
+
+    if mongo_client.get_single_doc(query_email) or mongo_client.get_single_doc(query_username):
+        return {"status": "failed", "message": "Email or username already exists"}
 
     user_data = {
         "username": username,
@@ -44,16 +48,13 @@ def signup(username: str, email: str, password: str):
         "user_id": user_id,
     }
 
-    with open(f'data/users/{user_id}.json', 'w') as f:
-        f.write(json.dumps(user_data))
-    
-    with open(f'data/user_log.json', 'w') as f:
-        f.write(json.dumps({username: user_id}))
+    result = mongo_client.post_insert(user_data)
+    print(f"User created with ID: {result.inserted_id}")
 
     return {"status": "success", "user_id": user_data.get("user_id")}
 
 @auth_router.get("/auth/login")
-def login(username: str, password: str) -> dict:
+def login(username: str, password: str) -> Optional[dict]:
     """Log in an existing user.
 
     Args:
@@ -63,21 +64,27 @@ def login(username: str, password: str) -> dict:
     Returns:
         dict: A dictionary containing the login status and user ID if successful.
     """
-    with open('data/user_log.json', 'r') as f:
-        user_log = json.load(f)
-    user_file = None
-    if username in user_log:
-        user_id = user_log[username]
-        user_file = f'data/users/{user_id}.json' 
-    if not user_file:
-        return {"status": "failed", "message": "User not found"}
+    query_login = {
+        "$expr": {
+            "$and": [
+                {"$eq": ["$username", username]},
+                {"$eq": ["$password", password]}
+            ]
+        }
+    }
 
-    with open(user_file, 'r') as f:
-        user_data = json.load(f)
-        if user_data.get("password") == password:
-            return {"status": "success", "user_id": user_data.get("user_id")}
+    try:
+        if mongo_client.get_single_doc(query_login):
+            user_data = mongo_client.get_single_doc(query_login)
+            user_id = user_data.get("user_id") #type: ignore
+            print(f"User {username} logged in successfully with user_id: {user_id}")
+            print(f"User data: {user_data}")
+            return {"status": "success", "user_id": user_id}
         else:
-            return {"status": "failed", "message": "Invalid password"}
+            return {"status": "failed", "message": "Invalid username or password"}
+    except Exception as e:
+        print(f"Error in login: {str(e)}")
+        return {"status": "failed", "message": "Invalid username or password"}
 
 @auth_router.get("/auth/google")
 def google_auth(user_id: str) -> dict:

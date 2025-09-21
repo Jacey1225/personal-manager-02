@@ -6,7 +6,9 @@ import os
 import json
 from pydantic import BaseModel, Field
 import uuid
+from src.fetchMongo import MongoHandler
 
+mongo_client = MongoHandler()
 validator = ValidateProjectHandler()
 
 class ProjectDetails(BaseModel):
@@ -19,15 +21,8 @@ class FetchProject(RequestSetup):
         self.event_details = event_details
         super().__init__(self.event_details, user_id)
         self.host_user = user_id
-        self.user_path = f"data/users/{self.host_user}.json"
-        with open(self.user_path, 'r') as f:
-            self.user_data = json.load(f)
-            self.username = self.user_data['username']
-            self.email = self.user_data['email']
-            self.members = self.user_data.get("project_members", [])
-            self.project_id = str(uuid.uuid4())
-            while self.user_data["projects"].get(self.project_id):
-                self.project_id = str(uuid.uuid4())
+        self.user_data = mongo_client.get_single_doc({"user_id": self.host_user})
+        self.project_id = str(uuid.uuid4())
 
         self.all_events = self.calendar_insights.scheduled_events
 
@@ -57,11 +52,29 @@ class FetchProject(RequestSetup):
         
         if "projects" not in self.user_data:
             self.user_data["projects"] = {}
-            
-        self.user_data["projects"][self.project_id] = self.project_details.model_dump()
 
-        with open(self.user_path, 'w') as f:
-            json.dump(self.user_data, f)
+        query_item = {"user_id": self.user_data["user_id"]}
+        new_data = self.project_details.model_dump()
+        self.user_data["projects"][self.project_id] = new_data
+        mongo_client.post_update(query_item, self.user_data)
+
+    @validator.validate_project_existence
+    def delete_project(self, project_id: str) -> None:
+        """Deletes an existing project for the user.
+
+        Args:
+            project_id (str): The ID of the project to delete.
+        """
+        del self.user_data["projects"][project_id]
+
+        query_item = {"user_id": self.user_data["user_id"]}
+        mongo_client.post_update(query_item, self.user_data)
+
+    @validator.validate_project_existence
+    def rename_project(self, project_id: str, new_name: str) -> None:
+        self.user_data["projects"][project_id]["project_name"] = new_name
+        query_item = {"user_id": self.user_data["user_id"]}
+        mongo_client.post_update(query_item, self.user_data)
 
     @validator.validate_project_identifier
     def tie_project(self) -> EventDetails:
@@ -92,13 +105,18 @@ class FetchProject(RequestSetup):
         Returns:
             list[dict]: A list of events associated with the project.
         """
-        with open("data/user_log.json", "r") as f:
-            user_log = json.load(f)
-        for email, username in self.members:
-            if username in user_log:
-                user_id = user_log[username].get("user_id")
-                request_setup = RequestSetup(EventDetails(), user_id)
-                self.all_events.extend(request_setup.calendar_insights.scheduled_events)
+        project = ProjectDetails(
+            project_name=self.user_data["projects"][project_id]["project_name"],
+            project_id=project_id,
+            project_members=self.user_data["projects"][project_id]["project_members"]
+        )
+
+        for email, username in project.project_members:
+            if mongo_client.get_single_doc({"email": email, "username": username}):
+                user_id = mongo_client.get_single_doc({"email": email, "username": username}).get("user_id")
+                if user_id:
+                    request_setup = RequestSetup(EventDetails(), user_id)
+                    self.all_events.extend(request_setup.calendar_insights.scheduled_events)
 
         for event in self.all_events:
             if event.description == f"Lazi: {project_id}":
@@ -118,8 +136,8 @@ class FetchProject(RequestSetup):
         if (new_email, username) not in self.user_data["projects"][project_id]["project_members"]:
             self.user_data["projects"][project_id]["project_members"].append((new_email, username))
 
-            with open(self.user_path, 'w') as f:
-                json.dump(self.user_data, f)
+            query_item = {"user_id": self.user_data["user_id"]}
+            mongo_client.post_update(query_item, self.user_data)
 
     def delete_project_member(self, project_id: str, email: str, username: str) -> None:
         """Deletes a member from an existing project.
@@ -131,5 +149,5 @@ class FetchProject(RequestSetup):
         if (email, username) in self.user_data["projects"][project_id]["project_members"]:
             self.user_data["projects"][project_id]["project_members"].remove((email, username))
 
-            with open(self.user_path, 'w') as f:
-                json.dump(self.user_data, f)
+            query_item = {"user_id": self.user_data["user_id"]}
+            mongo_client.post_update(query_item, self.user_data)

@@ -139,14 +139,21 @@ struct TasksListView: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
+        // Updated request body to match backend EventRequest structure
         let requestBody: [String: Any] = [
             "event_details": [
-                "event_name": "",
+                "input_text": "list events",
+                "raw_output": "None",
+                "event_name": "None",
                 "datetime_obj": [
                     "target_datetimes": []
                 ],
                 "action": "list",
-                "response": ""
+                "response": "None",
+                "transparency": "opaque",
+                "guestsCanModify": false,
+                "description": "None",
+                "attendees": []
             ] as [String: Any],
             "user_id": userId
         ]

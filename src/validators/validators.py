@@ -228,12 +228,12 @@ class ValidateProjectHandler:
     @staticmethod
     def validate_project_identifier(func: Callable):
         def wrapper(self, *args, **kwargs):
-            if not self.user_data or not self.username:
-                print(f"User data or username is missing")
-                raise ValueError("User data or username is missing")
+            if not self.user_data or not self.host_user:
+                print(f"User data or host user is missing")
+                raise ValueError("User data or host user is missing")
 
             if not self.user_data.get("projects"):
-                print(f"No projects found for user: {self.username} before call {func.__name__}")
+                print(f"No projects found for user: {self.host_user} before call {func.__name__}")
                 result = self.event_details
             else:
                 result = func(self, *args, **kwargs)
@@ -280,4 +280,16 @@ class ValidateProjectHandler:
 
             print(f"Project Events: {self.calendar_insights.project_events}")
             return result
+        return wrapper
+    
+    @staticmethod
+    def validate_project_existence(func: Callable):
+        def wrapper(self, *args, **kwargs):
+            if self.user_data:
+                if self.user_data["projects"]:
+                    print(f"Projects found for user: {self.username} -> {self.user_data['projects']}")
+                    return func(self, *args, **kwargs)
+
+            print(f"No projects found for user: {self.username} -> {self.user_data}")
+            return None
         return wrapper
