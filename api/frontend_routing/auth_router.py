@@ -10,7 +10,7 @@ from pymongo import MongoClient
 from typing import Optional
 from src.fetchMongo import MongoHandler
 
-mongo_client = MongoHandler()
+mongo_client = MongoHandler("userCredentials")
 auth_router = APIRouter()
 
 class OAuthCompleteRequest(BaseModel):

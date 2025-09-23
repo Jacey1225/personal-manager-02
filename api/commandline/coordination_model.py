@@ -5,7 +5,7 @@ import json
 import os
 from src.fetchMongo import MongoHandler
 
-mongo_client = MongoHandler()
+mongo_client = MongoHandler("userCredentials")
 
 class CoordinationModel:
     @staticmethod

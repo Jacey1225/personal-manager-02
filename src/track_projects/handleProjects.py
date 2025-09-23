@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 import uuid
 from src.fetchMongo import MongoHandler
 
-mongo_client = MongoHandler()
+mongo_client = MongoHandler("userCredentials")
 validator = ValidateProjectHandler()
 
 class ProjectDetails(BaseModel):

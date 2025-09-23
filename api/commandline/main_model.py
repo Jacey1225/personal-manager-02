@@ -178,7 +178,7 @@ class MainModel:
         except Exception as e:
             print(f"I'm sorry, something went wrong. Please try again: {e}")
             return [{"status": "failed", "message": f"Something went wrong please try again."}]
-    
+
     @staticmethod
     async def delete_event(event_id: str, request_body: dict) -> dict:
         """Delete an event from the calendar.
