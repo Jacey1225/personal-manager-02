@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from api.frontend_routing.auth_router import auth_router
 from api.frontend_routing.tasklist_router import task_list_router
 from api.frontend_routing.project_router import project_router
-from api.frontend_routing.coordination_router import router as coordination_router
+from api.frontend_routing.coordination_router import coordination_router
+from api.frontend_routing.discussion_router import discussion_router
+
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from src.model_setup.structure_model_output import EventDetails
@@ -31,6 +33,7 @@ app.include_router(auth_router)
 app.include_router(task_list_router)
 app.include_router(project_router)
 app.include_router(coordination_router)
+app.include_router(discussion_router)
 
 class InputRequest(BaseModel):
     input_text: str

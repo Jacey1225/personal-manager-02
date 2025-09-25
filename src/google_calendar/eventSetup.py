@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from src.google_calendar.enable_google_api import ConfigureGoogleAPI
 from src.model_setup.structure_model_output import EventDetails
 from src.google_calendar.handleDateTimes import DateTimeHandler
@@ -95,8 +95,16 @@ class RequestSetup:
         """
         if isinstance(event_obj.start, str):
             event_obj.start = datetime.fromisoformat(event_obj.start)
+            if event_obj.start.tzinfo is not None:
+                event_obj.start = event_obj.start.astimezone()
+                event_obj.start = event_obj.start.replace(tzinfo=None)
+                
         if isinstance(event_obj.end, str):
             event_obj.end = datetime.fromisoformat(event_obj.end)
+            if event_obj.end.tzinfo is not None:
+                event_obj.end = event_obj.end.astimezone()
+                event_obj.end = event_obj.end.replace(tzinfo=None)
+                
         return event_obj.start, event_obj.end
 
     @validator.validate_events_list
@@ -111,9 +119,43 @@ class RequestSetup:
             if not check_service(self.event_service, self.task_service): #fetch existing events if needed
                 raise ConnectionError("Google Calendar or Tasks service is not available.")
 
-            tasks_list = self.task_service.tasks().list(tasklist=self.task_list_id).execute() #type: ignore
-            events_list = self.event_service.events().list(calendarId=self.event_list_id).execute() #type: ignore
-            scheduled_events = events_list.get('items', []) + tasks_list.get('items', []) 
+            now = datetime.now()
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            
+            if now.month == 12:
+                month_end = month_start.replace(year=now.year + 1, month=1) - timedelta(days=1)
+            else:
+                month_end = month_start.replace(month=now.month + 1) - timedelta(days=1)
+            month_end = month_end.replace(hour=23, minute=59, second=59, microsecond=999999)
+            
+            time_min = month_start.isoformat() + 'Z'
+            time_max = month_end.isoformat() + 'Z'
+            
+            print(f"Fetching events from {month_start.date()} to {month_end.date()}")
+
+            try:
+                tasks_list = self.task_service.tasks().list( #type:ignore
+                    tasklist=self.task_list_id,
+                    dueMin=time_min,
+                    dueMax=time_max
+                ).execute() 
+            except Exception as e:
+                print(f"Error fetching tasks: {e}")
+                tasks_list = {'items': []}
+            
+            try:
+                events_list = self.event_service.events().list( #type:ignore
+                    calendarId=self.event_list_id,
+                    timeMin=time_min,
+                    timeMax=time_max
+                ).execute() 
+            except Exception as e:
+                print(f"Error fetching events: {e}")
+                events_list = {'items': []}
+            
+            print(f"Found {len(events_list.get('items', []))} events and {len(tasks_list.get('items', []))} tasks this month")
+
+            scheduled_events = events_list.get('items', []) + tasks_list.get('items', [])
             for event in scheduled_events:
                 event_obj = CalendarEvent(
                     event_name='',
@@ -139,8 +181,8 @@ class RequestSetup:
                 else:
                     Warning(f"No valid start or end time found for event: {event}")
                     continue
-                if self.datetime_handler.verify_event_time(event_obj.start):
-                    self.calendar_insights.scheduled_events.append(event_obj)
+
+                self.calendar_insights.scheduled_events.append(event_obj)
         except AttributeError as e:
             print(f"Service attribute error: {e}")
             pass

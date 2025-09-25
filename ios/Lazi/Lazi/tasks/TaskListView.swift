@@ -1,4 +1,6 @@
 import SwiftUI
+import AVFoundation 
+import Speech
 
 struct TaskEvent: Codable, Identifiable {
     let id = UUID()
@@ -46,6 +48,26 @@ struct TasksListView: View {
     @State private var editingEventId: String? = nil
     @State private var updatingEventId: String? = nil
     
+    // Text input functionality states
+    @State private var userInput: String = ""
+    @State private var isProcessing = false
+    @State private var showEventSelection = false
+    @State private var selectableEvents: [SelectableEvent] = []
+    @State private var pendingAction: String = ""
+    @State private var currentResponseRequest: ResponseRequest? = nil
+    @State private var storedResponseRequests: [ResponseRequest] = []
+    
+    // Audio functionality
+    @State private var audioEnabled = false
+    private let speechSynthesizer = AVSpeechSynthesizer()
+    
+    // Speech recognition properties
+    @State private var isRecording = false
+    @State private var speechRecognizer = SFSpeechRecognizer()
+    @State private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    @State private var recognitionTask: SFSpeechRecognitionTask?
+    @State private var audioEngine = AVAudioEngine()
+    
     var body: some View {
         NavigationView {
             VStack {
@@ -91,25 +113,96 @@ struct TasksListView: View {
                                 onFinishEdit: { newName in finishEditingEvent(event, newName: newName) },
                                 onCancelEdit: { cancelEditingEvent() }
                             )
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
                     }
+                    .listStyle(PlainListStyle())
+                    .background(Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white, lineWidth: 1)
+                    )
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
                     .refreshable {
                         fetchEvents()
                     }
                 }
+                
+                // Text input section below the list
+                VStack(spacing: 12) {
+                    HStack {
+                        TextField("Enter task or event command...", text: $userInput)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .disabled(isProcessing)
+                        
+                        Button(action: isRecording ? stopRecording : startRecording) {
+                            Image(systemName: isRecording ? "mic.fill" : "mic")
+                                .foregroundColor(isRecording ? .red : .gray)
+                                .font(.system(size: 16))
+                                .scaleEffect(isRecording ? 1.2 : 1.0)
+                                .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: isRecording)
+                        }
+                        .frame(width: 30, height: 30)
+                        .disabled(isProcessing)
+                        .background(isRecording ? Color.red.opacity(0.1) : Color.clear)
+                        .clipShape(Circle())
+                        
+                        Button(action: sendToAPI) {
+                            if isProcessing {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "paperplane.fill")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .frame(width: 30, height: 30)
+                        .disabled(userInput.isEmpty || isProcessing)
+                    }
+                    
+                    // Recording status indicator
+                    if isRecording {
+                        HStack {
+                            Image(systemName: "waveform")
+                                .foregroundColor(.red)
+                                .font(.caption)
+                            Text("Recording... Tap mic to stop")
+                                .foregroundColor(.red)
+                                .font(.caption)
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+                .padding()
             }
             .navigationTitle("Tasks & Events")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Refresh") {
-                        fetchEvents()
+                    HStack {
+                        // Audio toggle slider
+                        HStack(spacing: 8) {
+                            Image(systemName: audioEnabled ? "speaker.wave.2" : "speaker.slash")
+                                .foregroundColor(audioEnabled ? .blue : .gray)
+                                .font(.caption)
+                            
+                            Toggle("", isOn: $audioEnabled)
+                                .labelsHidden()
+                                .scaleEffect(0.8)
+                        }
+                        
+                        Button("Refresh") {
+                            fetchEvents()
+                        }
+                        .disabled(isLoading)
                     }
-                    .disabled(isLoading)
                 }
             }
             .onAppear {
                 fetchEvents()
+                requestSpeechAuthorization()
             }
             .alert("Error", isPresented: $showingError) {
                 Button("OK") {
@@ -121,7 +214,517 @@ struct TasksListView: View {
             } message: {
                 Text(errorMessage)
             }
+            .sheet(isPresented: $showEventSelection) {
+                EventSelectionView(
+                    selectableEvents: selectableEvents,
+                    onEventSelected: selectEvent,
+                    onCancel: {
+                        showEventSelection = false
+                        pendingAction = ""
+                        currentResponseRequest = nil
+                        selectableEvents = []
+                    }
+                )
+            }
         }
+    }
+    
+    // MARK: - Speech Recognition Functions
+    
+    private func requestSpeechAuthorization() {
+        SFSpeechRecognizer.requestAuthorization { authStatus in
+            DispatchQueue.main.async {
+                switch authStatus {
+                case .authorized:
+                    print("Speech recognition authorized")
+                case .denied:
+                    print("Speech recognition denied")
+                case .restricted:
+                    print("Speech recognition restricted")
+                case .notDetermined:
+                    print("Speech recognition not determined")
+                @unknown default:
+                    break
+                }
+            }
+        }
+        
+        AVAudioSession.sharedInstance().requestRecordPermission { granted in
+            DispatchQueue.main.async {
+                if granted {
+                    print("Microphone permission granted")
+                } else {
+                    print("Microphone permission denied")
+                }
+            }
+        }
+    }
+    
+    private func startRecording() {
+        // Cancel any previous task
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        
+        // Configure audio session
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("Audio session error: \(error)")
+            return
+        }
+        
+        // Create recognition request
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        guard let recognitionRequest = recognitionRequest else {
+            print("Unable to create recognition request")
+            return
+        }
+        
+        recognitionRequest.shouldReportPartialResults = true
+        
+        // Create audio input
+        let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
+            recognitionRequest.append(buffer)
+        }
+        
+        // Start audio engine
+        audioEngine.prepare()
+        do {
+            try audioEngine.start()
+        } catch {
+            print("Audio engine error: \(error)")
+            return
+        }
+        
+        // Start recognition
+        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
+            if let result = result {
+                DispatchQueue.main.async {
+                    self.userInput = result.bestTranscription.formattedString
+                }
+                
+                if result.isFinal {
+                    DispatchQueue.main.async {
+                        self.stopRecording()
+                    }
+                }
+            }
+            
+            if let error = error {
+                print("Recognition error: \(error)")
+                DispatchQueue.main.async {
+                    self.stopRecording()
+                }
+            }
+        }
+        
+        isRecording = true
+    }
+    
+    private func stopRecording() {
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        
+        isRecording = false
+    }
+    
+    // MARK: - Text Input API Functions
+    
+    private func sendToAPI() {
+        guard !userInput.isEmpty else { return }
+        
+        let currentInput = userInput
+        userInput = ""
+        isProcessing = true
+        
+        // Step 1: Call fetch_events to extract events from the input text
+        fetchEventsFromInput(inputText: currentInput)
+    }
+    
+    private func fetchEventsFromInput(inputText: String) {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/fetch_events") else {
+            errorMessage = "Invalid fetch_events URL."
+            showingError = true
+            isProcessing = false
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody = [
+            "input_text": inputText,
+            "user_id": userId
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            isProcessing = false
+            return
+        }
+
+        print("Step 1: Calling fetch_events with input: \(inputText)")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    isProcessing = false
+                    return
+                }
+                
+                guard let data = data else {
+                    errorMessage = "No data received"
+                    showingError = true
+                    isProcessing = false
+                    return
+                }
+                
+                do {
+                    if let events = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                        print("Fetched \(events.count) events from input")
+                        processEventsInput(events: events)
+                    } else {
+                        errorMessage = "Invalid response format"
+                        showingError = true
+                        isProcessing = false
+                    }
+                } catch {
+                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
+                    showingError = true
+                    isProcessing = false
+                }
+            }
+        }.resume()
+    }
+    
+    private func processEventsInput(events: [[String: Any]]) {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/process_input") else {
+            errorMessage = "Invalid process_input URL."
+            showingError = true
+            isProcessing = false
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: events)
+        } catch {
+            errorMessage = "Failed to encode events"
+            showingError = true
+            isProcessing = false
+            return
+        }
+
+        print("Step 2: Calling process_input with \(events.count) events")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isProcessing = false
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                guard let data = data else {
+                    errorMessage = "No data received"
+                    showingError = true
+                    return
+                }
+                
+                do {
+                    if let responseArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                        print("Processing \(responseArray.count) responses")
+                        
+                        for responseDict in responseArray {
+                            if let responseRequest = parseResponseRequest(from: responseDict) {
+                                processResponseRequest(responseRequest)
+                            }
+                        }
+                        
+                        // Refresh events list after processing
+                        fetchEvents()
+                    } else {
+                        errorMessage = "Invalid response format"
+                        showingError = true
+                    }
+                } catch {
+                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
+                    showingError = true
+                }
+            }
+        }.resume()
+    }
+    
+    private func selectEvent(_ event: SelectableEvent) {
+        showEventSelection = false
+        
+        guard let responseRequest = currentResponseRequest else {
+            errorMessage = "No pending request found."
+            showingError = true
+            return
+        }
+        
+        if pendingAction == "delete" {
+            callDeleteEvent(eventId: event.eventId, selectedEvent: event, responseRequest: responseRequest)
+        } else if pendingAction == "update" {
+            callUpdateEvent(eventId: event.eventId, selectedEvent: event, responseRequest: responseRequest)
+        }
+        
+        // Clear pending state
+        pendingAction = ""
+        currentResponseRequest = nil
+        selectableEvents = []
+    }
+    
+    private func callDeleteEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/delete_event/\(eventId)") else {
+            errorMessage = "Invalid delete URL."
+            showingError = true
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var requestBody: [String: Any] = [
+            "user_id": userId,
+            "status": responseRequest.status,
+            "message": responseRequest.message,
+            "event_requested": responseRequest.eventRequested
+        ]
+        
+        if let calendarInsights = responseRequest.calendarInsights {
+            requestBody["calendar_insights"] = calendarInsights
+        }
+
+        print("Sending delete request for event \(eventId)")
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            return
+        }
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                guard let data = data else {
+                    errorMessage = "No data received"
+                    showingError = true
+                    return
+                }
+                
+                do {
+                    if let responseDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        if let message = responseDict["message"] as? String {
+                            if audioEnabled {
+                                speakMessage(message)
+                            }
+                        }
+                        // Refresh events list
+                        fetchEvents()
+                    }
+                } catch {
+                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
+                    showingError = true
+                }
+            }
+        }.resume()
+    }
+    
+    private func callUpdateEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/update_event/\(eventId)") else {
+            errorMessage = "Invalid update URL."
+            showingError = true
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var requestBody: [String: Any] = [
+            "user_id": userId,
+            "status": responseRequest.status,
+            "message": responseRequest.message,
+            "event_requested": responseRequest.eventRequested
+        ]
+        
+        if let calendarInsights = responseRequest.calendarInsights {
+            requestBody["calendar_insights"] = calendarInsights
+        }
+
+        print("Sending update request for event \(eventId)")
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            return
+        }
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                guard let data = data else {
+                    errorMessage = "No data received"
+                    showingError = true
+                    return
+                }
+                
+                do {
+                    if let responseDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        if let message = responseDict["message"] as? String {
+                            if audioEnabled {
+                                speakMessage(message)
+                            }
+                        }
+                        // Refresh events list
+                        fetchEvents()
+                    }
+                } catch {
+                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
+                    showingError = true
+                }
+            }
+        }.resume()
+    }
+    
+    private func parseResponseRequest(from json: [String: Any]) -> ResponseRequest? {
+        guard let status = json["status"] as? String,
+              let message = json["message"] as? String,
+              let eventRequested = json["event_requested"] as? [String: Any] else {
+            return nil
+        }
+        
+        let userId = json["user_id"] as? String
+        let calendarInsights = json["calendar_insights"] as? [String: Any]
+        
+        return ResponseRequest(
+            userId: userId,
+            status: status,
+            message: message,
+            eventRequested: eventRequested,
+            calendarInsights: calendarInsights
+        )
+    }
+    
+    private func processResponseRequest(_ responseRequest: ResponseRequest) {
+        // Play audio message if enabled
+        if audioEnabled {
+            speakMessage(responseRequest.message)
+        }
+        
+        // Check if status indicates success (completed action)
+        if responseRequest.status.lowercased() == "completed" {
+            return
+        }
+        
+        // For non-success status, check if we need to handle delete/update actions
+        if let action = responseRequest.eventRequested["action"] as? String {
+            if action.lowercased() == "delete" {
+                handleDeleteAction(responseRequest: responseRequest)
+            } else if action.lowercased() == "update" {
+                handleUpdateAction(responseRequest: responseRequest)
+            }
+        }
+    }
+    
+    private func handleDeleteAction(responseRequest: ResponseRequest) {
+        // Extract calendar insights to show available events
+        if let calendarInsights = responseRequest.calendarInsights,
+           let matchingEvents = calendarInsights["matching_events"] as? [[String: Any]] {
+            
+            selectableEvents = matchingEvents.compactMap { eventDict in
+                guard let eventName = eventDict["event_name"] as? String,
+                      let eventId = eventDict["event_id"] as? String else {
+                    return nil
+                }
+                
+                return SelectableEvent(
+                    eventName: eventName,
+                    eventId: eventId,
+                    startDate: eventDict["start_time"] as? String,
+                    endDate: eventDict["end_time"] as? String
+                )
+            }
+            
+            if !selectableEvents.isEmpty {
+                pendingAction = "delete"
+                currentResponseRequest = responseRequest
+                showEventSelection = true
+            }
+        }
+    }
+    
+    private func handleUpdateAction(responseRequest: ResponseRequest) {
+        // Extract calendar insights to show available events
+        if let calendarInsights = responseRequest.calendarInsights,
+           let matchingEvents = calendarInsights["matching_events"] as? [[String: Any]] {
+            
+            selectableEvents = matchingEvents.compactMap { eventDict in
+                guard let eventName = eventDict["event_name"] as? String,
+                      let eventId = eventDict["event_id"] as? String else {
+                    return nil
+                }
+                
+                return SelectableEvent(
+                    eventName: eventName,
+                    eventId: eventId,
+                    startDate: eventDict["start_time"] as? String,
+                    endDate: eventDict["end_time"] as? String
+                )
+            }
+            
+            if !selectableEvents.isEmpty {
+                pendingAction = "update"
+                currentResponseRequest = responseRequest
+                showEventSelection = true
+            }
+        }
+    }
+    
+    private func speakMessage(_ message: String) {
+        let utterance = AVSpeechUtterance(string: message)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = 0.5
+        speechSynthesizer.speak(utterance)
     }
     
     private func fetchEvents() {
@@ -620,6 +1223,8 @@ struct EventRowView: View {
             Spacer()
         }
         .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Color.clear)
         .opacity((isDeleting || isUpdating) ? 0.6 : 1.0)
         .onChange(of: isEditing) { isNowEditing in
             if isNowEditing {

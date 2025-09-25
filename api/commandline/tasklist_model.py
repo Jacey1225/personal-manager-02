@@ -44,6 +44,8 @@ class TaskListModel:
         events_json = []
         datetime_handler = DateTimeHandler(input_text="None")
         for event in events_list:
+            if not datetime_handler.verify_event_time(event.start):
+                continue
             formatted_times = datetime_handler.format_datetimes(event.start, event.end if event.end else None)
             event_dict = {
                 "event_name": event.event_name,

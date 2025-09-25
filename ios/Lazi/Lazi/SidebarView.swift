@@ -127,22 +127,177 @@ struct CalendarView: View {
 
 struct SettingsView: View {
     let userId: String
+    @State private var showingDeleteConfirmation = false
+    @State private var showingDeleteSuccess = false
+    @State private var isDeleting = false
+    @State private var errorMessage = ""
+    @State private var showingError = false
+    @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
-        VStack {
-            Text("Settings View")
-                .font(.largeTitle)
+        VStack(spacing: 24) {
+            // Header
+            VStack(spacing: 8) {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(.blue)
+                
+                Text("Settings")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+            }
+            .padding(.top, 20)
+            
+            // User Info Section
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Account Information")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("User ID:")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Text(String(userId.prefix(12)) + "...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(.systemGray5))
+                            .cornerRadius(6)
+                    }
+                }
                 .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+            }
+            .padding(.horizontal)
             
-            Text("User ID: \(userId)")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Spacer()
             
-            Text("Settings functionality coming soon...")
-                .foregroundColor(.secondary)
+            // Danger Zone
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Danger Zone")
+                    .font(.headline)
+                    .foregroundColor(.red)
+                
+                VStack(spacing: 12) {
+                    Text("Delete Account")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    Text("This action cannot be undone. All your data will be permanently deleted.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    if isDeleting {
+                        ProgressView("Deleting account...")
+                            .padding()
+                    } else {
+                        Button(action: {
+                            showingDeleteConfirmation = true
+                        }) {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("Delete Account")
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(Color.red)
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 40)
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Delete Account", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteAccount()
+            }
+        } message: {
+            Text("Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.")
+        }
+        .alert("Account Deleted", isPresented: $showingDeleteSuccess) {
+            Button("OK") {
+                // Navigate back to login or close app
+                presentationMode.wrappedValue.dismiss()
+            }
+        } message: {
+            Text("Your account has been successfully deleted.")
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    
+    private func deleteAccount() {
+        isDeleting = true
+        errorMessage = ""
+        
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/auth/remove_user") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            isDeleting = false
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let requestBody = ["user_id": userId]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            isDeleting = false
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isDeleting = false
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 200 {
+                        showingDeleteSuccess = true
+                    } else {
+                        errorMessage = "Failed to delete account (Status: \(httpResponse.statusCode))"
+                        showingError = true
+                    }
+                } else {
+                    errorMessage = "Invalid response from server"
+                    showingError = true
+                }
+            }
+        }.resume()
     }
 }
 

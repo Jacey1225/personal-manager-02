@@ -2,16 +2,33 @@ import SwiftUI
 
 // MARK: - Data Models
 
-struct Project: Codable, Identifiable {
+struct Project: Codable, Identifiable, Equatable {
     let id = UUID()
-    let project_name: String
+    var project_name: String
     let project_id: String
     let project_members: [(String, String)] // Changed from project_emails to project_members as tuples
+    var project_likes: Int?
+    let project_transparency: Bool?
+    var is_liked: Bool?
+    
+    // Equatable conformance
+    static func == (lhs: Project, rhs: Project) -> Bool {
+        return lhs.project_id == rhs.project_id &&
+               lhs.project_name == rhs.project_name &&
+               lhs.project_likes == rhs.project_likes &&
+               lhs.is_liked == rhs.is_liked &&
+               lhs.project_transparency == rhs.project_transparency &&
+               lhs.project_members.count == rhs.project_members.count &&
+               zip(lhs.project_members, rhs.project_members).allSatisfy { $0.0 == $1.0 && $0.1 == $1.1 }
+    }
     
     private enum CodingKeys: String, CodingKey {
         case project_name
         case project_id
         case project_members
+        case project_likes
+        case project_transparency
+        case is_liked
     }
     
     // Custom Decodable implementation since tuples aren't Codable
@@ -19,6 +36,9 @@ struct Project: Codable, Identifiable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         project_name = try container.decode(String.self, forKey: .project_name)
         project_id = try container.decode(String.self, forKey: .project_id)
+        project_likes = try container.decodeIfPresent(Int.self, forKey: .project_likes)
+        project_transparency = try container.decodeIfPresent(Bool.self, forKey: .project_transparency)
+        is_liked = try container.decodeIfPresent(Bool.self, forKey: .is_liked)
         
         // Decode as array of arrays and convert to tuples
         let membersArray = try container.decode([[String]].self, forKey: .project_members)
@@ -33,6 +53,9 @@ struct Project: Codable, Identifiable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(project_name, forKey: .project_name)
         try container.encode(project_id, forKey: .project_id)
+        try container.encodeIfPresent(project_likes, forKey: .project_likes)
+        try container.encodeIfPresent(project_transparency, forKey: .project_transparency)
+        try container.encodeIfPresent(is_liked, forKey: .is_liked)
         
         // Convert tuples to array of arrays for encoding
         let membersArray = project_members.map { [$0.0, $0.1] }
@@ -47,6 +70,24 @@ struct Project: Codable, Identifiable {
     // Helper computed property to get formatted member display
     var memberDisplayText: [String] {
         return project_members.map { "\($0.1) (\($0.0))" }
+    }
+}
+
+// MARK: - Project Tab Types
+
+enum ProjectTab: String, CaseIterable {
+    case events = "Events"
+    case discussions = "Discussions"
+    case resources = "Resources"
+    case progress = "Progress"
+    
+    var icon: String {
+        switch self {
+        case .events: return "calendar"
+        case .discussions: return "bubble.left.and.bubble.right"
+        case .resources: return "folder"
+        case .progress: return "chart.line.uptrend.xyaxis"
+        }
     }
 }
 
@@ -100,6 +141,24 @@ struct UserAvailability: Codable {
     let isAvailable: Bool
 }
 
+// MARK: - API Response Models
+
+struct ProjectViewResponse: Codable {
+    let project: Project
+    let user_data: UserData
+}
+
+struct UserData: Codable {
+    let user_id: String
+    let username: String?
+    let email: String?
+    let projects: [String: String]?
+    let projects_liked: [String]?
+}
+
+// MARK: - Removed Discussion Models
+// Discussion models have been moved to DiscussionsView.swift
+
 // MARK: - Main Projects View
 
 struct ProjectsView: View {
@@ -110,31 +169,54 @@ struct ProjectsView: View {
     @State private var errorMessage = ""
     @State private var showingError = false
     
+    // Main project display state
+    @State private var selectedProject: Project? = nil
+    @State private var selectedTab: ProjectTab = .events
+    @State private var isLoadingProjectDetails = false
+    @State private var projectDetails: Project? = nil
+    
     // Create Project Sheet
     @State private var showingCreateProject = false
-    @State private var newProjectName = ""
-    @State private var newProjectEmails = ""
-    
-    // Selected Project State
-    @State private var selectedProject: Project? = nil
-    
-    // Project Management
-    @State private var showingDeleteAlert = false
-    @State private var projectToDelete: Project? = nil
-    @State private var showingRenameSheet = false
-    @State private var projectToRename: Project? = nil
-    @State private var renameProjectName = ""
     
     var body: some View {
         NavigationView {
-            VStack {
+            VStack(spacing: 0) {
                 if isLoading {
                     ProgressView("Loading projects...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if projects.isEmpty {
                     emptyStateView
                 } else {
-                    projectsList
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            // Main project widget
+                            if let mainProject = selectedProject ?? projects.first {
+                                MainProjectWidget(
+                                    project: projectDetails ?? mainProject,
+                                    selectedTab: $selectedTab,
+                                    userId: userId,
+                                    isLoading: isLoadingProjectDetails,
+                                    onProjectUpdated: {
+                                        fetchProjects()
+                                    }
+                                )
+                                .id("\((projectDetails ?? mainProject).project_id)-\((projectDetails ?? mainProject).is_liked ?? false)-\((projectDetails ?? mainProject).project_likes ?? 0)") // Force re-render when project or like status changes
+                                .padding(.horizontal)
+                            }
+                            
+                            // Other projects widget
+                            if projects.count > 1 {
+                                OtherProjectsWidget(
+                                    projects: otherProjects,
+                                    onProjectSelected: { project in
+                                        selectProject(project)
+                                    }
+                                )
+                                .padding(.horizontal)
+                            }
+                        }
+                        .padding(.vertical)
+                    }
                 }
             }
             .navigationTitle("Projects")
@@ -163,12 +245,6 @@ struct ProjectsView: View {
                     }
                 )
             }
-            .sheet(item: $selectedProject) { project in
-                ProjectDetailView(
-                    userId: userId,
-                    project: project
-                )
-            }
         }
     }
     
@@ -194,49 +270,30 @@ struct ProjectsView: View {
         .padding()
     }
     
-    private var projectsList: some View {
-        List(projects) { project in
-            ProjectRowView(project: project) {
-                selectedProject = project
-            }
-            .contextMenu {
-                Button {
-                    projectToRename = project
-                    renameProjectName = project.project_name
-                    showingRenameSheet = true
-                } label: {
-                    Label("Rename", systemImage: "pencil")
-                }
-                
-                Button(role: .destructive) {
-                    projectToDelete = project
-                    showingDeleteAlert = true
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
+    private var otherProjects: [Project] {
+        if let selected = selectedProject {
+            return projects.filter { $0.project_id != selected.project_id }
+        } else {
+            return Array(projects.dropFirst())
+        }
+    }
+    
+    private func selectProject(_ project: Project) {
+        print("Selecting project: \(project.project_name) (ID: \(project.project_id))")
+        
+        // Move selected project to main display
+        if let currentMain = selectedProject {
+            // Add current main project back to the list if it's not already there
+            if !projects.contains(where: { $0.project_id == currentMain.project_id }) {
+                projects.append(currentMain)
             }
         }
-        .refreshable {
-            fetchProjects()
-        }
-        .alert("Delete Project", isPresented: $showingDeleteAlert, presenting: projectToDelete) { project in
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                deleteProject(project)
-            }
-        } message: { project in
-            Text("Are you sure you want to delete '\(project.project_name)'? This action cannot be undone.")
-        }
-        .sheet(isPresented: $showingRenameSheet) {
-            RenameProjectSheet(
-                project: projectToRename,
-                currentName: renameProjectName,
-                userId: userId,
-                onProjectRenamed: {
-                    fetchProjects()
-                }
-            )
-        }
+        
+        selectedProject = project
+        selectedTab = .events // Reset to events tab
+        
+        // Fetch detailed project information
+        fetchProjectDetails(for: project)
     }
     
     // MARK: - API Functions
@@ -245,7 +302,7 @@ struct ProjectsView: View {
         isLoading = true
         errorMessage = ""
         
-    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/list") else {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/list") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -287,6 +344,12 @@ struct ProjectsView: View {
                 do {
                     let projectsResponse = try JSONDecoder().decode([Project].self, from: data)
                     projects = projectsResponse
+                    
+                    // Auto-select first project and fetch its details
+                    if let firstProject = projects.first {
+                        selectedProject = firstProject
+                        fetchProjectDetails(for: firstProject)
+                    }
                 } catch {
                     errorMessage = "Failed to decode projects: \(error.localizedDescription)"
                     showingError = true
@@ -295,17 +358,463 @@ struct ProjectsView: View {
         }.resume()
     }
     
-    private func deleteProject(_ project: Project) {
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/delete_project") else {
+    private func fetchProjectDetails(for project: Project) {
+        isLoadingProjectDetails = true
+        
+        print("Fetching project details for: \(project.project_name) (ID: \(project.project_id))")
+        
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/view_project") else {
             errorMessage = "Invalid URL"
             showingError = true
+            isLoadingProjectDetails = false
             return
         }
         
-        let requestBody: [String: Any] = [
-            "project_id": project.project_id,
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "project_id", value: project.project_id),
+            URLQueryItem(name: "user_id", value: userId),
+            URLQueryItem(name: "project_name", value: project.project_name)
+        ]
+        
+        guard let finalUrl = urlComponents?.url else {
+            errorMessage = "Failed to create URL"
+            showingError = true
+            isLoadingProjectDetails = false
+            return
+        }
+        
+        print("Calling view_project route: \(finalUrl.absoluteString)")
+        
+        var request = URLRequest(url: finalUrl)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isLoadingProjectDetails = false
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                guard let data = data else {
+                    errorMessage = "No data received"
+                    showingError = true
+                    return
+                }
+                
+                do {
+                    // Try to decode the new response structure with project and user data
+                    let response = try JSONDecoder().decode(ProjectViewResponse.self, from: data)
+                    var updatedProject = response.project
+                    
+                    // Check if the project is liked by comparing with user's projects_liked array
+                    let projectsLiked = response.user_data.projects_liked ?? []
+                    updatedProject.is_liked = projectsLiked.contains(project.project_id)
+                    
+                    projectDetails = updatedProject
+                    print("Successfully fetched project details for: \(updatedProject.project_name)")
+                    print("Projects liked array: \(projectsLiked)")
+                    print("Current project ID: \(project.project_id)")
+                    print("Project is liked: \(updatedProject.is_liked ?? false)")
+                    print("Updated projectDetails.is_liked: \(projectDetails?.is_liked ?? false)")
+                    
+                } catch {
+                    print("Failed to decode project response: \(error.localizedDescription)")
+                    
+                    // Fallback: Try to decode as just a Project (for backward compatibility)
+                    do {
+                        let detailedProject = try JSONDecoder().decode(Project.self, from: data)
+                        projectDetails = detailedProject
+                        print("Successfully fetched project details (fallback): \(detailedProject.project_name)")
+                    } catch {
+                        // If both decodings fail, use the basic project info
+                        projectDetails = project
+                        print("Failed to decode detailed project, using basic info: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }.resume()
+    }
+}
+
+// MARK: - Main Project Widget
+
+struct MainProjectWidget: View {
+    let project: Project
+    @Binding var selectedTab: ProjectTab
+    let userId: String
+    let isLoading: Bool
+    let onProjectUpdated: () -> Void // Callback to refresh projects list
+    
+    @State private var events: [ProjectEvent] = []
+    @State private var isLoadingEvents = false
+    
+    // Project management states
+    @State private var showingDeleteAlert = false
+    @State private var showingRenameSheet = false
+    @State private var showingMemberManagement = false
+    @State private var isLiking = false
+    @State private var newProjectName = ""
+    @State private var currentProject: Project
+    
+    init(project: Project, selectedTab: Binding<ProjectTab>, userId: String, isLoading: Bool, onProjectUpdated: @escaping () -> Void) {
+        self.project = project
+        self._selectedTab = selectedTab
+        self.userId = userId
+        self.isLoading = isLoading
+        self.onProjectUpdated = onProjectUpdated
+        self._currentProject = State(initialValue: project)
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Project header
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "folder.fill")
+                        .foregroundColor(.blue)
+                        .font(.title2)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(currentProject.project_name)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        if let likes = currentProject.project_likes {
+                            HStack {
+                                Image(systemName: "heart.fill")
+                                    .foregroundColor(.red)
+                                    .font(.caption)
+                                Text("\(likes) likes")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // Project management buttons
+                    HStack(spacing: 12) {
+                        // Like/Unlike button
+                        Button(action: toggleLike) {
+                            Image(systemName: (currentProject.is_liked ?? false) ? "heart.fill" : "heart")
+                                .foregroundColor((currentProject.is_liked ?? false) ? .red : .gray)
+                                .font(.title3)
+                        }
+                        .disabled(isLiking)
+                        
+                        // Member management button
+                        Button(action: {
+                            showingMemberManagement = true
+                        }) {
+                            Image(systemName: "person.2")
+                                .foregroundColor(.purple)
+                                .font(.title3)
+                        }
+                        
+                        // Rename button
+                        Button(action: {
+                            showingRenameSheet = true
+                        }) {
+                            Image(systemName: "pencil")
+                                .foregroundColor(.blue)
+                                .font(.title3)
+                        }
+                        
+                        // Delete button
+                        Button(action: {
+                            showingDeleteAlert = true
+                        }) {
+                            Image(systemName: "trash")
+                                .foregroundColor(.red)
+                                .font(.title3)
+                        }
+                        
+                        if let transparency = currentProject.project_transparency {
+                            Image(systemName: transparency ? "eye" : "eye.slash")
+                                .foregroundColor(transparency ? .green : .orange)
+                                .font(.caption)
+                        }
+                    }
+                }
+                
+                // Members info
+                Text("\(currentProject.project_members.count) member\(currentProject.project_members.count == 1 ? "" : "s")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+            .background(Color.clear)
+            .onChange(of: project) { newProject in
+                // Update currentProject when the parent project changes
+                print("MainProjectWidget: Project changed to \(newProject.project_name)")
+                print("MainProjectWidget: New project is_liked: \(newProject.is_liked ?? false)")
+                currentProject = newProject
+                print("MainProjectWidget: Updated currentProject.is_liked: \(currentProject.is_liked ?? false)")
+                // Also refetch events for the new project
+                if selectedTab == .events {
+                    fetchProjectEvents()
+                }
+            }
+            
+            // Tab slider
+            HStack(spacing: 0) {
+                ForEach(ProjectTab.allCases, id: \.self) { tab in
+                    Button(action: {
+                        selectedTab = tab
+                        if tab == .events {
+                            fetchProjectEvents()
+                        }
+                        // Note: DiscussionsView handles its own data loading
+                    }) {
+                        VStack(spacing: 4) {
+                            Image(systemName: tab.icon)
+                                .font(.title3)
+                            Text(tab.rawValue)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(selectedTab == tab ? .blue : .gray)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .background(Color.clear)
+            
+            // Content area
+            VStack {
+                if isLoading {
+                    ProgressView("Loading project details...")
+                        .frame(maxWidth: .infinity, minHeight: 200)
+                } else {
+                    switch selectedTab {
+                    case .events:
+                        eventsContent
+                    case .discussions:
+                        discussionsContent
+                    case .resources:
+                        comingSoonContent(for: "Resources")
+                    case .progress:
+                        comingSoonContent(for: "Progress")
+                    }
+                }
+            }
+            .frame(minHeight: 200)
+        }
+        .background(Color.clear)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white, lineWidth: 1)
+        )
+        .cornerRadius(12)
+        .onAppear {
+            print("MainProjectWidget onAppear: project.is_liked = \(project.is_liked ?? false)")
+            print("MainProjectWidget onAppear: currentProject.is_liked = \(currentProject.is_liked ?? false)")
+            
+            // Ensure currentProject is synced with the project parameter
+            if currentProject.project_id == project.project_id && 
+               currentProject.is_liked != project.is_liked {
+                currentProject = project
+                print("MainProjectWidget onAppear: Updated currentProject.is_liked = \(currentProject.is_liked ?? false)")
+            }
+            
+            if selectedTab == .events {
+                fetchProjectEvents()
+            }
+            // Note: DiscussionsView handles its own data loading
+        }
+        .alert("Delete Project", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteProject()
+            }
+        } message: {
+            Text("Are you sure you want to delete '\(currentProject.project_name)'? This action cannot be undone.")
+        }
+        .sheet(isPresented: $showingRenameSheet) {
+            NavigationView {
+                VStack(spacing: 20) {
+                    Text("Rename Project")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .padding(.top)
+                    
+                    TextField("Project Name", text: $newProjectName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .onAppear {
+                            newProjectName = currentProject.project_name
+                        }
+                    
+                    Spacer()
+                }
+                .padding()
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            showingRenameSheet = false
+                            newProjectName = ""
+                        }
+                    }
+                    
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Save") {
+                            renameProject()
+                        }
+                        .disabled(newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingMemberManagement) {
+            ProjectMemberManagementSheet(
+                projectId: currentProject.project_id,
+                currentMembers: currentProject.project_members,
+                onMembersUpdated: {
+                    // Refresh project data when members change
+                    onProjectUpdated()
+                }
+            )
+        }
+    }
+    
+    private var eventsContent: some View {
+        VStack {
+            if isLoadingEvents {
+                ProgressView("Loading events...")
+                    .frame(maxWidth: .infinity, minHeight: 150)
+            } else if events.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "calendar.badge.plus")
+                        .font(.system(size: 40))
+                        .foregroundColor(.gray)
+                    
+                    Text("No Project Events")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Text("Events related to this project will appear here")
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .font(.caption)
+                }
+                .frame(maxWidth: .infinity, minHeight: 150)
+            } else {
+                LazyVStack(spacing: 8) {
+                    ForEach(events.prefix(3)) { event in
+                        ProjectEventRowView(event: event)
+                            .padding(.horizontal)
+                    }
+                    
+                    if events.count > 3 {
+                        Text("and \(events.count - 3) more events...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal)
+                    }
+                }
+                .padding(.vertical)
+            }
+        }
+    }
+    
+    private var discussionsContent: some View {
+        DiscussionsView(
+            userId: userId,
+            projectId: currentProject.project_id
+        )
+    }
+    
+    private func comingSoonContent(for feature: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "hammer.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.orange)
+            
+            Text("\(feature) Coming Soon")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            Text("This feature is currently in development")
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .font(.caption)
+        }
+        .frame(maxWidth: .infinity, minHeight: 150)
+    }
+    
+    private func fetchProjectEvents() {
+        isLoadingEvents = true
+        
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/events/\(currentProject.project_id)") else {
+            print("Invalid URL for project events")
+            isLoadingEvents = false
+            return
+        }
+        
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "user_id", value: userId)
+        ]
+        
+        guard let finalUrl = urlComponents?.url else {
+            print("Failed to create URL for project events")
+            isLoadingEvents = false
+            return
+        }
+        
+        var request = URLRequest(url: finalUrl)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isLoadingEvents = false
+                
+                if let error = error {
+                    print("Network error: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let data = data else {
+                    print("No data received for project events")
+                    return
+                }
+                
+                do {
+                    let eventsResponse = try JSONDecoder().decode([ProjectEvent].self, from: data)
+                    events = eventsResponse
+                } catch {
+                    print("Failed to decode events: \(error.localizedDescription)")
+                    events = []
+                }
+            }
+        }.resume()
+    }
+    
+    // MARK: - Project Management Actions
+    
+    private func toggleLike() {
+        isLiking = true
+        let isCurrentlyLiked = currentProject.is_liked ?? false
+        let endpoint = isCurrentlyLiked ? "unlike_project" : "like_project"
+        
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/\(endpoint)") else {
+            isLiking = false
+            return
+        }
+        
+        let requestBody = [
+            "project_id": currentProject.project_id,
             "user_id": userId,
-            "project_name": project.project_name  // Backend expects project_name in ModifyProjectRequest
+            "project_name": currentProject.project_name
         ]
         
         var request = URLRequest(url: url)
@@ -315,87 +824,201 @@ struct ProjectsView: View {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
-            errorMessage = "Failed to encode request"
-            showingError = true
+            print("Failed to encode like request: \(error)")
+            isLiking = false
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isLiking = false
+                if let error = error {
+                    print("Failed to \(endpoint): \(error.localizedDescription)")
+                    return
+                }
+                
+                // Update local state
+                currentProject.is_liked = !isCurrentlyLiked
+                if isCurrentlyLiked {
+                    currentProject.project_likes = max(0, (currentProject.project_likes ?? 0) - 1)
+                } else {
+                    currentProject.project_likes = (currentProject.project_likes ?? 0) + 1
+                }
+                
+                // Notify parent to refresh
+                onProjectUpdated()
+            }
+        }.resume()
+    }
+    
+    private func renameProject() {
+        guard !newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/rename_project") else { return }
+        
+        let requestBody = [
+            "project_id": currentProject.project_id,
+            "project_name": newProjectName.trimmingCharacters(in: .whitespacesAndNewlines),
+            "user_id": userId
+        ]
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            print("Failed to encode rename request: \(error)")
             return
         }
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    errorMessage = "Network error: \(error.localizedDescription)"
-                    showingError = true
+                    print("Failed to rename project: \(error.localizedDescription)")
                     return
                 }
                 
-                if let httpResponse = response as? HTTPURLResponse {
-                    guard (200...299).contains(httpResponse.statusCode) else {
-                        errorMessage = "Server error: HTTP \(httpResponse.statusCode)"
-                        showingError = true
-                        return
-                    }
+                // Update local state
+                currentProject.project_name = newProjectName.trimmingCharacters(in: .whitespacesAndNewlines)
+                newProjectName = ""
+                showingRenameSheet = false
+                
+                // Notify parent to refresh
+                onProjectUpdated()
+            }
+        }.resume()
+    }
+    
+    private func deleteProject() {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/delete_project") else { return }
+        
+        let requestBody = [
+            "project_id": currentProject.project_id,
+            "user_id": userId,
+            "project_name": currentProject.project_name
+        ]
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            print("Failed to encode delete request: \(error)")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Failed to delete project: \(error.localizedDescription)")
+                    return
                 }
                 
-                // Refresh projects list after successful deletion
-                fetchProjects()
+                // Notify parent to refresh (project will be removed from list)
+                onProjectUpdated()
             }
         }.resume()
     }
 }
 
-// MARK: - Project Row View
+// MARK: - Other Projects Widget
 
-struct ProjectRowView: View {
+struct OtherProjectsWidget: View {
+    let projects: [Project]
+    let onProjectSelected: (Project) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Other Projects")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Text("\(projects.count)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(8)
+            }
+            
+            LazyVStack(spacing: 8) {
+                ForEach(projects) { project in
+                    OtherProjectRowView(project: project) {
+                        onProjectSelected(project)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color.clear)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white, lineWidth: 1)
+        )
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Other Project Row View
+
+struct OtherProjectRowView: View {
     let project: Project
     let onTap: () -> Void
     
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Image(systemName: "folder.fill")
-                        .foregroundColor(.blue)
-                        .font(.title2)
+            HStack(spacing: 12) {
+                Image(systemName: "folder")
+                    .foregroundColor(.blue)
+                    .font(.title3)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(project.project_name)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
                     
-                    VStack(alignment: .leading) {
-                        Text(project.project_name)
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
+                    HStack {
                         Text("\(project.project_members.count) member\(project.project_members.count == 1 ? "" : "s")")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
+                        
+                        if let likes = project.project_likes {
+                            Text("•")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            
+                            HStack(spacing: 2) {
+                                Image(systemName: "heart.fill")
+                                    .foregroundColor(.red)
+                                    .font(.caption2)
+                                Text("\(likes)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.secondary)
-                        .font(.caption)
                 }
                 
-                // Show first few members with usernames
-                if !project.project_members.isEmpty {
-                    let displayMembers = project.memberDisplayText.prefix(2)
-                    let remainingCount = project.project_members.count - displayMembers.count
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(displayMembers), id: \.self) { memberText in
-                            Text(memberText)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        if remainingCount > 0 {
-                            Text("and \(remainingCount) more...")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                                .italic()
-                        }
-                    }
-                }
+                Spacer()
+                
+                Image(systemName: "arrow.up.circle")
+                    .foregroundColor(.blue)
+                    .font(.caption)
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(Color.gray.opacity(0.05))
+            .cornerRadius(8)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -410,6 +1033,7 @@ struct CreateProjectSheet: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var projectName = ""
     @State private var membersText = ""
+    @State private var isTransparent = true
     @State private var isCreating = false
     @State private var errorMessage = ""
     @State private var showingError = false
@@ -420,6 +1044,9 @@ struct CreateProjectSheet: View {
                 Section(header: Text("Project Details")) {
                     TextField("Project Name", text: $projectName)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                    
+                    Toggle("Public Project", isOn: $isTransparent)
+                        .toggleStyle(SwitchToggleStyle())
                 }
                 
                 Section(
@@ -484,6 +1111,8 @@ struct CreateProjectSheet: View {
         let requestBody: [String: Any] = [
             "project_name": trimmedName,
             "project_members": memberTuples.map { [$0.0, $0.1] }, // Convert tuples to arrays for JSON
+            "project_transparency": isTransparent,
+            "project_likes": 0, // Start with 0 likes
             "user_id": userId
         ]
         
@@ -1497,6 +2126,250 @@ struct RenameProjectSheet: View {
                 // Close sheet and refresh projects
                 presentationMode.wrappedValue.dismiss()
                 onProjectRenamed()
+            }
+        }.resume()
+    }
+}
+
+struct ProjectMemberManagementSheet: View {
+    let projectId: String
+    let currentMembers: [(String, String)]
+    let onMembersUpdated: () -> Void
+    @Environment(\.presentationMode) var presentationMode
+    
+    @State private var members: [(String, String)]
+    @State private var newMemberEmail = ""
+    @State private var isLoading = false
+    @State private var errorMessage = ""
+    @State private var showingError = false
+    
+    init(projectId: String, currentMembers: [(String, String)], onMembersUpdated: @escaping () -> Void) {
+        self.projectId = projectId
+        self.currentMembers = currentMembers
+        self.onMembersUpdated = onMembersUpdated
+        self._members = State(initialValue: currentMembers)
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                // Add member section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Add New Member")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    HStack {
+                        TextField("Enter email address", text: $newMemberEmail)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                        
+                        Button(action: addMember) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Add")
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.blue)
+                            .cornerRadius(8)
+                        }
+                        .disabled(newMemberEmail.isEmpty || isLoading)
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                
+                // Current members section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Current Members (\(members.count))")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    if members.isEmpty {
+                        Text("No members added yet")
+                            .foregroundColor(.gray)
+                            .italic()
+                            .padding()
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 8) {
+                                ForEach(members.indices, id: \.self) { index in
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(members[index].0)
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.primary)
+                                            
+                                            if !members[index].1.isEmpty {
+                                                Text(members[index].1)
+                                                    .font(.caption)
+                                                    .foregroundColor(.gray)
+                                            }
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Button(action: {
+                                            removeMember(at: index)
+                                        }) {
+                                            Image(systemName: "minus.circle.fill")
+                                                .foregroundColor(.red)
+                                                .font(.title2)
+                                        }
+                                        .disabled(isLoading)
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background(Color(.systemBackground))
+                                    .cornerRadius(8)
+                                    .shadow(color: .gray.opacity(0.2), radius: 2, x: 0, y: 1)
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 300)
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                
+                Spacer()
+                
+                if isLoading {
+                    ProgressView("Updating members...")
+                        .padding()
+                }
+            }
+            .padding()
+            .navigationTitle("Manage Members")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    presentationMode.wrappedValue.dismiss()
+                },
+                trailing: Button("Done") {
+                    presentationMode.wrappedValue.dismiss()
+                    onMembersUpdated()
+                }
+            )
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    
+    private func addMember() {
+        guard !newMemberEmail.isEmpty else { return }
+        
+        isLoading = true
+        errorMessage = ""
+        
+        guard let url = URL(string: "http://localhost:8000/api/projects/add_project_member") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            isLoading = false
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let requestBody = [
+            "project_id": projectId,
+            "member_email": newMemberEmail
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            isLoading = false
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isLoading = false
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 200 {
+                        // Add the new member to local state
+                        members.append((newMemberEmail, ""))
+                        newMemberEmail = ""
+                    } else {
+                        errorMessage = "Failed to add member (Status: \(httpResponse.statusCode))"
+                        showingError = true
+                    }
+                }
+            }
+        }.resume()
+    }
+    
+    private func removeMember(at index: Int) {
+        let memberToRemove = members[index]
+        
+        isLoading = true
+        errorMessage = ""
+        
+        guard let url = URL(string: "http://localhost:8000/api/projects/delete_project_member") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            isLoading = false
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let requestBody = [
+            "project_id": projectId,
+            "member_email": memberToRemove.0
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            isLoading = false
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isLoading = false
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 200 {
+                        // Remove the member from local state
+                        members.remove(at: index)
+                    } else {
+                        errorMessage = "Failed to remove member (Status: \(httpResponse.statusCode))"
+                        showingError = true
+                    }
+                }
             }
         }.resume()
     }

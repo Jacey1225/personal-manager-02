@@ -17,6 +17,9 @@ class OAuthCompleteRequest(BaseModel):
     user_id: str
     authorization_code: str
 
+class RemoveUserRequest(BaseModel):
+    user_id: str
+
 @auth_router.get("/auth/signup")
 def signup(username: str, email: str, password: str):
     """Sign up a new user.
@@ -85,6 +88,30 @@ def login(username: str, password: str) -> Optional[dict]:
     except Exception as e:
         print(f"Error in login: {str(e)}")
         return {"status": "failed", "message": "Invalid username or password"}
+
+@auth_router.post("/auth/remove_user")
+def remove_user(request: RemoveUserRequest) -> dict:
+    """Remove a user.
+
+    Args:
+        request (RemoveUserRequest): The request containing the user ID to remove.
+
+    Returns:
+        dict: A dictionary containing the removal status.
+    """
+    try:
+        user_id = request.user_id
+        mongo_client.post_delete({"user_id": user_id})
+        
+        # Try to remove the token file, but don't fail if it doesn't exist
+        token_file = f"data/tokens/token_{user_id}.json"
+        if os.path.exists(token_file):
+            os.remove(token_file)
+        
+        return {"status": "success", "message": "User removed successfully"}
+    except Exception as e:
+        print(f"Error in remove_user: {str(e)}")
+        return {"status": "failed", "message": "Error removing user"}
 
 @auth_router.get("/auth/google")
 def google_auth(user_id: str) -> dict:

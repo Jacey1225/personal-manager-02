@@ -2,7 +2,7 @@
 from src.model_setup.structure_model_output import EventDetails, HandleResponse
 from src.google_calendar.handleDateTimes import DateTimeSet
 from src.google_calendar.handleEvents import CalendarInsights, AddToCalendar, DeleteFromCalendar, UpdateFromCalendar
-from src.track_projects.handleProjects import FetchProject
+from src.track_projects.handleProjects import HostActions
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -136,7 +136,7 @@ class MainModel:
                     guestsCanModify=event['guestsCanModify'],
                     description=event['description']
                 )
-                event_details = FetchProject(user_id, event_details).tie_project()
+                event_details = HostActions(user_id, event_details).tie_project()
 
                 print(f"Event Details: {event_details}")
                 if event_details.action.lower() == "add":

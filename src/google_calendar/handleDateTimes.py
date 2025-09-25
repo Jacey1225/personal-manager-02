@@ -173,8 +173,9 @@ class DateTimeHandler:
         if isinstance(event_start, str):
             event_start = datetime.fromisoformat(event_start)
 
-        if event_start.strftime('%Y-%m-%d') < current_date.strftime('%Y-%m-%d'):
+        if event_start.date() < current_date.date():
             return False
+                
         return True
     
     def sort_datetimes(self, scheduled_events: list) -> list:
