@@ -17,7 +17,7 @@ class ProjectDetails(BaseModel):
     project_likes: int = Field(default=0, description="Number of likes for the project")
     project_transparency: bool = Field(default=True, description="Transparency status of the project(True: public - False: private)")
     project_members: list[str] = Field(..., description="List of user IDs associated with the project")
-    organizations: Optional[list[str]] = Field(default=None, description="Organization IDs associated with the project")
+    organizations: Optional[list[str]] = Field(default=[], description="Organization IDs associated with the project")
 
 #MARK: Host Actions
 class HostActions(RequestSetup):

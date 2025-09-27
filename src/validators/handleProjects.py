@@ -25,7 +25,10 @@ class ValidateProjectHandler:
             if not self.user_data.get("projects_liked"):
                 self.user_data["projects_liked"] = []
 
-            return func(self, *args, **kwargs)
+            result = func(self, *args, **kwargs)
+            print(f"Result from {func.__name__}: {result}")
+            print(f"{func.__name__} called with args: {func.__annotations__}")
+            return result
         return wrapper
 
     @staticmethod
@@ -34,7 +37,8 @@ class ValidateProjectHandler:
             for arg in args:
                 print(f"Project argument: {arg}")
             result = func(self, *args, **kwargs)
-            print(f"Project validation result: {result}")
+            print(f"Result from {func.__name__}: {result}")
+            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
 
@@ -62,7 +66,9 @@ class ValidateProjectHandler:
                 print(f"Calendar Insights: {self.calendar_insights.scheduled_events}")
                 raise ValueError("No scheduled events found.")
 
-            result = func(self)     
+            result = func(self)   
+            print(f"Result from {func.__name__}: {result}")  
+            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
     
@@ -79,7 +85,8 @@ class ValidateProjectHandler:
             else:
                 result = func(self, *args, **kwargs)
 
-            print(f"Result: {result}")
+            print(f"Result from {func.__name__}: {result}")
+            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
     
@@ -109,6 +116,8 @@ class ValidateProjectHandler:
                     raise ValueError(f"Project ID {project_id} not found in user's projects.")
             
             result = func(self, *args, **kwargs)
+            print(f"Result from {func.__name__}: {result}")
+            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
     
@@ -149,6 +158,7 @@ class ValidateProjectHandler:
                     self.calendar_insights.project_events[i]['end'] = event_end
 
             print(f"Project Events: {self.calendar_insights.project_events}")
+            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
     

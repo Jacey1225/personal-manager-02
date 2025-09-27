@@ -28,7 +28,7 @@ class ValidateModelOutput:
                 print(f"Model Response: {self.event_details.raw_output}")
                 raise ValueError("Invalid event details.")
 
-            print(f"Validated EventDetails: {self.event_details}")
+            print(f"Validated EventDetails from {func.__name__}: {self.event_details}")
             return result
         return wrapper
     
@@ -44,6 +44,8 @@ class ValidateModelOutput:
             if not result or len(result) < 1:
                 print(f"Input Text: {self.input_text}")
                 raise ValueError("No events were processed.")
+
+            print(f"Result from {func.__name__}: {result}")
             return result
         return wrapper
     

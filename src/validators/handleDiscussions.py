@@ -15,7 +15,7 @@ class ValidateDiscussions:
 
             print(f"Validating discussion: {discussion_id}")
             result = func(self, *args, **kwargs)
-            print(f"Validation result for discussion {discussion_id}: {result}")
+            print(f"Validation result for discussion {discussion_id} from {func.__name__}: {result}")
             return result
         return wrapper
     
@@ -38,6 +38,6 @@ class ValidateDiscussions:
                 args_list[2] = []
 
             result = func(self, *tuple(args_list), **kwargs)
-            print(f"Validation result for new discussion: {result}")
+            print(f"Validation result for new discussion from {func.__name__}: {result}")
             return result
         return wrapper

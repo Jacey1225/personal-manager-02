@@ -31,6 +31,8 @@ class ValidateOrganizations:
             result = func(self, *args, **kwargs)
 
             if result:
+                print(f"Result from {func.__name__}: {result}")
+                print(f"{func.__name__} called with args: {func.__annotations__}")
                 return result
             else:
                 print(f"Validation failed for organization_id: {organization_id}")

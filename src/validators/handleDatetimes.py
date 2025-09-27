@@ -63,7 +63,7 @@ class ValidateDateTimeSet:
 
             result = func(self)
 
-            print(f"Organized datetimes: {self.datetime_set.datetimes}")
+            print(f"Organized datetimes from {func.__name__}: {self.datetime_set.datetimes}")
             return result
         return wrapper
     
@@ -71,6 +71,6 @@ class ValidateDateTimeSet:
     def log_target_datetimes(func: Callable):
         def wrapper(self):
             result = func(self)
-            print(f"Target Datetimes: {self.datetime_set.target_datetimes}")
+            print(f"Target Datetimes from {func.__name__}: {self.datetime_set.target_datetimes}")
             return result
         return wrapper

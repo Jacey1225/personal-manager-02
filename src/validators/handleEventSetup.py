@@ -16,7 +16,7 @@ class ValidateEventHandling:
                     raise ValueError("Invalid event details found.")
                 if event.event_name == '' or event.event_id == '':
                     raise ValueError("Empty event name or ID found.")
-            print(f"Fetched {len(self.calendar_insights.scheduled_events)} events from calendar and tasks.")
+            print(f"Fetched {len(self.calendar_insights.scheduled_events)} events from calendar and tasks from {func.__name__}.")
             return result
         return wrapper
 
@@ -24,7 +24,7 @@ class ValidateEventHandling:
     def log_matching_events(func: Callable):
         def wrapper(self):
             result = func(self)
-            print(f"Matching Events: {self.calendar_insights.matching_events}")
+            print(f"Matching Events from {func.__name__}: {self.calendar_insights.matching_events}")
             return result
         return wrapper
 
@@ -40,8 +40,9 @@ class ValidateEventHandling:
                 raise ValueError("Too many null values found.")
 
             print(f"Matching Events: {self.calendar_insights.matching_events}")
+            print(f"{func.__name__} called with args: {func.__annotations__}")
             result = func(self, *args, **kwargs)
-            print(f"Request Classifier Result: {self.calendar_insights.is_event}")
+            print(f"Request Classifier Result from {func.__name__}: {self.calendar_insights.is_event}")
             return result
         return wrapper
     
@@ -49,7 +50,8 @@ class ValidateEventHandling:
     def log_target_elimination(func: Callable):
         def wrapper(self, *args, **kwargs):
             result = func(self, *args, **kwargs)
-            print(f"Remaining target datetimes: {self.event_details.datetime_obj.target_datetimes}")
+            print(f"{func.__name__} called with args: {func.__annotations__}")
+            print(f"Remaining target datetimes from {func.__name__}: {self.event_details.datetime_obj.target_datetimes}")
             return result
         return wrapper
 
@@ -61,7 +63,7 @@ class ValidateEventHandling:
                 print(f"Error occurred: {result['message']}")
                 raise ValueError("An error occurred during request processing.")
 
-            print(f"Request Status Result: {result['status']}")
+            print(f"Request Status Result from {func.__name__}: {result['status']}")
             return result
         return wrapper
 
