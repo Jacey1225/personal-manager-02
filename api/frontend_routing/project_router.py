@@ -21,6 +21,10 @@ async def unlike_project(request: ModifyProjectRequest):
 
 #MARK: Host Actions
 
+@project_router.post("/projects/global_delete")
+async def global_delete(request: ModifyProjectRequest):
+    return await commander.global_delete(request)
+
 @project_router.post("/projects/create_project")
 async def create_project(request: CreateProjectRequest):
     return await commander.create_project(request)
@@ -39,11 +43,11 @@ async def get_project_events(project_id: str, user_id: str = Query(...)):
     return await commander.get_project_events(request)
 
 @project_router.get("/projects/add_member")
-async def add_project_member(project_id: str = Query(...), user_id: str = Query(...), new_email: str = Query(...), new_username: str = Query(...)):
+async def add_project_member(project_id: str = Query(...), user_id: str = Query(...), new_email: str = Query(...), new_username: str = Query(...), code: str = Query(...)):
     request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name="")
-    return await commander.add_project_member(request, new_email, new_username)
+    return await commander.add_project_member(request, new_email, new_username, code)
 
-@project_router.get("/projects/delete_member")
+@project_router.delete("/projects/delete_member")
 async def delete_project_member(project_id: str = Query(...), user_id: str = Query(...), email: str = Query(...), username: str = Query(...)):
     request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name="")
     return await commander.delete_project_member(request, email, username)
@@ -55,3 +59,7 @@ async def list_projects(user_id: str = Query(...)):
 @project_router.post("/projects/edit_transparency")
 async def edit_project_transparency(request: ModifyProjectRequest, transparency: bool):
     return await commander.edit_transparency(request, transparency)
+
+@project_router.post("/projects/edit_permission")
+async def edit_project_permission(request: ModifyProjectRequest, email: str, username: str, new_permission: str):
+    return await commander.edit_permission(request, email, username, new_permission)

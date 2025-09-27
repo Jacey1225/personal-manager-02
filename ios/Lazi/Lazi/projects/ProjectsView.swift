@@ -152,8 +152,32 @@ struct UserData: Codable {
     let user_id: String
     let username: String?
     let email: String?
-    let projects: [String: String]?
+    let projects: [String: [String]]? // Changed to match backend structure: [project_id: [project_name, permission]]
     let projects_liked: [String]?
+    let permission: String? // Current user's permission for a specific project (used in view_project response)
+    
+    // Helper computed properties
+    var projectPermissions: [String: String] {
+        guard let projects = projects else { return [:] }
+        var permissions: [String: String] = [:]
+        for (projectId, data) in projects {
+            if data.count >= 2 {
+                permissions[projectId] = data[1] // Permission is the second element
+            }
+        }
+        return permissions
+    }
+    
+    var projectNames: [String: String] {
+        guard let projects = projects else { return [:] }
+        var names: [String: String] = [:]
+        for (projectId, data) in projects {
+            if data.count >= 1 {
+                names[projectId] = data[0] // Project name is the first element
+            }
+        }
+        return names
+    }
 }
 
 // MARK: - Removed Discussion Models
@@ -174,6 +198,7 @@ struct ProjectsView: View {
     @State private var selectedTab: ProjectTab = .events
     @State private var isLoadingProjectDetails = false
     @State private var projectDetails: Project? = nil
+    @State private var userPermission: String = "view" // Add user permission state
     
     // Create Project Sheet
     @State private var showingCreateProject = false
@@ -189,12 +214,23 @@ struct ProjectsView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 16) {
+                            // Organizations widget
+                            OrganizationsWidget(
+                                userId: userId,
+                                projects: projects,
+                                onOrganizationChanged: {
+                                    fetchProjects()
+                                }
+                            )
+                            .padding(.horizontal)
+                            
                             // Main project widget
                             if let mainProject = selectedProject ?? projects.first {
                                 MainProjectWidget(
                                     project: projectDetails ?? mainProject,
                                     selectedTab: $selectedTab,
                                     userId: userId,
+                                    userPermission: userPermission,
                                     isLoading: isLoadingProjectDetails,
                                     onProjectUpdated: {
                                         fetchProjects()
@@ -415,11 +451,24 @@ struct ProjectsView: View {
                     let projectsLiked = response.user_data.projects_liked ?? []
                     updatedProject.is_liked = projectsLiked.contains(project.project_id)
                     
+                    // Store user permission for this project
+                    // First try to get permission from the response, then fallback to user's projects data
+                    if let responsePermission = response.user_data.permission {
+                        userPermission = responsePermission
+                    } else if let userProjects = response.user_data.projects,
+                              let projectData = userProjects[project.project_id],
+                              projectData.count >= 2 {
+                        userPermission = projectData[1] // Permission is the second element
+                    } else {
+                        userPermission = "view" // Default fallback
+                    }
+                    
                     projectDetails = updatedProject
                     print("Successfully fetched project details for: \(updatedProject.project_name)")
                     print("Projects liked array: \(projectsLiked)")
                     print("Current project ID: \(project.project_id)")
                     print("Project is liked: \(updatedProject.is_liked ?? false)")
+                    print("User permission: \(userPermission)")
                     print("Updated projectDetails.is_liked: \(projectDetails?.is_liked ?? false)")
                     
                 } catch {
@@ -447,6 +496,7 @@ struct MainProjectWidget: View {
     let project: Project
     @Binding var selectedTab: ProjectTab
     let userId: String
+    let userPermission: String
     let isLoading: Bool
     let onProjectUpdated: () -> Void // Callback to refresh projects list
     
@@ -461,10 +511,11 @@ struct MainProjectWidget: View {
     @State private var newProjectName = ""
     @State private var currentProject: Project
     
-    init(project: Project, selectedTab: Binding<ProjectTab>, userId: String, isLoading: Bool, onProjectUpdated: @escaping () -> Void) {
+    init(project: Project, selectedTab: Binding<ProjectTab>, userId: String, userPermission: String, isLoading: Bool, onProjectUpdated: @escaping () -> Void) {
         self.project = project
         self._selectedTab = selectedTab
         self.userId = userId
+        self.userPermission = userPermission
         self.isLoading = isLoading
         self.onProjectUpdated = onProjectUpdated
         self._currentProject = State(initialValue: project)
@@ -500,7 +551,7 @@ struct MainProjectWidget: View {
                     
                     // Project management buttons
                     HStack(spacing: 12) {
-                        // Like/Unlike button
+                        // Like/Unlike button - Available for all permission levels
                         Button(action: toggleLike) {
                             Image(systemName: (currentProject.is_liked ?? false) ? "heart.fill" : "heart")
                                 .foregroundColor((currentProject.is_liked ?? false) ? .red : .gray)
@@ -508,33 +559,40 @@ struct MainProjectWidget: View {
                         }
                         .disabled(isLiking)
                         
-                        // Member management button
-                        Button(action: {
-                            showingMemberManagement = true
-                        }) {
-                            Image(systemName: "person.2")
-                                .foregroundColor(.purple)
-                                .font(.title3)
+                        // Member management button - Available for edit and admin
+                        if userPermission == "edit" || userPermission == "admin" {
+                            Button(action: {
+                                showingMemberManagement = true
+                            }) {
+                                Image(systemName: "person.2")
+                                    .foregroundColor(.purple)
+                                    .font(.title3)
+                            }
                         }
                         
-                        // Rename button
-                        Button(action: {
-                            showingRenameSheet = true
-                        }) {
-                            Image(systemName: "pencil")
-                                .foregroundColor(.blue)
-                                .font(.title3)
+                        // Rename button - Available for admin only
+                        if userPermission == "admin" {
+                            Button(action: {
+                                showingRenameSheet = true
+                            }) {
+                                Image(systemName: "pencil")
+                                    .foregroundColor(.blue)
+                                    .font(.title3)
+                            }
                         }
                         
-                        // Delete button
-                        Button(action: {
-                            showingDeleteAlert = true
-                        }) {
-                            Image(systemName: "trash")
-                                .foregroundColor(.red)
-                                .font(.title3)
+                        // Delete button - Available for admin only
+                        if userPermission == "admin" {
+                            Button(action: {
+                                showingDeleteAlert = true
+                            }) {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
+                                    .font(.title3)
+                            }
                         }
                         
+                        // Transparency indicator - Visible for all permission levels
                         if let transparency = currentProject.project_transparency {
                             Image(systemName: transparency ? "eye" : "eye.slash")
                                 .foregroundColor(transparency ? .green : .orange)
@@ -676,6 +734,7 @@ struct MainProjectWidget: View {
         .sheet(isPresented: $showingMemberManagement) {
             ProjectMemberManagementSheet(
                 projectId: currentProject.project_id,
+                userId: userId,
                 currentMembers: currentProject.project_members,
                 onMembersUpdated: {
                     // Refresh project data when members change
@@ -1032,11 +1091,12 @@ struct CreateProjectSheet: View {
     
     @Environment(\.presentationMode) var presentationMode
     @State private var projectName = ""
-    @State private var membersText = ""
     @State private var isTransparent = true
     @State private var isCreating = false
     @State private var errorMessage = ""
     @State private var showingError = false
+    @State private var members: [(String, String)] = [] // Array of (email, username) pairs
+    @State private var showAddMembers = false
     
     var body: some View {
         NavigationView {
@@ -1049,19 +1109,59 @@ struct CreateProjectSheet: View {
                         .toggleStyle(SwitchToggleStyle())
                 }
                 
-                Section(
-                    header: Text("Project Members"), 
-                    footer: Text("Enter members as 'email,username' pairs, one per line.\nExample:\njohn@example.com,John Doe\njane@example.com,Jane Smith")
-                ) {
-                    TextEditor(text: $membersText)
-                        .frame(minHeight: 120)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
+                Section(header: Text("Members (Optional)")) {
+                    if !showAddMembers {
+                        Button(action: {
+                            showAddMembers = true
+                            members.append(("", "")) // Add first empty member
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle")
+                                Text("Add Members")
+                            }
+                            .foregroundColor(.blue)
+                        }
+                    } else {
+                        ForEach(members.indices, id: \.self) { index in
+                            VStack(spacing: 8) {
+                                TextField("Email", text: Binding(
+                                    get: { members[index].0 },
+                                    set: { members[index].0 = $0 }
+                                ))
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .keyboardType(.emailAddress)
+                                .autocapitalization(.none)
+                                
+                                TextField("Username", text: Binding(
+                                    get: { members[index].1 },
+                                    set: { members[index].1 = $0 }
+                                ))
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .autocapitalization(.none)
+                            }
+                            .swipeActions {
+                                Button("Delete", role: .destructive) {
+                                    members.remove(at: index)
+                                    if members.isEmpty {
+                                        showAddMembers = false
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Button(action: {
+                            members.append(("", ""))
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle")
+                                Text("Add Another Member")
+                            }
+                            .foregroundColor(.blue)
+                        }
+                    }
                 }
             }
-            .navigationTitle("New Project")
+            .navigationTitle("Create Project")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -1074,7 +1174,7 @@ struct CreateProjectSheet: View {
                     Button("Create") {
                         createProject()
                     }
-                    .disabled(projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreating)
+                    .disabled(isCreating || projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .alert("Error", isPresented: $showingError) {
@@ -1089,17 +1189,8 @@ struct CreateProjectSheet: View {
         isCreating = true
         errorMessage = ""
         
-        let trimmedName = projectName.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Parse members from text input
-        let memberTuples = parseMembers(from: membersText)
-        
-        if memberTuples.isEmpty {
-            errorMessage = "Please add at least one member"
-            showingError = true
-            isCreating = false
-            return
-        }
+        // Filter out empty members
+        let validMembers = members.filter { !$0.0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !$0.1.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         
         guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/create_project") else {
             errorMessage = "Invalid URL"
@@ -1109,10 +1200,10 @@ struct CreateProjectSheet: View {
         }
         
         let requestBody: [String: Any] = [
-            "project_name": trimmedName,
-            "project_members": memberTuples.map { [$0.0, $0.1] }, // Convert tuples to arrays for JSON
+            "project_name": projectName.trimmingCharacters(in: .whitespacesAndNewlines),
             "project_transparency": isTransparent,
-            "project_likes": 0, // Start with 0 likes
+            "project_likes": 0,
+            "project_members": validMembers.map { [$0.0, $0.1] }, // Convert tuples to arrays for JSON
             "user_id": userId
         ]
         
@@ -1123,7 +1214,7 @@ struct CreateProjectSheet: View {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
-            errorMessage = "Failed to encode project data"
+            errorMessage = "Failed to encode request"
             showingError = true
             isCreating = false
             return
@@ -1139,30 +1230,19 @@ struct CreateProjectSheet: View {
                     return
                 }
                 
-                // Success - close sheet and refresh projects
+                if let httpResponse = response as? HTTPURLResponse {
+                    guard (200...299).contains(httpResponse.statusCode) else {
+                        errorMessage = "Server error: HTTP \(httpResponse.statusCode)"
+                        showingError = true
+                        return
+                    }
+                }
+                
+                // Close sheet and refresh projects
                 presentationMode.wrappedValue.dismiss()
                 onProjectCreated()
             }
         }.resume()
-    }
-    
-    private func parseMembers(from text: String) -> [(String, String)] {
-        let lines = text.split(separator: "\n")
-        var members: [(String, String)] = []
-        
-        for line in lines {
-            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmedLine.isEmpty {
-                let components = trimmedLine.split(separator: ",", maxSplits: 1)
-                if components.count == 2 {
-                    let email = String(components[0]).trimmingCharacters(in: .whitespaces)
-                    let username = String(components[1]).trimmingCharacters(in: .whitespaces)
-                    members.append((email, username))
-                }
-            }
-        }
-        
-        return members
     }
 }
 
@@ -1282,15 +1362,24 @@ struct ProjectDetailView: View {
     @State private var isLoadingEvents = false
     @State private var errorMessage = ""
     @State private var showingError = false
+    @State private var currentUserEmail: String = ""
     
-    // Add Member Sheet
-    @State private var showingAddMember = false
+    // Join/Leave Project Sheet
+    @State private var showingJoinProject = false
+    @State private var showingAddMember = false // Keep for other members
     
     // Availability Check Sheet
     @State private var showingAvailabilityCheck = false
     @State private var availabilityResults: [UserAvailability] = []
     @State private var availabilityPercentage: Double = 0.0
     @State private var showingAvailabilityResults = false
+    
+    // Computed property to check if current user is a member
+    var isCurrentUserMember: Bool {
+        return project.project_members.contains { member in
+            member.0 == currentUserEmail // Check if user's email matches any member email
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -1321,11 +1410,22 @@ struct ProjectDetailView: View {
             }
             .onAppear {
                 fetchProjectEvents()
+                fetchCurrentUserEmail()
             }
             .alert("Error", isPresented: $showingError) {
                 Button("OK") { }
             } message: {
                 Text(errorMessage)
+            }
+            .sheet(isPresented: $showingJoinProject) {
+                JoinProjectSheet(
+                    userId: userId,
+                    projectId: project.project_id,
+                    onProjectJoined: {
+                        // Refresh project data would require parent callback
+                        fetchCurrentUserEmail()
+                    }
+                )
             }
             .sheet(isPresented: $showingAddMember) {
                 AddMemberSheet(
@@ -1366,12 +1466,22 @@ struct ProjectDetailView: View {
                     
                     Spacer()
                     
-                    Button("Add Member") {
-                        showingAddMember = true
+                    if isCurrentUserMember {
+                        Button("Leave Project") {
+                            leaveProject()
+                        }
+                        .font(.caption)
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                        .foregroundColor(.red)
+                    } else {
+                        Button("Join Project") {
+                            showingJoinProject = true
+                        }
+                        .font(.caption)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.mini)
                     }
-                    .font(.caption)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.mini)
                 }
                 
                 ForEach(Array(project.project_members.enumerated()), id: \.element.0) { index, member in
@@ -1387,14 +1497,17 @@ struct ProjectDetailView: View {
                         
                         Spacer()
                         
-                        Button(action: {
-                            deleteMember(email: member.0, username: member.1)
-                        }) {
-                            Image(systemName: "trash")
-                                .foregroundColor(.red)
-                                .font(.caption)
+                        // Only show delete button for members if current user is also a member
+                        if isCurrentUserMember && member.0 != currentUserEmail {
+                            Button(action: {
+                                deleteMember(email: member.0, username: member.1)
+                            }) {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.borderless)
                         }
-                        .buttonStyle(.borderless)
                     }
                     .padding(.vertical, 2)
                 }
@@ -1518,7 +1631,7 @@ struct ProjectDetailView: View {
         }
         
         var request = URLRequest(url: finalUrl)
-        request.httpMethod = "GET"
+        request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
@@ -1532,6 +1645,268 @@ struct ProjectDetailView: View {
                 // Success - member deleted
                 // Note: In a real app, you'd want to refresh the project data
                 // For now, we'll just show a success message
+            }
+        }.resume()
+    }
+    
+    private func fetchCurrentUserEmail() {
+        // Fetch user data to get current user's email
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/view_project") else {
+            print("Invalid URL for fetching user data")
+            return
+        }
+        
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "project_id", value: project.project_id),
+            URLQueryItem(name: "user_id", value: userId),
+            URLQueryItem(name: "project_name", value: project.project_name)
+        ]
+        
+        guard let finalUrl = urlComponents?.url else {
+            print("Failed to create URL for fetching user data")
+            return
+        }
+        
+        var request = URLRequest(url: finalUrl)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Network error fetching user data: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let data = data else {
+                    print("No data received for user data")
+                    return
+                }
+                
+                do {
+                    let response = try JSONDecoder().decode(ProjectViewResponse.self, from: data)
+                    self.currentUserEmail = response.user_data.email ?? ""
+                } catch {
+                    print("Failed to decode user data: \(error.localizedDescription)")
+                }
+            }
+        }.resume()
+    }
+    
+    private func leaveProject() {
+        guard !currentUserEmail.isEmpty else {
+            errorMessage = "Unable to determine current user email"
+            showingError = true
+            return
+        }
+        
+        // Find current user's username from project members
+        guard let currentMember = project.project_members.first(where: { $0.0 == currentUserEmail }) else {
+            errorMessage = "Current user not found in project members"
+            showingError = true
+            return
+        }
+        
+        deleteMember(email: currentMember.0, username: currentMember.1)
+    }
+}
+
+// MARK: - Join Project Sheet
+
+struct JoinProjectSheet: View {
+    let userId: String
+    let projectId: String
+    let onProjectJoined: () -> Void
+    
+    @Environment(\.presentationMode) var presentationMode
+    @State private var projectCode = ""
+    @State private var username = ""
+    @State private var isJoining = false
+    @State private var errorMessage = ""
+    @State private var showingError = false
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Username")
+                        .font(.headline)
+                    
+                    TextField("Enter your username", text: $username)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Project Code")
+                        .font(.headline)
+                    
+                    TextField("Enter project code", text: $projectCode)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .textContentType(.password) // Hide the input for security
+                }
+                
+                Text("You need the project code to join this project. Ask a project member for the code.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Join Project")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    presentationMode.wrappedValue.dismiss()
+                },
+                trailing: Button("Join") {
+                    joinProject()
+                }
+                .disabled(projectCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || 
+                         username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || 
+                         isJoining)
+            )
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    
+    private func joinProject() {
+        guard !projectCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        
+        isJoining = true
+        errorMessage = ""
+        
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/add_member") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            isJoining = false
+            return
+        }
+        
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "project_id", value: projectId),
+            URLQueryItem(name: "user_id", value: userId),
+            URLQueryItem(name: "new_email", value: ""), // Will need to get current user's email
+            URLQueryItem(name: "new_username", value: username.trimmingCharacters(in: .whitespacesAndNewlines)),
+            URLQueryItem(name: "code", value: projectCode.trimmingCharacters(in: .whitespacesAndNewlines))
+        ]
+        
+        // We need to get the user's email first, so let's fetch it
+        fetchUserEmailAndJoin()
+    }
+    
+    private func fetchUserEmailAndJoin() {
+        // First, get the user's email
+        guard let userUrl = URL(string: "https://29098e308ec4.ngrok-free.app/projects/view_project") else {
+            errorMessage = "Invalid URL for user data"
+            showingError = true
+            isJoining = false
+            return
+        }
+        
+        var urlComponents = URLComponents(url: userUrl, resolvingAgainstBaseURL: false)
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "project_id", value: projectId),
+            URLQueryItem(name: "user_id", value: userId),
+            URLQueryItem(name: "project_name", value: "")
+        ]
+        
+        guard let finalUrl = urlComponents?.url else {
+            errorMessage = "Failed to create URL for user data"
+            showingError = true
+            isJoining = false
+            return
+        }
+        
+        var request = URLRequest(url: finalUrl)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    isJoining = false
+                    return
+                }
+                
+                guard let data = data else {
+                    errorMessage = "No user data received"
+                    showingError = true
+                    isJoining = false
+                    return
+                }
+                
+                do {
+                    let response = try JSONDecoder().decode(ProjectViewResponse.self, from: data)
+                    let userEmail = response.user_data.email ?? ""
+                    
+                    // Now call the add member endpoint with the user's email
+                    self.addMemberWithEmail(userEmail)
+                } catch {
+                    errorMessage = "Failed to decode user data: \(error.localizedDescription)"
+                    showingError = true
+                    isJoining = false
+                }
+            }
+        }.resume()
+    }
+    
+    private func addMemberWithEmail(_ email: String) {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/add_member") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            isJoining = false
+            return
+        }
+        
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "project_id", value: projectId),
+            URLQueryItem(name: "user_id", value: userId),
+            URLQueryItem(name: "new_email", value: email),
+            URLQueryItem(name: "new_username", value: username.trimmingCharacters(in: .whitespacesAndNewlines)),
+            URLQueryItem(name: "code", value: projectCode.trimmingCharacters(in: .whitespacesAndNewlines))
+        ]
+        
+        guard let finalUrl = urlComponents?.url else {
+            errorMessage = "Failed to create URL"
+            showingError = true
+            isJoining = false
+            return
+        }
+        
+        var request = URLRequest(url: finalUrl)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isJoining = false
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 200 {
+                        onProjectJoined()
+                        presentationMode.wrappedValue.dismiss()
+                    } else {
+                        errorMessage = "Failed to join project (Status: \(httpResponse.statusCode))"
+                        showingError = true
+                    }
+                }
             }
         }.resume()
     }
@@ -2133,6 +2508,7 @@ struct RenameProjectSheet: View {
 
 struct ProjectMemberManagementSheet: View {
     let projectId: String
+    let userId: String
     let currentMembers: [(String, String)]
     let onMembersUpdated: () -> Void
     @Environment(\.presentationMode) var presentationMode
@@ -2142,9 +2518,12 @@ struct ProjectMemberManagementSheet: View {
     @State private var isLoading = false
     @State private var errorMessage = ""
     @State private var showingError = false
+    @State private var showingPermissionEdit = false
+    @State private var selectedMemberIndex: Int = 0
     
-    init(projectId: String, currentMembers: [(String, String)], onMembersUpdated: @escaping () -> Void) {
+    init(projectId: String, userId: String, currentMembers: [(String, String)], onMembersUpdated: @escaping () -> Void) {
         self.projectId = projectId
+        self.userId = userId
         self.currentMembers = currentMembers
         self.onMembersUpdated = onMembersUpdated
         self._members = State(initialValue: currentMembers)
@@ -2214,6 +2593,18 @@ struct ProjectMemberManagementSheet: View {
                                         
                                         Spacer()
                                         
+                                        // Permissions button
+                                        Button(action: {
+                                            selectedMemberIndex = index
+                                            showingPermissionEdit = true
+                                        }) {
+                                            Image(systemName: "person.badge.key")
+                                                .foregroundColor(.blue)
+                                                .font(.title3)
+                                        }
+                                        .disabled(isLoading)
+                                        
+                                        // Remove member button
                                         Button(action: {
                                             removeMember(at: index)
                                         }) {
@@ -2263,6 +2654,17 @@ struct ProjectMemberManagementSheet: View {
         } message: {
             Text(errorMessage)
         }
+        .sheet(isPresented: $showingPermissionEdit) {
+            if selectedMemberIndex < members.count {
+                EditPermissionSheet(
+                    projectId: projectId,
+                    userId: userId,
+                    memberEmail: members[selectedMemberIndex].0,
+                    memberUsername: members[selectedMemberIndex].1,
+                    onPermissionUpdated: onMembersUpdated
+                )
+            }
+        }
     }
     
     private func addMember() {
@@ -2271,7 +2673,7 @@ struct ProjectMemberManagementSheet: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "http://localhost:8000/api/projects/add_project_member") else {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/add_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -2326,30 +2728,31 @@ struct ProjectMemberManagementSheet: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "http://localhost:8000/api/projects/delete_project_member") else {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/delete_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let requestBody = [
-            "project_id": projectId,
-            "member_email": memberToRemove.0
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "project_id", value: projectId),
+            URLQueryItem(name: "user_id", value: userId),
+            URLQueryItem(name: "email", value: memberToRemove.0),
+            URLQueryItem(name: "username", value: memberToRemove.1)
         ]
         
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-        } catch {
-            errorMessage = "Failed to encode request"
+        guard let finalUrl = urlComponents?.url else {
+            errorMessage = "Failed to create URL"
             showingError = true
             isLoading = false
             return
         }
+        
+        var request = URLRequest(url: finalUrl)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
@@ -2369,6 +2772,228 @@ struct ProjectMemberManagementSheet: View {
                         errorMessage = "Failed to remove member (Status: \(httpResponse.statusCode))"
                         showingError = true
                     }
+                }
+            }
+        }.resume()
+    }
+}
+
+// MARK: - Edit Permission Sheet
+
+struct EditPermissionSheet: View {
+    let projectId: String
+    let userId: String
+    let memberEmail: String
+    let memberUsername: String
+    let onPermissionUpdated: () -> Void
+    
+    @Environment(\.presentationMode) var presentationMode
+    @State private var selectedPermission: String = "view"
+    @State private var isUpdating = false
+    @State private var errorMessage = ""
+    @State private var showingError = false
+    
+    private let permissions = ["view", "edit", "admin"]
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                // Member info
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Member Information")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Email:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Text(memberEmail)
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                        }
+                        
+                        if !memberUsername.isEmpty {
+                            HStack {
+                                Text("Username:")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text(memberUsername)
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                
+                // Permission selection
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Select Permission Level")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    VStack(spacing: 8) {
+                        ForEach(permissions, id: \.self) { permission in
+                            Button(action: {
+                                selectedPermission = permission
+                            }) {
+                                HStack {
+                                    Image(systemName: selectedPermission == permission ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(selectedPermission == permission ? .blue : .gray)
+                                        .font(.title2)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(permission.capitalized)
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text(permissionDescription(for: permission))
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .padding()
+                                .background(selectedPermission == permission ? Color.blue.opacity(0.1) : Color(.systemBackground))
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(selectedPermission == permission ? Color.blue : Color.clear, lineWidth: 2)
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                
+                Spacer()
+                
+                if isUpdating {
+                    ProgressView("Updating permission...")
+                        .padding()
+                }
+            }
+            .padding()
+            .navigationTitle("Edit Permission")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    presentationMode.wrappedValue.dismiss()
+                },
+                trailing: Button("Update") {
+                    updatePermission()
+                }
+                .disabled(isUpdating)
+            )
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    
+    private func permissionDescription(for permission: String) -> String {
+        switch permission {
+        case "view":
+            return "Can view project content only"
+        case "edit":
+            return "Can view and edit project content"
+        case "admin":
+            return "Full access including member management"
+        default:
+            return ""
+        }
+    }
+    
+    private func updatePermission() {
+        isUpdating = true
+        errorMessage = ""
+        
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/edit_permission") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            isUpdating = false
+            return
+        }
+        
+        // Create URL with query parameters for email, username, and new_permission
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "email", value: memberEmail),
+            URLQueryItem(name: "username", value: memberUsername),
+            URLQueryItem(name: "new_permission", value: selectedPermission)
+        ]
+        
+        guard let finalUrl = urlComponents?.url else {
+            errorMessage = "Failed to create URL with parameters"
+            showingError = true
+            isUpdating = false
+            return
+        }
+        
+        // Create request body with only ModifyProjectRequest fields
+        let requestBody: [String: Any] = [
+            "project_id": projectId,
+            "user_id": userId,
+            "project_name": "" // Required by ModifyProjectRequest but not used
+        ]
+        
+        var request = URLRequest(url: finalUrl)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            isUpdating = false
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isUpdating = false
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("Permission update response status: \(httpResponse.statusCode)")
+                    
+                    if let data = data {
+                        if let responseString = String(data: data, encoding: .utf8) {
+                            print("Permission update response: \(responseString)")
+                        }
+                    }
+                    
+                    if httpResponse.statusCode == 200 {
+                        // Success
+                        presentationMode.wrappedValue.dismiss()
+                        onPermissionUpdated()
+                    } else {
+                        errorMessage = "Failed to update permission (Status: \(httpResponse.statusCode))"
+                        if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                            errorMessage += ": \(responseString)"
+                        }
+                        showingError = true
+                    }
+                } else {
+                    errorMessage = "Invalid response received"
+                    showingError = true
                 }
             }
         }.resume()

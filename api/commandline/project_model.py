@@ -7,7 +7,7 @@ class CreateProjectRequest(BaseModel):
     project_name: str
     project_transparency: bool
     project_likes: int
-    project_members: List[List[str]]  # Accept arrays from JSON
+    project_members: List[tuple[str ,str]] 
     user_id: str
 
 class ModifyProjectRequest(BaseModel):
@@ -17,6 +17,21 @@ class ModifyProjectRequest(BaseModel):
 
 
 class ProjectModel:
+    @staticmethod
+    async def global_delete(request: ModifyProjectRequest):
+        """Deletes all projects for a user.
+
+        Args:
+            request (ModifyProjectRequest): The request containing user ID.
+
+        Returns:
+            dict: A message indicating the result of the operation.
+        """
+        user_id = request.user_id
+        project_handler = HostActions(user_id)
+        project_handler.global_delete()
+        return {"message": "All projects deleted successfully."}
+
     @staticmethod
     async def create_project(request: CreateProjectRequest):
         """Creates a new project.
@@ -30,9 +45,8 @@ class ProjectModel:
         project_likes = request.project_likes
         transparency = request.project_transparency
         members = request.project_members
-        members_list = [(email, username) for email, username in members]
         project_handler = HostActions(request.user_id)
-        project_handler.create_project(request.project_name, project_likes, transparency, members_list)
+        project_handler.create_project(request.project_name, project_likes, transparency, members)
         return {"message": "Project created successfully", "project_name": request.project_name}
 
     @staticmethod
@@ -137,13 +151,15 @@ class ProjectModel:
         return project_handler.fetch_project_events(project_id)
     
     @staticmethod
-    async def add_project_member(request: ModifyProjectRequest, new_email: str, new_username: str):
+    async def add_project_member(request: ModifyProjectRequest, new_email: str, new_username: str, code: str):
         """Adds a new member to an existing project.
 
         Args:
             project_id (str): The ID of the project to add a member to.
             user_id (str): The ID of the user making the request.
             new_email (str): The email of the new member to add.
+            new_username (str): The username of the new member to add.
+            code (str): The code associated with the project.
 
         Returns:
             dict: A message indicating the result of the operation.
@@ -151,8 +167,8 @@ class ProjectModel:
         user_id = request.user_id
         project_id = request.project_id
 
-        project_handler = HostActions(user_id)
-        project_handler.add_project_member(project_id, new_email, new_username)
+        project_handler = GuestActions(user_id)
+        project_handler.add_project_member(project_id, new_email, new_username, code)
         return {"message": "Member added successfully."}
     
     @staticmethod
@@ -170,9 +186,20 @@ class ProjectModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        project_handler = HostActions(user_id)
-        project_handler.delete_project_member(project_id, email, username)
-        return {"message": "Member deleted successfully."}
+        
+        # Get the user_id of the member to be deleted using their email and username
+        project_handler = GuestActions(user_id)
+        
+        # We need to find the user_id for the member being deleted
+        # This requires a method to fetch user_id from email and username
+        host_handler = HostActions(user_id)  # Use HostActions to access the fetch_user_id method
+        target_user_id = host_handler.fetch_user_id(email, username)
+        
+        if target_user_id:
+            project_handler.delete_project_member(project_id, target_user_id)
+            return {"message": "Member deleted successfully."}
+        else:
+            return {"message": "Member not found.", "error": True}
 
     @staticmethod
     async def list_projects(user_id: str):
@@ -203,3 +230,22 @@ class ProjectModel:
         project_handler = HostActions(user_id)
         project_handler.edit_transparency(project_id, new_transparency)
         return {"message": "Project transparency updated successfully."}
+    
+    @staticmethod
+    async def edit_permission(request: ModifyProjectRequest, email: str, username: str, new_permission: str):
+        """Edits the permission level of a user in an existing project.
+
+        Args:
+            project_id (str): The ID of the project to edit.
+            email (str): The email of the user to change permissions for.
+            username (str): The username of the user to change permissions for.
+            new_permission (str): The new permission level to set.
+
+        Returns:
+            dict: A message indicating the result of the operation.
+        """
+        user_id = request.user_id
+        project_id = request.project_id
+        project_handler = HostActions(user_id)
+        project_handler.edit_permissions(project_id, email, username, new_permission)
+        return {"message": "User permission updated successfully."}

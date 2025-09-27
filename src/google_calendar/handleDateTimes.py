@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, time
 from pydantic import BaseModel, Field
 from typing import Union, Optional
-from src.validators.validators import ValidateDateTimeSet
+from src.validators.handleDatetimes import ValidateDateTimeSet
 
 validator = ValidateDateTimeSet()
 

@@ -4,6 +4,7 @@ from api.frontend_routing.tasklist_router import task_list_router
 from api.frontend_routing.project_router import project_router
 from api.frontend_routing.coordination_router import coordination_router
 from api.frontend_routing.discussion_router import discussion_router
+from api.frontend_routing.organization_router import organization_router
 
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -34,6 +35,7 @@ app.include_router(task_list_router)
 app.include_router(project_router)
 app.include_router(coordination_router)
 app.include_router(discussion_router)
+app.include_router(organization_router)
 
 class InputRequest(BaseModel):
     input_text: str

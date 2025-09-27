@@ -99,3 +99,12 @@ class MongoHandler:
         except Exception as e:
             print(f"Error fetching documents: {str(e)}")
             return []
+
+    def delete_all(self):
+        """Deletes all documents in the collection.
+        """
+        try:
+            result = self.collection.delete_many({})
+            print(f"Documents deleted: {result.deleted_count}")
+        except Exception as e:
+            print(f"Error deleting documents: {str(e)}")

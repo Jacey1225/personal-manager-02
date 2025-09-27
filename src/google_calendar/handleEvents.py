@@ -1,6 +1,6 @@
 from src.model_setup.structure_model_output import EventDetails
 from src.google_calendar.eventSetup import RequestSetup, CalendarInsights
-from src.validators.validators import ValidateEventHandling
+from src.validators.handleEventSetup import ValidateEventHandling
 from datetime import datetime, timezone
 import pytz
 

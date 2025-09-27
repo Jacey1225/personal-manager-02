@@ -2,7 +2,7 @@ from src.google_calendar.handleEvents import RequestSetup
 from src.google_calendar.handleDateTimes import DateTimeSet
 from src.model_setup.structure_model_output import EventDetails
 from datetime import datetime
-from src.validators.validators import ValidateProjectHandler
+from src.validators.handleProjects import ValidateProjectHandler
 
 validator = ValidateProjectHandler()
 class CoordinateDateTimes(RequestSetup):

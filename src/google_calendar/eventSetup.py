@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from src.google_calendar.enable_google_api import ConfigureGoogleAPI
 from src.model_setup.structure_model_output import EventDetails
 from src.google_calendar.handleDateTimes import DateTimeHandler
-from src.validators.validators import ValidateEventHandling
+from src.validators.handleEventSetup import ValidateEventHandling
 
 validator = ValidateEventHandling()
 def check_service(event_service, task_service):
@@ -261,7 +261,3 @@ class RequestSetup:
                     self.calendar_insights.is_event = True
                 else:
                     self.calendar_insights.is_event = False
-
-    
-
-

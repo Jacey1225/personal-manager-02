@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 import uuid
 from datetime import datetime
-from src.validators.validators import ValidateDiscussions
+from src.validators.handleDiscussions import ValidateDiscussions
 
 user_handler = MongoHandler("userCredentials")
 discussion_handler = MongoHandler("openDiscussions")
@@ -86,6 +86,7 @@ class HandleDiscussions:
         
         return discussions
 
+    @validator.validate_new_discussion
     def create_discussion(self, title: str, contributors: list[str], content: list[dict], transparency: bool) -> dict:
         """Creates a new discussion.
 
@@ -99,10 +100,6 @@ class HandleDiscussions:
         Returns:
             str: The ID of the created discussion.
         """
-        if not contributors:
-            contributors = [self.user_id]
-        if not content:
-            content = []
         discussion = Discussion(
             discussion_id=str(uuid.uuid4()),
             project_id=self.project_id,
@@ -161,6 +158,14 @@ class HandleDiscussions:
 
     @validator.validate_discussion
     def remove_member_from_discussion(self, discussion_id: str) -> dict | None:
+        """Removes a member from the discussion.
+
+        Args:
+            discussion_id (str): The ID of the discussion to remove a member from.
+
+        Returns:
+            dict | None: The status and data of the operation.
+        """
         discussion = discussion_handler.get_single_doc({"discussion_id": discussion_id})
         if discussion and discussion["data"]['author_id'] == self.user_id:
             if self.user_id in discussion["data"]["active_contributors"]:
@@ -211,6 +216,17 @@ class HandleDiscussions:
 
     @validator.validate_discussion
     def delete_from_discussion(self, discussion_id: str, user_id: str, message: str) -> dict | None:
+        """Deletes a message from a discussion.
+
+        Args:
+            discussion_id (str): The ID of the discussion to delete from.
+            user_id (str): The ID of the user requesting the deletion.
+            message (str): The content of the message to delete.
+
+        Returns:
+            dict | None: The status and data of the operation.
+        """
+
         discussion = discussion_handler.get_single_doc({"discussion_id": discussion_id})
         if discussion:
             try:

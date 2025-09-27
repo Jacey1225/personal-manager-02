@@ -130,6 +130,9 @@ struct SettingsView: View {
     @State private var showingDeleteConfirmation = false
     @State private var showingDeleteSuccess = false
     @State private var isDeleting = false
+    @State private var showingDeleteProjectsConfirmation = false
+    @State private var showingDeleteProjectsSuccess = false
+    @State private var isDeletingProjects = false
     @State private var errorMessage = ""
     @State private var showingError = false
     @Environment(\.presentationMode) var presentationMode
@@ -183,6 +186,46 @@ struct SettingsView: View {
                     .font(.headline)
                     .foregroundColor(.red)
                 
+                // Delete All Projects Section
+                VStack(spacing: 12) {
+                    Text("Delete All Projects")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    Text("This will permanently delete all your projects. This action cannot be undone.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    if isDeletingProjects {
+                        ProgressView("Deleting projects...")
+                            .padding()
+                    } else {
+                        Button(action: {
+                            showingDeleteProjectsConfirmation = true
+                        }) {
+                            HStack {
+                                Image(systemName: "folder.badge.minus")
+                                Text("Delete All Projects")
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(Color.orange)
+                            .cornerRadius(8)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                )
+                
+                // Delete Account Section
                 VStack(spacing: 12) {
                     Text("Delete Account")
                         .font(.subheadline)
@@ -234,6 +277,14 @@ struct SettingsView: View {
         } message: {
             Text("Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.")
         }
+        .alert("Delete All Projects", isPresented: $showingDeleteProjectsConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteAllProjects()
+            }
+        } message: {
+            Text("Are you sure you want to delete all your projects? This action cannot be undone.")
+        }
         .alert("Account Deleted", isPresented: $showingDeleteSuccess) {
             Button("OK") {
                 // Navigate back to login or close app
@@ -241,6 +292,11 @@ struct SettingsView: View {
             }
         } message: {
             Text("Your account has been successfully deleted.")
+        }
+        .alert("Projects Deleted", isPresented: $showingDeleteProjectsSuccess) {
+            Button("OK") { }
+        } message: {
+            Text("All your projects have been successfully deleted.")
         }
         .alert("Error", isPresented: $showingError) {
             Button("OK") { }
@@ -290,6 +346,61 @@ struct SettingsView: View {
                         showingDeleteSuccess = true
                     } else {
                         errorMessage = "Failed to delete account (Status: \(httpResponse.statusCode))"
+                        showingError = true
+                    }
+                } else {
+                    errorMessage = "Invalid response from server"
+                    showingError = true
+                }
+            }
+        }.resume()
+    }
+    
+    private func deleteAllProjects() {
+        isDeletingProjects = true
+        errorMessage = ""
+        
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/global_delete") else {
+            errorMessage = "Invalid URL"
+            showingError = true
+            isDeletingProjects = false
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let requestBody = [
+            "project_id": "",
+            "user_id": userId,
+            "project_name": ""
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            errorMessage = "Failed to encode request"
+            showingError = true
+            isDeletingProjects = false
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isDeletingProjects = false
+                
+                if let error = error {
+                    errorMessage = "Network error: \(error.localizedDescription)"
+                    showingError = true
+                    return
+                }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 200 {
+                        showingDeleteProjectsSuccess = true
+                    } else {
+                        errorMessage = "Failed to delete projects (Status: \(httpResponse.statusCode))"
                         showingError = true
                     }
                 } else {
