@@ -162,7 +162,7 @@ class DateTimeHandler:
                     self.datetime_set.target_datetimes.append((start_datetime, None))
     
     @validator.validate_time_verification
-    def verify_event_time(self, event_start: datetime, target_start: Optional[datetime] = datetime.now()) -> bool:
+    def verify_event_time(self, event_start: datetime, target_start: Optional[str | datetime] = datetime.now()) -> bool:
         """Verify if the event start time is valid.
 
         Args:
@@ -171,7 +171,9 @@ class DateTimeHandler:
         Returns:
             bool: True if the event start time is valid, False otherwise.
         """
-        if target_start and event_start.date() < target_start.date():
+        if not target_start:
+            target_start = datetime.now()
+        if target_start and event_start.date() < target_start.date(): #type: ignore
             return False
                 
         return True

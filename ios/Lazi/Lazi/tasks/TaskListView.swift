@@ -47,6 +47,7 @@ struct TasksListView: View {
     @State private var deletingEventId: String? = nil
     @State private var editingEventId: String? = nil
     @State private var updatingEventId: String? = nil
+    @State private var targetStart: String? = nil // New state for calendar date filtering
     
     // Text input functionality states
     @State private var userInput: String = ""
@@ -70,7 +71,15 @@ struct TasksListView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
+            VStack(spacing: 0) {
+                // Calendar View Widget
+                TaskCalendarView(userId: userId) { selectedDate in
+                    targetStart = selectedDate
+                    fetchEvents(targetStart: selectedDate)
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
                 if isLoading {
                     VStack(spacing: 20) {
                         ProgressView("Loading events...")
@@ -94,7 +103,7 @@ struct TasksListView: View {
                             .multilineTextAlignment(.center)
                         
                         Button("Refresh") {
-                            fetchEvents()
+                            fetchEvents(targetStart: targetStart)
                         }
                         .buttonStyle(.bordered)
                     }
@@ -126,7 +135,7 @@ struct TasksListView: View {
                     .cornerRadius(12)
                     .padding(.horizontal, 20)
                     .refreshable {
-                        fetchEvents()
+                        fetchEvents(targetStart: targetStart)
                     }
                 }
                 
@@ -209,7 +218,7 @@ struct TasksListView: View {
                     errorMessage = ""
                 }
                 Button("Retry") {
-                    fetchEvents()
+                    fetchEvents(targetStart: targetStart)
                 }
             } message: {
                 Text(errorMessage)
@@ -464,7 +473,7 @@ struct TasksListView: View {
                         }
                         
                         // Refresh events list after processing
-                        fetchEvents()
+                        fetchEvents(targetStart: targetStart)
                     } else {
                         errorMessage = "Invalid response format"
                         showingError = true
@@ -552,7 +561,7 @@ struct TasksListView: View {
                             }
                         }
                         // Refresh events list
-                        fetchEvents()
+                        fetchEvents(targetStart: targetStart)
                     }
                 } catch {
                     errorMessage = "Failed to parse response: \(error.localizedDescription)"
@@ -616,7 +625,7 @@ struct TasksListView: View {
                             }
                         }
                         // Refresh events list
-                        fetchEvents()
+                        fetchEvents(targetStart: targetStart)
                     }
                 } catch {
                     errorMessage = "Failed to parse response: \(error.localizedDescription)"
@@ -727,11 +736,11 @@ struct TasksListView: View {
         speechSynthesizer.speak(utterance)
     }
     
-    private func fetchEvents() {
+    private func fetchEvents(targetStart: String? = nil) {
         isLoading = true
         errorMessage = ""
         
-    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/task_list/list_events") else {
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/task_list/list_events") else {
             errorMessage = "Invalid URL"
             isLoading = false
             showingError = true
@@ -742,8 +751,8 @@ struct TasksListView: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Updated request body to match backend EventRequest structure
-        let requestBody: [String: Any] = [
+        // Updated request body to match backend EventRequest structure with target_start support
+        var requestBody: [String: Any] = [
             "event_details": [
                 "input_text": "list events",
                 "raw_output": "None",
@@ -760,6 +769,14 @@ struct TasksListView: View {
             ] as [String: Any],
             "user_id": userId
         ]
+        
+        // Add target_start if provided
+        if let targetStart = targetStart {
+            requestBody["target_start"] = targetStart
+            print("Fetching events with target_start: \(targetStart)")
+        }
+        
+        print("Request body: \(requestBody)")
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)

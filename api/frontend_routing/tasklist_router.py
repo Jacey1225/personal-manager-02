@@ -9,3 +9,4 @@ commander = TaskListModel()
 async def list_events(event_request: EventRequest) -> list[dict]:
     print(f"Received event_request: {event_request}")
     return await commander.list_events(event_request)
+
