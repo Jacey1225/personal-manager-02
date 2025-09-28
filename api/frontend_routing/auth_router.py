@@ -23,13 +23,15 @@ class RemoveUserRequest(BaseModel):
     user_id: str
 
 @auth_router.get("/auth/signup")
-def signup(username: str, email: str, password: str):
+def signup(username: str, email: str, password: str, project_id: Optional[str]=None, org_id: Optional[str]=None) -> dict:
     """Sign up a new user.
 
     Args:
         username (str): Username for the new user.
         email (str): Email address for the new user.
         password (str): Password for the new user.
+        project_id (Optional[str], optional): Project ID to associate with the user. Defaults to None.
+        org_id (Optional[str], optional): Organization ID to associate with the user. Defaults to None.
 
     Returns:
         dict: A dictionary containing the status and user ID.
@@ -51,7 +53,17 @@ def signup(username: str, email: str, password: str):
         "email": email,
         "password": password,
         "user_id": user_id,
+        "projects": {},
+        "organizations": []
     }
+
+    if project_id:
+        project = project_handler.get_single_doc({"project_id": project_id})
+        if project:
+            user_data["projects"][project_id] = (project.get("project_name"), "view")
+
+    if org_id:
+        user_data["organizations"].append(org_id)
 
     result = mongo_client.post_insert(user_data)
     print(f"User created with ID: {result.inserted_id}")
