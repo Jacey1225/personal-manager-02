@@ -11,6 +11,8 @@ from typing import Optional
 from src.fetchMongo import MongoHandler
 
 mongo_client = MongoHandler("userCredentials")
+project_handler = MongoHandler("openProjects")
+org_handler = MongoHandler("organizations")
 auth_router = APIRouter()
 
 class OAuthCompleteRequest(BaseModel):
@@ -57,12 +59,14 @@ def signup(username: str, email: str, password: str):
     return {"status": "success", "user_id": user_data.get("user_id")}
 
 @auth_router.get("/auth/login")
-def login(username: str, password: str) -> Optional[dict]:
+def login(username: str, password: str, project_id: Optional[str]=None, org_id: Optional[str]=None) -> Optional[dict]:
     """Log in an existing user.
 
     Args:
         username (str): Username of the user.
         password (str): Password of the user.
+        project_id (Optional[str], optional): Project ID to associate with the user upon login. Defaults to None.
+        org_id (Optional[str], optional): Organization ID to associate with the user upon login. Defaults to None.
 
     Returns:
         dict: A dictionary containing the login status and user ID if successful.
@@ -79,7 +83,15 @@ def login(username: str, password: str) -> Optional[dict]:
     try:
         if mongo_client.get_single_doc(query_login):
             user_data = mongo_client.get_single_doc(query_login)
+            if project_id and project_id not in user_data.get("projects", {}):
+                project = project_handler.get_single_doc({"project_id": project_id})
+                user_data["projects"][project_id] = (project.get("project_name"), "view")
+
+            if org_id and org_id not in user_data.get("organizations", []):
+                user_data["organizations"].append(org_id)
+
             user_id = user_data.get("user_id") #type: ignore
+            mongo_client.post_update({"user_id": user_id}, user_data)
             print(f"User {username} logged in successfully with user_id: {user_id}")
             print(f"User data: {user_data}")
             return {"status": "success", "user_id": user_id}

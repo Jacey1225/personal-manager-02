@@ -101,7 +101,8 @@ class DateTimeHandler:
 
     @validator.validate_datetime_params
     def organize_for_datetimes(self):
-        """Organizes dates and times into datetime objects within the datetime_set. The problem here is that we need to ensure that each date has a corresponding time.
+        """Organizes dates and times into datetime objects within the datetime_set. 
+        The problem here is that we need to ensure that each date has a corresponding time.
 
         Raises:
             ValueError: The number of times is not a multiple of the number of dates when implying dates,
@@ -160,7 +161,8 @@ class DateTimeHandler:
                 else:
                     self.datetime_set.target_datetimes.append((start_datetime, None))
     
-    def verify_event_time(self, event_start: Union[str, datetime]) -> bool:
+    @validator.validate_time_verification
+    def verify_event_time(self, event_start: datetime, target_start: Optional[datetime] = datetime.now()) -> bool:
         """Verify if the event start time is valid.
 
         Args:
@@ -169,11 +171,7 @@ class DateTimeHandler:
         Returns:
             bool: True if the event start time is valid, False otherwise.
         """
-        current_date = datetime.now()
-        if isinstance(event_start, str):
-            event_start = datetime.fromisoformat(event_start)
-
-        if event_start.date() < current_date.date():
+        if target_start and event_start.date() < target_start.date():
             return False
                 
         return True
@@ -191,8 +189,10 @@ class DateTimeHandler:
         count = 0
         while count < len(sorted_events):
             for i in range(len(sorted_events) - 1 - count):
-                event_i_start = sorted_events[i].start if isinstance(sorted_events[i].start, datetime) else datetime.fromisoformat(sorted_events[i].start)
-                event_next_start = sorted_events[i + 1].start if isinstance(sorted_events[i + 1].start, datetime) else datetime.fromisoformat(sorted_events[i + 1].start)
+                event_i_start = sorted_events[i].start if isinstance(sorted_events[i].start, datetime) \
+                    else datetime.fromisoformat(sorted_events[i].start)
+                event_next_start = sorted_events[i + 1].start if isinstance(sorted_events[i + 1].start, datetime) \
+                    else datetime.fromisoformat(sorted_events[i + 1].start)
                 if event_i_start > event_next_start:
                     sorted_events[i], sorted_events[i + 1] = sorted_events[i + 1], sorted_events[i]
             count += 1

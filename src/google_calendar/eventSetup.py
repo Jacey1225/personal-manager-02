@@ -116,7 +116,7 @@ class RequestSetup:
             RuntimeError: If an error occurs while fetching events.
         """
         try:
-            if not check_service(self.event_service, self.task_service): #fetch existing events if needed
+            if not check_service(self.event_service, self.task_service):
                 raise ConnectionError("Google Calendar or Tasks service is not available.")
 
             now = datetime.now()
@@ -151,10 +151,9 @@ class RequestSetup:
                 ).execute() 
             except Exception as e:
                 print(f"Error fetching events: {e}")
+                print(f"Function: {self.fetch_events_list.__name__}")
                 events_list = {'items': []}
-            
-            print(f"Found {len(events_list.get('items', []))} events and {len(tasks_list.get('items', []))} tasks this month")
-
+        
             scheduled_events = events_list.get('items', []) + tasks_list.get('items', [])
             for event in scheduled_events:
                 event_obj = CalendarEvent(

@@ -51,9 +51,14 @@ class HostActions(RequestSetup):
         Returns:
             str: The user ID if found, otherwise None.
         """
-        user = user_handler.get_single_doc({"email": email, "username": username})
-        return user["user_id"] if user else None
-    
+        try:
+            user = user_handler.get_single_doc({"email": email, "username": username})
+            return user["user_id"] if user else None
+        except Exception as e:
+            print(f"Error fetching user ID: {e}")
+            print(f"Function: {self.fetch_user_id.__name__}")
+            return None
+
     def fetch_name_email(self, user_id):
         """Fetches the name and email associated with the given user ID.
 
@@ -63,9 +68,13 @@ class HostActions(RequestSetup):
         Returns:
             tuple: A tuple containing the name and email if found, otherwise (None, None).
         """
-        user = user_handler.get_single_doc({"user_id": user_id})
-        if user:
-            return user["username"], user["email"]
+        try:
+            user = user_handler.get_single_doc({"user_id": user_id})
+            if user:
+                return user["username"], user["email"]
+        except Exception as e:
+            print(f"Error fetching name and email: {e}")
+            print(f"Function: {self.fetch_name_email.__name__}")
         return None, None
 
     def get_user_permission(self, project_id: str) -> str:
@@ -91,16 +100,21 @@ class HostActions(RequestSetup):
         Returns:
             EventDetails: The updated event details with project information.
         """
-        for key, (project_name, permission) in self.user_data["projects"].items():
-            if permission == "view":
-                continue
-            if project_name.lower() in self.event_details.input_text.lower():
-                self.event_details.transparency = "transparent"
-                self.event_details.guestsCanModify = True
-                self.event_details.description = f"Lazi: {key}"
-                break
+        try:
+            for key, (project_name, permission) in self.user_data["projects"].items():
+                if permission == "view":
+                    continue
+                if project_name.lower() in self.event_details.input_text.lower():
+                    self.event_details.transparency = "transparent"
+                    self.event_details.guestsCanModify = True
+                    self.event_details.description = f"Lazi: {key}"
+                    break
 
-        return self.event_details
+            return self.event_details
+        except Exception as e:
+            print(f"Error tying project to event details: {e}")
+            print(f"Function: {self.tie_project.__name__}")
+            return self.event_details
 
     @validator.validate_project_args
     def list_projects(self):
@@ -113,24 +127,28 @@ class HostActions(RequestSetup):
         if "projects" not in self.user_data:
             return []
         
-        projects = []
-        for project_id, _ in self.user_data["projects"].items():
-            if project_handler.get_single_doc({"project_id": project_id}):
-                project = project_handler.get_single_doc({"project_id": project_id})
-                for i, member in enumerate(project.get("project_members", [])):
-                    user_id = member
-                    username, email = self.fetch_name_email(user_id)
-                    if user_id:
-                        project["project_members"][i] = (username, email)
+        try:
+            projects = []
+            for project_id, _ in self.user_data["projects"].items():
+                if project_handler.get_single_doc({"project_id": project_id}):
+                    project = project_handler.get_single_doc({"project_id": project_id})
+                    for i, member in enumerate(project.get("project_members", [])):
+                        user_id = member
+                        username, email = self.fetch_name_email(user_id)
+                        if user_id:
+                            project["project_members"][i] = (username, email)
 
-                projects.append(project)
-        return projects
-    
-    
+                    projects.append(project)
+            return projects
+        except Exception as e:
+            print(f"Error listing projects: {e}")
+            print(f"Function: {self.list_projects.__name__}")
+            return []
 
     @validator.validate_user_data
     @validator.validate_project_args
-    def create_project(self, project_name: str, project_likes: int, project_transparency: bool, project_members: Optional[list[tuple[str, str]]] = None, organizations: Optional[list[str]] = None) -> ProjectDetails | None:
+    def create_project(self, project_name: str, project_likes: int, project_transparency: bool, 
+                       project_members: Optional[list[tuple[str, str]]] = None, organizations: Optional[list[str]] = None) -> ProjectDetails | None:
         """Creates a new project for the user.
 
         Args:
@@ -154,12 +172,16 @@ class HostActions(RequestSetup):
             project_members=member_ids if member_ids else [self.user_id],
             organizations=organizations if organizations else []
         )
-
-        query_item = {"user_id": self.user_data["user_id"]}
-        new_data = self.project_details.model_dump()
-        self.user_data["projects"][self.project_id] = (project_name, "admin")
-        user_handler.post_update(query_item, self.user_data)
-        project_handler.post_insert(new_data)
+        try:
+            query_item = {"user_id": self.user_data["user_id"]}
+            new_data = self.project_details.model_dump()
+            self.user_data["projects"][self.project_id] = (project_name, "admin")
+            user_handler.post_update(query_item, self.user_data)
+            project_handler.post_insert(new_data)
+        except Exception as e:
+            print(f"Error creating project: {e}")
+            print(f"Function: {self.create_project.__name__}")
+            raise
         if self.project_details:
             return self.project_details
 
@@ -179,21 +201,30 @@ class HostActions(RequestSetup):
         if project_id in self.user_data.get("projects_liked", []):
             self.user_data["projects_liked"].remove(project_id)
 
-        query_item = {"user_id": self.user_data["user_id"]}
-        user_handler.post_update(query_item, self.user_data)
+        try:
+            query_item = {"user_id": self.user_data["user_id"]}
+            user_handler.post_update(query_item, self.user_data)
 
-        if project_handler.get_single_doc({"project_id": project_id}):
-            project_handler.post_delete({"project_id": project_id})
+            if project_handler.get_single_doc({"project_id": project_id}):
+                project_handler.post_delete({"project_id": project_id})
+        except Exception as e:
+            print(f"Error deleting project: {e}")
+            print(f"Function: {self.delete_project.__name__}")
+            pass
 
     @validator.validate_project_existence
     def rename_project(self, project_id: str, new_name: str) -> None:
-        # Check if user has admin permission
         user_permission = self.get_user_permission(project_id)
         if user_permission != "admin":
             raise ValueError("User does not have permission to rename this project")
-            
-        if project_handler.get_single_doc({"project_id": project_id}):
-            project_handler.post_update({"project_id": project_id}, {"project_name": new_name})
+        
+        try:
+            if project_handler.get_single_doc({"project_id": project_id}):
+                project_handler.post_update({"project_id": project_id}, {"project_name": new_name})
+        except Exception as e:
+            print(f"Error renaming project: {e}")
+            print(f"Function: {self.rename_project.__name__}")
+            pass
 
     @validator.validate_user_data
     @validator.validate_project_events
@@ -206,22 +237,27 @@ class HostActions(RequestSetup):
         Returns:
             list[dict]: A list of events associated with the project.
         """
-        if project_handler.get_single_doc({"project_id": project_id}):
-            project = project_handler.get_single_doc({"project_id": project_id})
+        try:
+            if project_handler.get_single_doc({"project_id": project_id}):
+                project = project_handler.get_single_doc({"project_id": project_id})
 
-            for user_id in project["project_members"]:
-                user = user_handler.get_single_doc({"user_id": user_id})
-                if user:
-                    request_setup = RequestSetup(EventDetails(), user_id)
-                    self.all_events.extend(request_setup.calendar_insights.scheduled_events)
+                for user_id in project["project_members"]:
+                    user = user_handler.get_single_doc({"user_id": user_id})
+                    if user:
+                        request_setup = RequestSetup(EventDetails(), user_id)
+                        self.all_events.extend(request_setup.calendar_insights.scheduled_events)
 
-            self.all_events = DateTimeHandler("").sort_datetimes(self.all_events)
-            for event in self.all_events:
-                if event.description == f"Lazi: {project_id}" and event.model_dump() not in self.calendar_insights.project_events:
-                    self.calendar_insights.project_events.append(event.model_dump())
-                    print(f"Event found for project {project_id}: {event.model_dump()}")
-        
-        return self.calendar_insights.project_events
+                self.all_events = DateTimeHandler("").sort_datetimes(self.all_events)
+                for event in self.all_events:
+                    if event.description == f"Lazi: {project_id}" and event.model_dump() not in self.calendar_insights.project_events:
+                        self.calendar_insights.project_events.append(event.model_dump())
+                        print(f"Event found for project {project_id}: {event.model_dump()}")
+            
+            return self.calendar_insights.project_events
+        except Exception as e:
+            print(f"Error fetching project events: {e}")
+            print(f"Function: {self.fetch_project_events.__name__}")
+            return []
 
     def edit_transparency(self, project_id: str, transparency: bool) -> None:
         """Edits the transparency status of an existing project.
@@ -234,12 +270,17 @@ class HostActions(RequestSetup):
         user_permission = self.get_user_permission(project_id)
         if user_permission != "admin":
             raise ValueError("User does not have permission to edit project transparency")
-            
-        if project_handler.get_single_doc({"project_id": project_id}):
-            project = project_handler.get_single_doc({"project_id": project_id})
-            project["project_transparency"] = transparency
-            query_item = {"project_id": project_id}
-            project_handler.post_update(query_item, project)
+
+        try:
+            if project_handler.get_single_doc({"project_id": project_id}):
+                project = project_handler.get_single_doc({"project_id": project_id})
+                project["project_transparency"] = transparency
+                query_item = {"project_id": project_id}
+                project_handler.post_update(query_item, project)
+        except Exception as e:
+            print(f"Error editing project transparency: {e}")
+            print(f"Function: {self.edit_transparency.__name__}")
+            pass
 
     def edit_permissions(self, project_id: str, email: str, username: str, permission: str) -> bool:
         """Edit the permissions of a user for a specific project.
@@ -257,20 +298,26 @@ class HostActions(RequestSetup):
         Returns:
             bool: True if the permissions were successfully edited, False otherwise.
         """
-        user_data = user_handler.get_single_doc({"email": email, "username": username})
-        if not user_data:
-            raise ValueError("User not found")
+        try:
+            user_data = user_handler.get_single_doc({"email": email, "username": username})
+            if not user_data:
+                raise ValueError("User not found")
 
-        if permission not in ["view", "edit", "admin"]:
-            raise ValueError("Invalid permission level")
+            if permission not in ["view", "edit", "admin"]:
+                raise ValueError("Invalid permission level")
 
-        if self.user_data.get("projects", {}).get(project_id, [])[1] != "admin":
-            raise ValueError("User does not have permission to edit")
-        else:
-            user_data["projects"][project_id][1] = permission
-            user_handler.post_update({"user_id": user_data["user_id"]}, user_data)
-            return True
-        
+            if self.user_data.get("projects", {}).get(project_id, [])[1] != "admin":
+                raise ValueError("User does not have permission to edit")
+            else:
+                user_data["projects"][project_id][1] = permission
+                user_handler.post_update({"user_id": user_data["user_id"]}, user_data)
+                return True
+
+        except Exception as e:
+            print(f"Error editing user permissions: {e}")
+            print(f"Function: {self.edit_permissions.__name__}")
+            return False
+
 
 #MARK: Guest Actions
 class GuestActions(HostActions):
@@ -291,29 +338,38 @@ class GuestActions(HostActions):
         Returns:
             tuple: The project details and user data with permissions.
         """
-        project = project_handler.get_single_doc({"project_id": project_id})
-        if not project:
-            raise ValueError("Project not found")
-        for i, user_id in enumerate(project.get("project_members", [])):
-            username, email = self.fetch_name_email(user_id)
-            if username and email:
-                project["project_members"][i] = (email, username)
+        try:
+            project = project_handler.get_single_doc({"project_id": project_id})
+            if not project:
+                raise ValueError("Project not found")
+            for i, user_id in enumerate(project.get("project_members", [])):
+                username, email = self.fetch_name_email(user_id)
+                if username and email:
+                    project["project_members"][i] = (email, username)
+        except Exception as e:
+            print(f"Error fetching project details: {e}")
+            print(f"Function: {self.view_project.__name__}")
+            return {}, {}
 
-        # Get user permission for this project
-        permission = "view"  # default permission
-        if self.user_data and "projects" in self.user_data and project_id in self.user_data["projects"]:
-            permission = self.user_data["projects"][project_id][1]  # The permission is the second element in the tuple
+        try:
+            permission = "view"  
+            if self.user_data and "projects" in self.user_data and project_id in self.user_data["projects"]:
+                permission = self.user_data["projects"][project_id][1]  
 
-        user_info = {
-            "user_id": self.user_data.get("user_id", ""),
-            "email": self.user_data.get("email", ""),
-            "username": self.user_data.get("username", ""),
-            "projects": self.user_data.get("projects", {}),
-            "projects_liked": self.user_data.get("projects_liked", []),
-            "permission": permission  # Add permission to user data
-        }
-        
-        return project, user_info
+            user_info = {
+                "user_id": self.user_data.get("user_id", ""),
+                "email": self.user_data.get("email", ""),
+                "username": self.user_data.get("username", ""),
+                "projects": self.user_data.get("projects", {}),
+                "projects_liked": self.user_data.get("projects_liked", []),
+                "permission": permission
+            }
+            
+            return project, user_info
+        except Exception as e:
+            print(f"Error fetching user data: {e}")
+            print(f"Function: {self.view_project.__name__}")
+            return project, {}
 
     @validator.validate_user_data
     def like_project(self, project_id: str) -> None:
@@ -322,16 +378,22 @@ class GuestActions(HostActions):
         Args:
             project_id (str): The ID of the project to like.
         """
-        if project_handler.get_single_doc({"project_id": project_id}):
-            project = project_handler.get_single_doc({"project_id": project_id})
-            if project:
-                if project_id not in self.user_data.get("projects_liked", []):
-                    self.user_data["projects_liked"].append(project_id)
-                    query_item = {"user_id": self.user_data["user_id"]}
-                    user_handler.post_update(query_item, self.user_data)
+        try:
+            if project_handler.get_single_doc({"project_id": project_id}):
+                project = project_handler.get_single_doc({"project_id": project_id})
+                if project:
+                    if project_id not in self.user_data.get("projects_liked", []):
+                        self.user_data["projects_liked"].append(project_id)
+                        query_item = {"user_id": self.user_data["user_id"]}
+                        user_handler.post_update(query_item, self.user_data)
 
-                    project["project_likes"] = project.get("project_likes", 0) + 1
-                    project_handler.post_update({"project_id": project_id}, project)
+                        project["project_likes"] = project.get("project_likes", 0) + 1
+                        project_handler.post_update({"project_id": project_id}, project)
+        except Exception as e:
+            print(f"Error liking project: {e}")
+            print(f"Function: {self.like_project.__name__}")
+            pass
+
         return self.user_data["projects_liked"]
             
     @validator.validate_user_data
@@ -341,15 +403,20 @@ class GuestActions(HostActions):
         Args:
             project_id (str): The ID of the project to remove a like from.
         """
-        if project_id in self.user_data.get("projects_liked", []):
-            self.user_data["projects_liked"].remove(project_id)
-            query_item = {"user_id": self.user_data["user_id"]}
-            user_handler.post_update(query_item, self.user_data)
-            if project_handler.get_single_doc({"project_id": project_id}):
-                project = project_handler.get_single_doc({"project_id": project_id})
-                if project:
-                    project["project_likes"] = max(0, project.get("project_likes", 0) - 1)
-                    project_handler.post_update({"project_id": project_id}, project)
+        try:
+            if project_id in self.user_data.get("projects_liked", []):
+                self.user_data["projects_liked"].remove(project_id)
+                query_item = {"user_id": self.user_data["user_id"]}
+                user_handler.post_update(query_item, self.user_data)
+                if project_handler.get_single_doc({"project_id": project_id}):
+                    project = project_handler.get_single_doc({"project_id": project_id})
+                    if project:
+                        project["project_likes"] = max(0, project.get("project_likes", 0) - 1)
+                        project_handler.post_update({"project_id": project_id}, project)
+        except Exception as e:
+            print(f"Error removing like: {e}")
+            print(f"Function: {self.remove_like.__name__}")
+            pass
 
         return self.user_data["projects_liked"]
     
@@ -363,21 +430,24 @@ class GuestActions(HostActions):
             username (str): The username of the new member to add.
             code (str): The code associated with the project to gain access.
         """
-        # Check if user has permission to add members (edit or admin)
         user_permission = self.get_user_permission(project_id)
         if user_permission not in ["edit", "admin"]:
             raise ValueError("User does not have permission to add members to this project")
             
-        if project_handler.get_single_doc({"project_id": project_id}):
-            project = project_handler.get_single_doc({"project_id": project_id})
-            if (new_email, username) not in project["project_members"] and code == project.get("project_id"):
-                new_user = user_handler.get_single_doc({"email": new_email, "username": username})
-                if new_user:
-                    project["project_members"].append(new_user["user_id"])
-                    new_user["projects"][project_id] = (project["project_name"], "view")
-                    user_handler.post_update({"user_id": new_user["user_id"]}, new_user)
-                query_item = {"project_id": project_id}
-                project_handler.post_update(query_item, project)
+        try:
+            if project_handler.get_single_doc({"project_id": project_id}):
+                project = project_handler.get_single_doc({"project_id": project_id})
+                if (new_email, username) not in project["project_members"] and code == project.get("project_id"):
+                    new_user = user_handler.get_single_doc({"email": new_email, "username": username})
+                    if new_user:
+                        project["project_members"].append(new_user["user_id"])
+                        new_user["projects"][project_id] = (project["project_name"], "view")
+                        user_handler.post_update({"user_id": new_user["user_id"]}, new_user)
+                    query_item = {"project_id": project_id}
+                    project_handler.post_update(query_item, project)
+        except Exception as e:
+            print(f"Error adding project member: {e}")
+            print(f"Function: {self.add_project_member.__name__}")
 
     @validator.validate_project
     def delete_project_member(self, project_id: str, user_id: str) -> None:
@@ -387,16 +457,20 @@ class GuestActions(HostActions):
             project_id (str): The ID of the project to delete a member from.
             user_id (str): The ID of the member to delete.
         """
-        # Check if user has permission to delete members (edit or admin) or is deleting themselves
         user_permission = self.get_user_permission(project_id)
         if user_permission not in ["edit", "admin"] and self.user_id != user_id:
             raise ValueError("User does not have permission to delete members from this project")
-            
-        if project_handler.get_single_doc({"project_id": project_id}):
-            project = project_handler.get_single_doc({"project_id": project_id})
-            user = user_handler.get_single_doc({"user_id": user_id})
-            if user and project:
-                project["project_members"].remove(user["user_id"])
-                user["projects"].remove(project_id)
-                project_handler.post_update({"project_id": project_id}, project)
-                user_handler.post_update({"user_id": user_id}, user)
+        
+        try:
+            if project_handler.get_single_doc({"project_id": project_id}):
+                project = project_handler.get_single_doc({"project_id": project_id})
+                user = user_handler.get_single_doc({"user_id": user_id})
+                if user and project:
+                    project["project_members"].remove(user["user_id"])
+                    user["projects"].remove(project_id)
+                    project_handler.post_update({"project_id": project_id}, project)
+                    user_handler.post_update({"user_id": user_id}, user)
+        except Exception as e:
+            print(f"Error deleting project member: {e}")
+            print(f"Function: {self.delete_project_member.__name__}")
+            pass

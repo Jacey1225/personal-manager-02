@@ -149,7 +149,8 @@ class HandleDiscussions:
         if discussion and discussion["data"]['author_id'] == self.user_id:
             if self.user_id not in discussion["data"]["active_contributors"]:
                 discussion["data"]["active_contributors"].append(self.user_id)
-                discussion_handler.post_update({"discussion_id": discussion_id}, {"data.active_contributors": discussion["data"]["active_contributors"]})
+                discussion_handler.post_update({"discussion_id": discussion_id}, 
+                                               {"data.active_contributors": discussion["data"]["active_contributors"]})
                 return {"status": "success", "data": {"discussion_id": discussion_id, "new_member": self.user_id}}
             else:
                 return {"status": "error", "message": "User is already a member of the discussion"}
@@ -170,7 +171,8 @@ class HandleDiscussions:
         if discussion and discussion["data"]['author_id'] == self.user_id:
             if self.user_id in discussion["data"]["active_contributors"]:
                 discussion["data"]["active_contributors"].remove(self.user_id)
-                discussion_handler.post_update({"discussion_id": discussion_id}, {"data.active_contributors": discussion["data"]["active_contributors"]})
+                discussion_handler.post_update({"discussion_id": discussion_id}, 
+                                               {"data.active_contributors": discussion["data"]["active_contributors"]})
                 return {"status": "success", "data": {"discussion_id": discussion_id, "removed_member": self.user_id}}
             else:
                 return {"status": "error", "message": "User is not a member of the discussion"}
