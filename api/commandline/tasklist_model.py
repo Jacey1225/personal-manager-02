@@ -44,9 +44,10 @@ class TaskListModel:
         for event in events:
             if datetime_handler.verify_event_time(event["start"], target_start=target_start):
                 formatted_event = datetime_handler.format_datetimes(event["start"], event["end"])
-                event["start"] = formatted_event["start"]
-                event["end"] = formatted_event["end"]
+                event["start"] = formatted_event["start_time"]
+                event["end"] = formatted_event["end_time"]
                 processed_events.append(event)
+        print(f"Processed Events: {processed_events}")
         return processed_events
 
     

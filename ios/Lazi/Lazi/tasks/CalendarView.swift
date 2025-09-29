@@ -39,99 +39,14 @@ struct TaskCalendarView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header with month/year selector
-            HStack {
-                Button(action: {
-                    showingMonthPicker = true
-                }) {
-                    HStack {
-                        Text("\(months[selectedMonth - 1]) \(selectedYear)")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        isExpanded.toggle()
-                    }
-                }) {
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.title3)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding()
+            calendarHeader
             
             if isExpanded {
-                // Calendar grid
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
-                    // Week day headers
-                    ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
-                        Text(day)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                            .frame(height: 30)
-                    }
-                    
-                    // Calendar days
-                    ForEach(getDaysInMonth(), id: \.id) { day in
-                        if day.day == 0 {
-                            // Empty cell for padding
-                            Rectangle()
-                                .fill(Color.clear)
-                                .frame(height: 35)
-                        } else {
-                            Button(action: {
-                                selectDay(day.day)
-                            }) {
-                                VStack(spacing: 2) {
-                                    Text("\(day.day)")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(isToday(day.day) ? .white : .primary)
-                                    
-                                    if day.hasEvents {
-                                        Circle()
-                                            .fill(Color.blue)
-                                            .frame(width: 4, height: 4)
-                                    }
-                                }
-                                .frame(width: 35, height: 35)
-                                .background(
-                                    Circle()
-                                        .fill(isToday(day.day) ? Color.blue : Color.clear)
-                                )
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                                        .opacity(day.hasEvents ? 1 : 0)
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.bottom)
-                .transition(.opacity.combined(with: .slide))
+                calendarGrid
             }
         }
-        .background(Color.clear)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.8), lineWidth: 1)
-        )
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.black.opacity(0.05))
-        )
+        .background(calendarBackground)
+        .overlay(calendarBorder)
         .sheet(isPresented: $showingMonthPicker) {
             MonthYearPickerSheet(
                 selectedMonth: $selectedMonth,
@@ -143,6 +58,93 @@ struct TaskCalendarView: View {
                 }
             )
         }
+    }
+    
+    // MARK: - View Components
+    
+    private var calendarHeader: some View {
+        HStack {
+            monthYearButton
+            Spacer()
+            expandButton
+        }
+        .padding()
+    }
+    
+    private var monthYearButton: some View {
+        Button(action: {
+            showingMonthPicker = true
+        }) {
+            HStack {
+                Text("\(months[selectedMonth - 1]) \(selectedYear)")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .foregroundColor(.primary)
+    }
+    
+    private var expandButton: some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                isExpanded.toggle()
+            }
+        }) {
+            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                .font(.title3)
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    private var calendarGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+            weekDayHeaders
+            calendarDays
+        }
+        .padding(.horizontal)
+        .padding(.bottom)
+        .transition(.opacity.combined(with: .slide))
+    }
+    
+    private var weekDayHeaders: some View {
+        ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
+            Text(day)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+                .frame(height: 30)
+        }
+    }
+    
+    private var calendarDays: some View {
+        ForEach(getDaysInMonth(), id: \.id) { day in
+            if day.day == 0 {
+                // Empty cell for padding
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(height: 35)
+            } else {
+                CalendarDayButton(
+                    day: day,
+                    isToday: isToday(day.day),
+                    onTap: { selectDay(day.day) }
+                )
+            }
+        }
+    }
+    
+    private var calendarBackground: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(Color.black.opacity(0.05))
+    }
+    
+    private var calendarBorder: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .stroke(Color.white.opacity(0.8), lineWidth: 1)
     }
     
     // MARK: - Calendar Helper Functions
@@ -158,7 +160,7 @@ struct TaskCalendarView: View {
         
         // Add empty cells for padding
         for _ in 0..<firstWeekday {
-            days.append(CalendarDay(id: UUID(), day: 0, month: selectedMonth, year: selectedYear, hasEvents: false))
+            days.append(CalendarDay(day: 0, month: selectedMonth, year: selectedYear, hasEvents: false))
         }
         
         // Get the number of days in the month
@@ -168,7 +170,7 @@ struct TaskCalendarView: View {
         for day in 1...daysInMonth {
             // TODO: Implement event checking logic
             let hasEvents = false // This will be implemented when we integrate with event data
-            days.append(CalendarDay(id: UUID(), day: day, month: selectedMonth, year: selectedYear, hasEvents: hasEvents))
+            days.append(CalendarDay(day: day, month: selectedMonth, year: selectedYear, hasEvents: hasEvents))
         }
         
         return days
@@ -184,25 +186,78 @@ struct TaskCalendarView: View {
     }
     
     private func selectDay(_ day: Int) {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        
         if let date = calendar.date(from: DateComponents(year: selectedYear, month: selectedMonth, day: day)) {
-            let targetStart = dateFormatter.string(from: date)
+            let targetStart = formatDateToISO(date)
             print("Selected day: \(targetStart)")
             onDateSelected(targetStart)
         }
     }
     
     private func selectMonth(_ month: Int, year: Int) {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        
         if let date = calendar.date(from: DateComponents(year: year, month: month, day: 1)) {
-            let targetStart = dateFormatter.string(from: date)
+            let targetStart = formatDateToISO(date)
             print("Selected month: \(targetStart)")
             onDateSelected(targetStart)
         }
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func formatDateToISO(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Calendar Day Button Component
+
+struct CalendarDayButton: View {
+    let day: CalendarDay
+    let isToday: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            dayContent
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var dayContent: some View {
+        VStack(spacing: 2) {
+            Text("\(day.day)")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(textColor)
+            
+            if day.hasEvents {
+                eventIndicator
+            }
+        }
+        .frame(width: 35, height: 35)
+        .background(backgroundCircle)
+        .overlay(borderCircle)
+    }
+    
+    private var textColor: Color {
+        isToday ? .white : .primary
+    }
+    
+    private var eventIndicator: some View {
+        Circle()
+            .fill(Color.blue)
+            .frame(width: 4, height: 4)
+    }
+    
+    private var backgroundCircle: some View {
+        Circle()
+            .fill(isToday ? Color.blue : Color.clear)
+    }
+    
+    private var borderCircle: some View {
+        Circle()
+            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+            .opacity(day.hasEvents ? 1 : 0)
     }
 }
 

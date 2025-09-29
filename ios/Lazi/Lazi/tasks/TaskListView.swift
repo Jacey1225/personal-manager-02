@@ -3,26 +3,28 @@ import AVFoundation
 import Speech
 
 struct TaskEvent: Codable, Identifiable {
-    let id = UUID()
     let event_name: String
-    let start_time: String
-    let end_time: String
+    let start: String
+    let end: String
     let event_id: String
+    
+    // Use event_id as the identifier for Identifiable protocol
+    var id: String { event_id }
     
     // Custom coding keys to match the API response
     private enum CodingKeys: String, CodingKey {
         case event_name
-        case start_time
-        case end_time
+        case start
+        case end
         case event_id
     }
     
     var formattedStartTime: String {
-        return formatDateTime(start_time)
+        return formatDateTime(start)
     }
     
     var formattedEndTime: String {
-        return formatDateTime(end_time)
+        return formatDateTime(end)
     }
     
     private func formatDateTime(_ dateString: String) -> String {
@@ -37,6 +39,9 @@ struct TaskEvent: Codable, Identifiable {
         return dateString
     }
 }
+
+// MARK: - Supporting Data Models
+// Models moved to SharedModels.swift to avoid redeclaration
 
 struct TasksListView: View {
     let userId: String
@@ -69,172 +74,209 @@ struct TasksListView: View {
     @State private var recognitionTask: SFSpeechRecognitionTask?
     @State private var audioEngine = AVAudioEngine()
     
+    // MARK: - Computed Properties for View Components
+    
+    private var eventsList: some View {
+        List {
+            ForEach(events) { event in
+                EventRowView(
+                    event: event,
+                    isDeleting: deletingEventId == event.event_id,
+                    isEditing: editingEventId == event.event_id,
+                    isUpdating: updatingEventId == event.event_id,
+                    onDelete: { deleteEvent(event) },
+                    onStartEdit: { startEditingEvent(event) },
+                    onFinishEdit: { newName in finishEditingEvent(event, newName: newName) },
+                    onCancelEdit: { cancelEditingEvent() }
+                )
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
+        }
+        .listStyle(PlainListStyle())
+        .background(Color.clear)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white, lineWidth: 1)
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.black.opacity(0.05)) // Match calendar background
+        )
+        .cornerRadius(12)
+        .padding(.horizontal, 20) // Match calendar horizontal padding
+        .refreshable {
+            fetchEvents(targetStart: targetStart)
+        }
+    }
+    
+    private var inputSection: some View {
+        VStack(spacing: 12) {
+            HStack {
+                TextField("Enter task or event command...", text: $userInput)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                
+                Button(action: isRecording ? stopRecording : startRecording) {
+                    Image(systemName: isRecording ? "stop.circle.fill" : "mic.circle")
+                        .foregroundColor(isRecording ? .red : .blue)
+                        .font(.title2)
+                }
+                .frame(width: 30, height: 30)
+                .disabled(isProcessing)
+                .background(isRecording ? Color.red.opacity(0.1) : Color.clear)
+                .clipShape(Circle())
+                
+                Button(action: sendToAPI) {
+                    if isProcessing {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                            .foregroundColor(.blue)
+                    }
+                }
+                .frame(width: 30, height: 30)
+                .disabled(userInput.isEmpty || isProcessing)
+            }
+            
+            HStack {
+                Text("Audio")
+                    .foregroundColor(.secondary)
+                
+                Toggle("", isOn: $audioEnabled)
+                    .scaleEffect(0.8)
+                
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 20) // Match calendar and events list padding
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.black.opacity(0.05)) // Match other components
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.8), lineWidth: 1) // Match other components
+        )
+        .padding(.horizontal, 20) // Outer padding to match other components
+        .padding(.bottom, 8)
+    }
+    
+    private var calendarSection: some View {
+        TaskCalendarView(userId: userId) { selectedDate in
+            targetStart = selectedDate
+            fetchEvents(targetStart: selectedDate)
+        }
+        .padding(.horizontal, 20) // Match the horizontal padding of eventsList
+        .padding(.top, 8)
+        .padding(.bottom, 16) // Add bottom padding to separate from events list
+    }
+    
+    private var loadingView: some View {
+        VStack(spacing: 20) {
+            ProgressView("Loading events...")
+            Text("Fetching your tasks and events")
+                .foregroundColor(.secondary)
+                .font(.caption)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: 60))
+                .foregroundColor(.gray)
+            
+            Text("No Events Found")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            Text("You don't have any events or tasks scheduled.")
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button("Refresh") {
+                fetchEvents(targetStart: targetStart)
+            }
+            .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+    
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            calendarSection
+            
+            if isLoading {
+                loadingView
+            } else if events.isEmpty {
+                emptyStateView
+            } else {
+                eventsList
+            }
+            
+            Spacer(minLength: 16) // Add spacing before input section
+            
+            inputSection
+        }
+        .padding(.top, 8)
+    }
+    
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Calendar View Widget
-                TaskCalendarView(userId: userId) { selectedDate in
-                    targetStart = selectedDate
-                    fetchEvents(targetStart: selectedDate)
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
-                
-                if isLoading {
-                    VStack(spacing: 20) {
-                        ProgressView("Loading events...")
-                        Text("Fetching your tasks and events")
-                            .foregroundColor(.secondary)
+            mainContent
+        }
+        .navigationTitle("Tasks & Events")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                HStack {
+                    // Audio toggle slider
+                    HStack(spacing: 8) {
+                        Image(systemName: audioEnabled ? "speaker.wave.2" : "speaker.slash")
+                            .foregroundColor(audioEnabled ? .blue : .gray)
                             .font(.caption)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if events.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "calendar.badge.exclamationmark")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
                         
-                        Text("No Events Found")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        Text("You don't have any events or tasks scheduled.")
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                        
-                        Button("Refresh") {
-                            fetchEvents(targetStart: targetStart)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding()
-                } else {
-                    List {
-                        ForEach(events) { event in
-                            EventRowView(
-                                event: event,
-                                isDeleting: deletingEventId == event.event_id,
-                                isEditing: editingEventId == event.event_id,
-                                isUpdating: updatingEventId == event.event_id,
-                                onDelete: { deleteEvent(event) },
-                                onStartEdit: { startEditingEvent(event) },
-                                onFinishEdit: { newName in finishEditingEvent(event, newName: newName) },
-                                onCancelEdit: { cancelEditingEvent() }
-                            )
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                        }
-                    }
-                    .listStyle(PlainListStyle())
-                    .background(Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white, lineWidth: 1)
-                    )
-                    .cornerRadius(12)
-                    .padding(.horizontal, 20)
-                    .refreshable {
-                        fetchEvents(targetStart: targetStart)
-                    }
-                }
-                
-                // Text input section below the list
-                VStack(spacing: 12) {
-                    HStack {
-                        TextField("Enter task or event command...", text: $userInput)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .disabled(isProcessing)
-                        
-                        Button(action: isRecording ? stopRecording : startRecording) {
-                            Image(systemName: isRecording ? "mic.fill" : "mic")
-                                .foregroundColor(isRecording ? .red : .gray)
-                                .font(.system(size: 16))
-                                .scaleEffect(isRecording ? 1.2 : 1.0)
-                                .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: isRecording)
-                        }
-                        .frame(width: 30, height: 30)
-                        .disabled(isProcessing)
-                        .background(isRecording ? Color.red.opacity(0.1) : Color.clear)
-                        .clipShape(Circle())
-                        
-                        Button(action: sendToAPI) {
-                            if isProcessing {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            } else {
-                                Image(systemName: "paperplane.fill")
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                        .frame(width: 30, height: 30)
-                        .disabled(userInput.isEmpty || isProcessing)
+                        Toggle("", isOn: $audioEnabled)
+                            .labelsHidden()
+                            .scaleEffect(0.8)
                     }
                     
-                    // Recording status indicator
-                    if isRecording {
-                        HStack {
-                            Image(systemName: "waveform")
-                                .foregroundColor(.red)
-                                .font(.caption)
-                            Text("Recording... Tap mic to stop")
-                                .foregroundColor(.red)
-                                .font(.caption)
-                        }
-                        .padding(.horizontal)
+                    Button("Refresh") {
+                        fetchEvents()
                     }
-                }
-                .padding()
-            }
-            .navigationTitle("Tasks & Events")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack {
-                        // Audio toggle slider
-                        HStack(spacing: 8) {
-                            Image(systemName: audioEnabled ? "speaker.wave.2" : "speaker.slash")
-                                .foregroundColor(audioEnabled ? .blue : .gray)
-                                .font(.caption)
-                            
-                            Toggle("", isOn: $audioEnabled)
-                                .labelsHidden()
-                                .scaleEffect(0.8)
-                        }
-                        
-                        Button("Refresh") {
-                            fetchEvents()
-                        }
-                        .disabled(isLoading)
-                    }
+                    .disabled(isLoading)
                 }
             }
-            .onAppear {
-                fetchEvents()
-                requestSpeechAuthorization()
+        }
+        .onAppear {
+            fetchEvents()
+            requestSpeechAuthorization()
+        }
+        .alert("Error", isPresented: $showingError) {
+            Button("OK") {
+                self.errorMessage = ""
             }
-            .alert("Error", isPresented: $showingError) {
-                Button("OK") {
-                    errorMessage = ""
+            Button("Retry") {
+                fetchEvents(targetStart: targetStart)
+            }
+        } message: {
+            Text(errorMessage)
+        }
+        .sheet(isPresented: $showEventSelection) {
+            EventSelectionView(
+                selectableEvents: selectableEvents,
+                onEventSelected: selectEvent,
+                onCancel: {
+                    self.showEventSelection = false
+                    self.pendingAction = ""
+                    self.currentResponseRequest = nil
+                    self.selectableEvents = []
                 }
-                Button("Retry") {
-                    fetchEvents(targetStart: targetStart)
-                }
-            } message: {
-                Text(errorMessage)
-            }
-            .sheet(isPresented: $showEventSelection) {
-                EventSelectionView(
-                    selectableEvents: selectableEvents,
-                    onEventSelected: selectEvent,
-                    onCancel: {
-                        showEventSelection = false
-                        pendingAction = ""
-                        currentResponseRequest = nil
-                        selectableEvents = []
-                    }
-                )
-            }
+            )
         }
     }
     
@@ -332,7 +374,7 @@ struct TasksListView: View {
             }
         }
         
-        isRecording = true
+        self.isRecording = true
     }
     
     private func stopRecording() {
@@ -363,9 +405,9 @@ struct TasksListView: View {
     
     private func fetchEventsFromInput(inputText: String) {
         guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/fetch_events") else {
-            errorMessage = "Invalid fetch_events URL."
-            showingError = true
-            isProcessing = false
+            self.errorMessage = "Invalid fetch_events URL."
+            self.showingError = true
+            self.isProcessing = false
             return
         }
 
@@ -381,9 +423,9 @@ struct TasksListView: View {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
-            errorMessage = "Failed to encode request"
-            showingError = true
-            isProcessing = false
+            self.errorMessage = "Failed to encode request"
+            self.showingError = true
+            self.isProcessing = false
             return
         }
 
@@ -392,32 +434,32 @@ struct TasksListView: View {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    errorMessage = "Network error: \(error.localizedDescription)"
-                    showingError = true
-                    isProcessing = false
+                    self.errorMessage = "Network error: \(error.localizedDescription)"
+                    self.showingError = true
+                    self.isProcessing = false
                     return
                 }
                 
                 guard let data = data else {
-                    errorMessage = "No data received"
-                    showingError = true
-                    isProcessing = false
+                    self.errorMessage = "No data received"
+                    self.showingError = true
+                    self.isProcessing = false
                     return
                 }
                 
                 do {
                     if let events = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                         print("Fetched \(events.count) events from input")
-                        processEventsInput(events: events)
+                        self.processEventsInput(events: events)
                     } else {
-                        errorMessage = "Invalid response format"
-                        showingError = true
-                        isProcessing = false
+                        self.errorMessage = "Invalid response format"
+                        self.showingError = true
+                        self.isProcessing = false
                     }
                 } catch {
-                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
-                    showingError = true
-                    isProcessing = false
+                    self.errorMessage = "Failed to parse response: \(error.localizedDescription)"
+                    self.showingError = true
+                    self.isProcessing = false
                 }
             }
         }.resume()
@@ -425,9 +467,9 @@ struct TasksListView: View {
     
     private func processEventsInput(events: [[String: Any]]) {
         guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/process_input") else {
-            errorMessage = "Invalid process_input URL."
-            showingError = true
-            isProcessing = false
+            self.errorMessage = "Invalid process_input URL."
+            self.showingError = true
+            self.isProcessing = false
             return
         }
 
@@ -438,9 +480,9 @@ struct TasksListView: View {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: events)
         } catch {
-            errorMessage = "Failed to encode events"
-            showingError = true
-            isProcessing = false
+            self.errorMessage = "Failed to encode events"
+            self.showingError = true
+            self.isProcessing = false
             return
         }
 
@@ -448,17 +490,17 @@ struct TasksListView: View {
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
-                isProcessing = false
+                self.isProcessing = false
                 
                 if let error = error {
-                    errorMessage = "Network error: \(error.localizedDescription)"
-                    showingError = true
+                    self.errorMessage = "Network error: \(error.localizedDescription)"
+                    self.showingError = true
                     return
                 }
                 
                 guard let data = data else {
-                    errorMessage = "No data received"
-                    showingError = true
+                    self.errorMessage = "No data received"
+                    self.showingError = true
                     return
                 }
                 
@@ -467,31 +509,31 @@ struct TasksListView: View {
                         print("Processing \(responseArray.count) responses")
                         
                         for responseDict in responseArray {
-                            if let responseRequest = parseResponseRequest(from: responseDict) {
-                                processResponseRequest(responseRequest)
+                            if let responseRequest = self.parseResponseRequest(from: responseDict) {
+                                self.processResponseRequest(responseRequest)
                             }
                         }
                         
                         // Refresh events list after processing
-                        fetchEvents(targetStart: targetStart)
+                        self.fetchEvents(targetStart: self.targetStart)
                     } else {
-                        errorMessage = "Invalid response format"
-                        showingError = true
+                        self.errorMessage = "Invalid response format"
+                        self.showingError = true
                     }
                 } catch {
-                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
-                    showingError = true
+                    self.errorMessage = "Failed to parse response: \(error.localizedDescription)"
+                    self.showingError = true
                 }
             }
         }.resume()
     }
     
     private func selectEvent(_ event: SelectableEvent) {
-        showEventSelection = false
+        self.showEventSelection = false
         
         guard let responseRequest = currentResponseRequest else {
-            errorMessage = "No pending request found."
-            showingError = true
+            self.errorMessage = "No pending request found."
+            self.showingError = true
             return
         }
         
@@ -502,15 +544,15 @@ struct TasksListView: View {
         }
         
         // Clear pending state
-        pendingAction = ""
-        currentResponseRequest = nil
-        selectableEvents = []
+        self.pendingAction = ""
+        self.currentResponseRequest = nil
+        self.selectableEvents = []
     }
     
     private func callDeleteEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
         guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/delete_event/\(eventId)") else {
-            errorMessage = "Invalid delete URL."
-            showingError = true
+            self.errorMessage = "Invalid delete URL."
+            self.showingError = true
             return
         }
 
@@ -534,38 +576,33 @@ struct TasksListView: View {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
-            errorMessage = "Failed to encode request"
-            showingError = true
+            self.errorMessage = "Failed to encode request"
+            self.showingError = true
             return
         }
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    errorMessage = "Network error: \(error.localizedDescription)"
-                    showingError = true
+                    self.errorMessage = "Delete failed: \(error.localizedDescription)"
+                    self.showingError = true
                     return
                 }
                 
                 guard let data = data else {
-                    errorMessage = "No data received"
-                    showingError = true
+                    self.errorMessage = "No response from delete request"
+                    self.showingError = true
                     return
                 }
                 
                 do {
-                    if let responseDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        if let message = responseDict["message"] as? String {
-                            if audioEnabled {
-                                speakMessage(message)
-                            }
-                        }
-                        // Refresh events list
-                        fetchEvents(targetStart: targetStart)
-                    }
+                    let _ = try JSONSerialization.jsonObject(with: data)
+                    print("Event deleted successfully")
+                    // Refresh the events list
+                    self.fetchEvents(targetStart: self.targetStart)
                 } catch {
-                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
-                    showingError = true
+                    self.errorMessage = "Failed to parse delete response: \(error.localizedDescription)"
+                    self.showingError = true
                 }
             }
         }.resume()
@@ -573,8 +610,8 @@ struct TasksListView: View {
     
     private func callUpdateEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
         guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/update_event/\(eventId)") else {
-            errorMessage = "Invalid update URL."
-            showingError = true
+            self.errorMessage = "Invalid update URL."
+            self.showingError = true
             return
         }
 
@@ -598,38 +635,33 @@ struct TasksListView: View {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
-            errorMessage = "Failed to encode request"
-            showingError = true
+            self.errorMessage = "Failed to encode request"
+            self.showingError = true
             return
         }
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    errorMessage = "Network error: \(error.localizedDescription)"
-                    showingError = true
+                    self.errorMessage = "Update failed: \(error.localizedDescription)"
+                    self.showingError = true
                     return
                 }
                 
                 guard let data = data else {
-                    errorMessage = "No data received"
-                    showingError = true
+                    self.errorMessage = "No response from update request"
+                    self.showingError = true
                     return
                 }
                 
                 do {
-                    if let responseDict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        if let message = responseDict["message"] as? String {
-                            if audioEnabled {
-                                speakMessage(message)
-                            }
-                        }
-                        // Refresh events list
-                        fetchEvents(targetStart: targetStart)
-                    }
+                    let _ = try JSONSerialization.jsonObject(with: data)
+                    print("Event updated successfully")
+                    // Refresh the events list
+                    self.fetchEvents(targetStart: self.targetStart)
                 } catch {
-                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
-                    showingError = true
+                    self.errorMessage = "Failed to parse update response: \(error.localizedDescription)"
+                    self.showingError = true
                 }
             }
         }.resume()
@@ -677,55 +709,57 @@ struct TasksListView: View {
     
     private func handleDeleteAction(responseRequest: ResponseRequest) {
         // Extract calendar insights to show available events
-        if let calendarInsights = responseRequest.calendarInsights,
-           let matchingEvents = calendarInsights["matching_events"] as? [[String: Any]] {
-            
-            selectableEvents = matchingEvents.compactMap { eventDict in
-                guard let eventName = eventDict["event_name"] as? String,
-                      let eventId = eventDict["event_id"] as? String else {
-                    return nil
-                }
-                
-                return SelectableEvent(
-                    eventName: eventName,
-                    eventId: eventId,
-                    startDate: eventDict["start_time"] as? String,
-                    endDate: eventDict["end_time"] as? String
-                )
+        guard let calendarInsights = responseRequest.calendarInsights,
+              let matchingEvents = calendarInsights["matching_events"] as? [[String: Any]] else {
+            return
+        }
+        
+        self.selectableEvents = matchingEvents.compactMap { eventDict in
+            guard let eventName = eventDict["event_name"] as? String,
+                  let eventId = eventDict["event_id"] as? String else {
+                return nil
             }
             
-            if !selectableEvents.isEmpty {
-                pendingAction = "delete"
-                currentResponseRequest = responseRequest
-                showEventSelection = true
-            }
+            return SelectableEvent(
+                eventName: eventName,
+                eventId: eventId,
+                startDate: eventDict["start"] as? String,
+                endDate: eventDict["end"] as? String
+            )
+        }
+        
+        if !self.selectableEvents.isEmpty {
+            self.pendingAction = "delete"
+            self.currentResponseRequest = responseRequest
+            self.showEventSelection = true
         }
     }
     
     private func handleUpdateAction(responseRequest: ResponseRequest) {
         // Extract calendar insights to show available events
-        if let calendarInsights = responseRequest.calendarInsights,
-           let matchingEvents = calendarInsights["matching_events"] as? [[String: Any]] {
-            
-            selectableEvents = matchingEvents.compactMap { eventDict in
-                guard let eventName = eventDict["event_name"] as? String,
-                      let eventId = eventDict["event_id"] as? String else {
-                    return nil
-                }
-                
-                return SelectableEvent(
-                    eventName: eventName,
-                    eventId: eventId,
-                    startDate: eventDict["start_time"] as? String,
-                    endDate: eventDict["end_time"] as? String
-                )
+        guard let calendarInsights = responseRequest.calendarInsights,
+              let matchingEvents = calendarInsights["matching_events"] as? [[String: Any]] else {
+            return
+        }
+        
+        self.selectableEvents = matchingEvents.compactMap { eventDict in
+            guard let eventName = eventDict["event_name"] as? String,
+                  let eventId = eventDict["event_id"] as? String else {
+                return nil
             }
             
-            if !selectableEvents.isEmpty {
-                pendingAction = "update"
-                currentResponseRequest = responseRequest
-                showEventSelection = true
-            }
+            return SelectableEvent(
+                eventName: eventName,
+                eventId: eventId,
+                startDate: eventDict["start"] as? String,
+                endDate: eventDict["end"] as? String
+            )
+        }
+        
+        if !self.selectableEvents.isEmpty {
+            self.pendingAction = "update"
+            self.currentResponseRequest = responseRequest
+            self.showEventSelection = true
         }
     }
     
@@ -737,13 +771,13 @@ struct TasksListView: View {
     }
     
     private func fetchEvents(targetStart: String? = nil) {
-        isLoading = true
-        errorMessage = ""
+        self.isLoading = true
+        self.errorMessage = ""
         
         guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/task_list/list_events") else {
-            errorMessage = "Invalid URL"
-            isLoading = false
-            showingError = true
+            self.errorMessage = "Invalid URL"
+            self.isLoading = false
+            self.showingError = true
             return
         }
         
@@ -781,25 +815,25 @@ struct TasksListView: View {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         } catch {
-            errorMessage = "Failed to encode request"
-            isLoading = false
-            showingError = true
+            self.errorMessage = "Failed to encode request"
+            self.isLoading = false
+            self.showingError = true
             return
         }
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
-                isLoading = false
+                self.isLoading = false
                 
                 if let error = error {
-                    errorMessage = "Network error: \(error.localizedDescription)"
-                    showingError = true
+                    self.errorMessage = "Network error: \(error.localizedDescription)"
+                    self.showingError = true
                     return
                 }
                 
                 guard let data = data else {
-                    errorMessage = "No data received"
-                    showingError = true
+                    self.errorMessage = "No data received"
+                    self.showingError = true
                     return
                 }
                 
@@ -815,44 +849,41 @@ struct TasksListView: View {
                         
                         for eventDict in jsonArray {
                             if let eventName = eventDict["event_name"] as? String,
-                               let startTime = eventDict["start_time"] as? String,
-                               let endTime = eventDict["end_time"] as? String,
+                               let startTime = eventDict["start"] as? String,
+                               let endTime = eventDict["end"] as? String,
                                let eventId = eventDict["event_id"] as? String {
                                 
                                 let taskEvent = TaskEvent(
                                     event_name: eventName,
-                                    start_time: startTime,
-                                    end_time: endTime,
+                                    start: startTime,
+                                    end: endTime,
                                     event_id: eventId
                                 )
                                 parsedEvents.append(taskEvent)
                             }
                         }
                         
-                        events = parsedEvents
-                        print("Successfully parsed \(events.count) events")
-                        
+                        print("Parsed \(parsedEvents.count) events successfully")
+                        self.events = parsedEvents
                     } else {
-                        errorMessage = "Response is not in expected array format"
-                        showingError = true
+                        self.errorMessage = "Invalid response format"
+                        self.showingError = true
                     }
-                    
                 } catch {
-                    errorMessage = "Failed to parse events: \(error.localizedDescription)"
-                    showingError = true
-                    print("JSON parsing error: \(error)")
+                    self.errorMessage = "Failed to parse response: \(error.localizedDescription)"
+                    self.showingError = true
                 }
             }
         }.resume()
     }
     
     private func deleteEvent(_ event: TaskEvent) {
-        deletingEventId = event.event_id
+        self.deletingEventId = event.event_id
         
-    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/delete_event/\(event.event_id)") else {
-            errorMessage = "Invalid URL"
-            showingError = true
-            deletingEventId = nil
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/delete_event/\(event.event_id)") else {
+            self.errorMessage = "Invalid URL"
+            self.showingError = true
+            self.deletingEventId = nil
             return
         }
         
@@ -876,8 +907,8 @@ struct TasksListView: View {
                     [
                         "event_name": event.event_name,
                         "event_id": event.event_id,
-                        "start": event.start_time,
-                        "end": event.end_time.isEmpty ? event.start_time : event.end_time,
+                        "start": event.start,
+                        "end": event.end.isEmpty ? event.start : event.end,
                         "is_event": determineIsEvent(from: event)
                     ]
                 ],
@@ -890,62 +921,49 @@ struct TasksListView: View {
         print("Sending delete request with event data:")
         print("- Event Name: \(event.event_name)")
         print("- Event ID: \(event.event_id)")
-        print("- Start Time: \(event.start_time)")
-        print("- End Time: \(event.end_time)")
+        print("- Start Time: \(event.start)")
+        print("- End Time: \(event.end)")
         print("- Is Event: \(determineIsEvent(from: event))")
         print("- Full Request: \(responseRequest)")
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: responseRequest)
         } catch {
-            errorMessage = "Failed to encode request"
-            showingError = true
-            deletingEventId = nil
+            self.errorMessage = "Failed to encode request"
+            self.showingError = true
+            self.deletingEventId = nil
             return
         }
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
-                deletingEventId = nil
+                self.deletingEventId = nil
                 
                 if let error = error {
-                    errorMessage = "Network error: \(error.localizedDescription)"
-                    showingError = true
+                    self.errorMessage = "Delete failed: \(error.localizedDescription)"
+                    self.showingError = true
                     return
                 }
                 
                 guard let data = data else {
-                    errorMessage = "No data received"
-                    showingError = true
+                    self.errorMessage = "No response from server"
+                    self.showingError = true
                     return
                 }
                 
                 // Log the raw response for debugging
                 if let responseString = String(data: data, encoding: .utf8) {
-                    print("Delete API Response: \(responseString)")
+                    print("Delete response: \(responseString)")
                 }
                 
                 do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let status = json["status"] as? String {
-                        if status == "success" {
-                            // Remove the deleted event from the list
-                            events.removeAll { $0.event_id == event.event_id }
-                            print("Successfully deleted event: \(event.event_name)")
-                        } else {
-                            errorMessage = json["message"] as? String ?? "Failed to delete event"
-                            showingError = true
-                            print("Delete failed: \(errorMessage)")
-                        }
-                    } else {
-                        errorMessage = "Invalid response format"
-                        showingError = true
-                        print("Invalid response format from delete API")
-                    }
+                    let _ = try JSONSerialization.jsonObject(with: data)
+                    print("Event deleted successfully")
+                    // Refresh events after successful deletion
+                    self.fetchEvents(targetStart: self.targetStart)
                 } catch {
-                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
-                    showingError = true
-                    print("Failed to parse delete response: \(error)")
+                    self.errorMessage = "Failed to parse delete response: \(error.localizedDescription)"
+                    self.showingError = true
                 }
             }
         }.resume()
@@ -984,10 +1002,10 @@ struct TasksListView: View {
     }
     
     private func updateEventName(_ event: TaskEvent, newName: String) {
-    guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/update_event/\(event.event_id)") else {
-            errorMessage = "Invalid URL"
-            showingError = true
-            updatingEventId = nil
+        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/scheduler/update_event/\(event.event_id)") else {
+            self.errorMessage = "Invalid URL"
+            self.showingError = true
+            self.updatingEventId = nil
             return
         }
         
@@ -1011,8 +1029,8 @@ struct TasksListView: View {
                     [
                         "event_name": event.event_name, // Keep original name for matching
                         "event_id": event.event_id,
-                        "start": event.start_time,
-                        "end": event.end_time.isEmpty ? event.start_time : event.end_time,
+                        "start": event.start,
+                        "end": event.end.isEmpty ? event.start : event.end,
                         "is_event": determineIsEvent(from: event)
                     ]
                 ],
@@ -1029,25 +1047,25 @@ struct TasksListView: View {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: responseRequest)
         } catch {
-            errorMessage = "Failed to encode request"
-            showingError = true
-            updatingEventId = nil
+            self.errorMessage = "Failed to encode request"
+            self.showingError = true
+            self.updatingEventId = nil
             return
         }
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
-                updatingEventId = nil
+                self.updatingEventId = nil
                 
                 if let error = error {
-                    errorMessage = "Network error: \(error.localizedDescription)"
-                    showingError = true
+                    self.errorMessage = "Update failed: \(error.localizedDescription)"
+                    self.showingError = true
                     return
                 }
                 
                 guard let data = data else {
-                    errorMessage = "No data received"
-                    showingError = true
+                    self.errorMessage = "No response from server"
+                    self.showingError = true
                     return
                 }
                 
@@ -1057,34 +1075,13 @@ struct TasksListView: View {
                 }
                 
                 do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let status = json["status"] as? String {
-                        if status == "success" {
-                            // Update the event name in the local list
-                            if let index = events.firstIndex(where: { $0.event_id == event.event_id }) {
-                                let updatedEvent = TaskEvent(
-                                    event_name: newName,
-                                    start_time: event.start_time,
-                                    end_time: event.end_time,
-                                    event_id: event.event_id
-                                )
-                                events[index] = updatedEvent
-                                print("Successfully updated event name to: \(newName)")
-                            }
-                        } else {
-                            errorMessage = json["message"] as? String ?? "Failed to update event"
-                            showingError = true
-                            print("Update failed: \(errorMessage)")
-                        }
-                    } else {
-                        errorMessage = "Invalid response format"
-                        showingError = true
-                        print("Invalid response format from update API")
-                    }
+                    let _ = try JSONSerialization.jsonObject(with: data)
+                    print("Event name updated successfully")
+                    // Refresh events after successful update
+                    self.fetchEvents(targetStart: self.targetStart)
                 } catch {
-                    errorMessage = "Failed to parse response: \(error.localizedDescription)"
-                    showingError = true
-                    print("Failed to parse update response: \(error)")
+                    self.errorMessage = "Failed to parse update response: \(error.localizedDescription)"
+                    self.showingError = true
                 }
             }
         }.resume()
@@ -1094,8 +1091,8 @@ struct TasksListView: View {
     
     private func createTargetDatetimes(from event: TaskEvent) -> [[String]] {
         // Convert the event's start and end times to the format expected by the API
-        let startTime = event.start_time
-        let endTime = event.end_time
+        let startTime = event.start
+        let endTime = event.end
         
         print("Creating target datetimes for event: \(event.event_name)")
         print("Start time: \(startTime)")
@@ -1115,7 +1112,7 @@ struct TasksListView: View {
     
     private func determineIsEvent(from event: TaskEvent) -> Bool {
         // Determine if this is an event (has end time) or task (no end time)
-        let isEvent = !event.end_time.isEmpty && event.end_time != event.start_time
+        let isEvent = !event.end.isEmpty && event.end != event.start
         print("Event '\(event.event_name)' is_event: \(isEvent)")
         return isEvent
     }

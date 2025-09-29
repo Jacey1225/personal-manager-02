@@ -173,6 +173,11 @@ class DateTimeHandler:
         """
         if not target_start:
             target_start = datetime.now()
+        if isinstance(event_start, str):
+            event_start = datetime.fromisoformat(event_start)
+        if isinstance(target_start, str):
+            target_start = datetime.fromisoformat(target_start)
+
         if target_start and event_start.date() < target_start.date(): #type: ignore
             return False
                 
@@ -202,20 +207,21 @@ class DateTimeHandler:
         return sorted_events
     
     def format_datetimes(self, event_start: datetime, event_end: Optional[datetime]) -> dict:
-        """Formats the start and end times of an event.
+        """Formats the start and end times of an event in ISO format for frontend compatibility.
 
         Args:
             event_start (datetime): The start time of the event.
             event_end (Optional[datetime]): The end time of the event.
 
         Returns:
-            dict: A dictionary containing the formatted start and end times.
+            dict: A dictionary containing the formatted start and end times in ISO format.
         """
-        start_formatted = event_start.strftime("%A, %B %d, %Y %I:%M %p")
+        # Format in ISO format with fractional seconds for iOS compatibility
+        start_formatted = event_start.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         if event_end:
-            end_formatted = event_end.strftime("%A, %B %d, %Y %I:%M %p")
+            end_formatted = event_end.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
-            end_formatted = None
+            end_formatted = start_formatted  # For tasks without end time, use start time
         return {
             "start_time": start_formatted,
             "end_time": end_formatted
