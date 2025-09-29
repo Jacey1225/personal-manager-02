@@ -7,7 +7,7 @@ from src.track_projects.handleProjects import ProjectDetails
 import uuid
 
 user_handler = MongoHandler("userCredentials")
-organization_handler = MongoHandler("organizations")
+organization_handler = MongoHandler("openOrganizations")
 project_handler = MongoHandler("projects")
 
 validator = ValidateOrganizations()
