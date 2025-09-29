@@ -22,9 +22,18 @@ def fetch_days_ahead(target_day: int, current_day=datetime.now()):
     return current_day + timedelta(days=days_ahead)
 
 def fetch_year_month(current_month: int, target_month: int):
+    import calendar
+    current_day = datetime.now().day
+    
     if target_month < current_month:
-        return datetime(datetime.now().year + 1, target_month, datetime.now().day).strftime('%Y-%m-%d')
-    return datetime(datetime.now().year, target_month, datetime.now().day).strftime('%Y-%m-%d') 
+        target_year = datetime.now().year + 1
+    else:
+        target_year = datetime.now().year
+    
+    max_day_in_target_month = calendar.monthrange(target_year, target_month)[1]
+    safe_day = min(current_day, max_day_in_target_month)
+    
+    return datetime(target_year, target_month, safe_day).strftime('%Y-%m-%d') 
 
 DATE_KEYS = {
     "today": datetime.now().strftime('%Y-%m-%d'),

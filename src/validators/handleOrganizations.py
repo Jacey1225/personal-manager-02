@@ -2,7 +2,7 @@ from typing import Callable
 from src.fetchMongo import MongoHandler
 
 user_handler = MongoHandler("userCredentials")
-organization_handler = MongoHandler("organizations")
+organization_handler = MongoHandler("openOrganizations")
 project_handler = MongoHandler("projects")
 
 class ValidateOrganizations:

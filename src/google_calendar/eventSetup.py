@@ -118,26 +118,11 @@ class RequestSetup:
         try:
             if not check_service(self.event_service, self.task_service):
                 raise ConnectionError("Google Calendar or Tasks service is not available.")
-
-            now = datetime.now()
-            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            
-            if now.month == 12:
-                month_end = month_start.replace(year=now.year + 1, month=1) - timedelta(days=1)
-            else:
-                month_end = month_start.replace(month=now.month + 1) - timedelta(days=1)
-            month_end = month_end.replace(hour=23, minute=59, second=59, microsecond=999999)
-            
-            time_min = month_start.isoformat() + 'Z'
-            time_max = month_end.isoformat() + 'Z'
-            
-            print(f"Fetching events from {month_start.date()} to {month_end.date()}")
-
+        
             try:
                 tasks_list = self.task_service.tasks().list( #type:ignore
                     tasklist=self.task_list_id,
-                    dueMin=time_min,
-                    dueMax=time_max
+                    dueMin=datetime.now().isoformat() + 'Z',
                 ).execute() 
             except Exception as e:
                 print(f"Error fetching tasks: {e}")
@@ -146,8 +131,8 @@ class RequestSetup:
             try:
                 events_list = self.event_service.events().list( #type:ignore
                     calendarId=self.event_list_id,
-                    timeMin=time_min,
-                    timeMax=time_max
+                    timeMin=datetime.now().isoformat() + 'Z',
+                    timeMax=(datetime.now() + timedelta(days=30)).isoformat() + 'Z',
                 ).execute() 
             except Exception as e:
                 print(f"Error fetching events: {e}")

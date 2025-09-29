@@ -1,5 +1,3 @@
-from src.google_calendar.eventSetup import RequestSetup
-from src.model_setup.structure_model_output import EventDetails
 from src.fetchMongo import MongoHandler
 from src.validators.handleOrganizations import ValidateOrganizations
 from pydantic import BaseModel, Field
