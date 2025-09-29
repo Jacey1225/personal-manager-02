@@ -143,7 +143,6 @@ class HandleOrganizations():
         return False
     
     @validator.validate_organization_data
-    @validator.validate_project_actions
     def add_project(self, organization_id: str, project_details: ProjectDetails) -> bool:
         """Adds a new project to an organization.
 
@@ -175,7 +174,6 @@ class HandleOrganizations():
         return False
 
     @validator.validate_organization_data
-    @validator.validate_project_actions
     def delete_project(self, organization_id: str, project_id: str) -> bool:
         """Deletes a project from an organization.
 

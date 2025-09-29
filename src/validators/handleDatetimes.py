@@ -13,21 +13,18 @@ class ValidateDateTimeSet:
             Returns:
                 Callable: The wrapped function with validated time expressions.
             """
-            if not isinstance(self.input_text, str) or not isinstance(self.datetime_set.input_tokens, list):
-                print(f"Invalid input types: {type(self.input_text)}, {type(self.datetime_set.input_tokens)}")
-                raise ValueError("Invalid input types")
-        
             input_text = self.input_text.strip()
             input_tokens = input_text.split(" ")
             for i, token in enumerate(input_tokens):
                 if token[0].isdigit() and ("am" in token.lower() or "pm" in token.lower()):
-                    print(f"Fixing token: {token}")
-                    input_tokens[i] = token.lower().replace("am", " am").replace("pm", " pm")
-                    print(f"Fixed token: {input_tokens[i]}")
-            
+                    try:
+                        input_tokens[i] = token.lower().replace("am", " am").replace("pm", " pm")
+                        print(f"Fixed token: {input_tokens[i]}")
+                    except Exception as e:
+                        print(f"Error fixing token: {token}, Error: {e} Location: {func.__name__}, {func.__class__}")
+
             fixed_text = " ".join(input_tokens)
             self.datetime_set.input_tokens = fixed_text.split(" ")
-            print(f"Input Tokens: {self.datetime_set.input_tokens}")
 
             result = func(self)
 
@@ -56,14 +53,14 @@ class ValidateDateTimeSet:
             """
             if len(self.datetime_set.dates) < len(self.datetime_set.times) and \
             len(self.datetime_set.times) % len(self.datetime_set.dates) != 0:
-                raise ValueError("The number of times must be a multiple of the number of dates to imply dates correctly.")
+                raise ValueError(f"{func.__name__}, {func.__class__}: The number of times must be a multiple of the number of dates to imply dates correctly.")
             if len(self.datetime_set.dates) > len(self.datetime_set.times) and \
             len(self.datetime_set.dates) % len(self.datetime_set.times) != 0:
-                raise ValueError("The number of dates must be a multiple of the number of times to imply times correctly.")
+                raise ValueError(f"{func.__name__}, {func.__class__}: The number of dates must be a multiple of the number of times to imply times correctly.")
 
             result = func(self)
 
-            print(f"Organized datetimes from {func.__name__}: {self.datetime_set.datetimes}")
+            print(f"Organized datetimes from {func.__name__}, {func.__class__}: {self.datetime_set.datetimes}")
             return result
         return wrapper
     
@@ -71,7 +68,7 @@ class ValidateDateTimeSet:
     def log_target_datetimes(func: Callable):
         def wrapper(self):
             result = func(self)
-            print(f"Target Datetimes from {func.__name__}: {self.datetime_set.target_datetimes}")
+            print(f"Target Datetimes from {func.__name__}, {func.__class__}: {self.datetime_set.target_datetimes}")
             return result
         return wrapper
     
@@ -86,7 +83,7 @@ class ValidateDateTimeSet:
             try:
                 result = func(self, *args, **kwargs)
             except Exception as e:
-                print(f"Error verifying the time of event from {func.__name__}: {e}")
+                print(f"Error verifying the time of event from {func.__name__}, {func.__class__}: {e}")
                 result = None
             return result
         return wrapper
