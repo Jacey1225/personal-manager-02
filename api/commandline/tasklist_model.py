@@ -52,7 +52,9 @@ class TaskListModel:
         datetime_handler = DateTimeHandler(input_text="None")
         processed_events = []
         for event in events:
+            print(f"Event dates before formatting: {event['start']} - {event['end']}")
             formatted_event = datetime_handler.format_datetimes(event["start"], event["end"])
+            print(f"Formatted event: {formatted_event}")
             event["start"] = formatted_event["start_time"]
             event["end"] = formatted_event["end_time"]
             processed_events.append(event)

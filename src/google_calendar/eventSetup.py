@@ -5,6 +5,7 @@ from src.google_calendar.enable_google_api import ConfigureGoogleAPI
 from src.model_setup.structure_model_output import EventDetails
 from src.google_calendar.handleDateTimes import DateTimeHandler
 from src.validators.handleEventSetup import ValidateEventHandling
+import pytz
 
 validator = ValidateEventHandling()
 def check_service(event_service, task_service):
@@ -25,6 +26,7 @@ class CalendarEvent(BaseModel):
     start: datetime = Field(default=datetime.now(), description="The start datetime of the event")
     end: Optional[datetime] = Field(default=None, description="The end datetime of the event only if classified as an event")
     description: str = Field(default="None", description="A brief description of the event")
+    timezone: str = Field(default="America/Los_Angeles", description="The timezone of the event")
     is_event: bool = Field(default=False, description="Determines whether we want to handle the request as an event or task")
     event_id: str = Field(default="None", description="The unique identifier for the event")
 
@@ -96,18 +98,22 @@ class RequestSetup:
         Returns:
             tuple[datetime, Optional[datetime]]: The validated start and end times.
         """
+        event_tz = None
+        if event_obj.timezone:
+            try:
+                event_tz = pytz.timezone(event_obj.timezone)
+            except Exception as e:
+                event_tz = pytz.timezone("America/Los_Angeles")
+
         if isinstance(event_obj.start, str):
             event_obj.start = datetime.fromisoformat(event_obj.start)
             if event_obj.start.tzinfo is not None:
-                event_obj.start = event_obj.start.astimezone()
-                event_obj.start = event_obj.start.replace(tzinfo=None)
-                
+                event_obj.start = event_obj.start.astimezone(event_tz)                
         if isinstance(event_obj.end, str):
             event_obj.end = datetime.fromisoformat(event_obj.end)
             if event_obj.end.tzinfo is not None:
-                event_obj.end = event_obj.end.astimezone()
-                event_obj.end = event_obj.end.replace(tzinfo=None)
-                
+                event_obj.end = event_obj.end.astimezone(event_tz)
+
         return event_obj.start, event_obj.end
 
     @validator.validate_events_list
@@ -165,11 +171,13 @@ class RequestSetup:
                     event_obj.start = (event.get('start', {}).get('dateTime'))
                     event_obj.end = event.get('end', {}).get('dateTime')
                     event_obj.description = event.get('description', 'No description provided')
+                    event_obj.timezone = event.get('start', {}).get('timeZone', "America/Los_Angeles")
                     event_obj.event_id = event.get('id')
                 elif 'title' in event:
                     event_obj.event_name = event['title']
                     event_obj.start = event.get('due')
                     event_obj.description = event.get('description', 'No description provided')
+                    event_obj.timezone = event.get('start', {}).get('timeZone', "America/Los_Angeles")
                     event_obj.event_id = event.get('id')
 
                 if event_obj.start:

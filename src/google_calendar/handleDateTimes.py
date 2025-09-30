@@ -204,9 +204,9 @@ class DateTimeHandler:
             dict: A dictionary containing the formatted start and end times in ISO format.
         """
         # Format in ISO format with fractional seconds for iOS compatibility
-        start_formatted = event_start.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        start_formatted = event_start.strftime("%A %B %d, %Y %I:%M %p")
         if event_end:
-            end_formatted = event_end.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            end_formatted = event_end.strftime("%A %B %d, %Y %I:%M %p")
         else:
             end_formatted = start_formatted  # For tasks without end time, use start time
         return {
