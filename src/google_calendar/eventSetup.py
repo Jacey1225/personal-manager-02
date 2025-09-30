@@ -47,9 +47,15 @@ class CalendarInsights(BaseModel):
 class RequestSetup:
     """Handles event setup for Google Calendar and Google Tasks.
     """
-    def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com"):
+    def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com", 
+                 minTime: str | None = (datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)).isoformat() + 'Z', 
+                 maxTime: str | None = (datetime.now().replace(hour=23, minute=59, second=59, microsecond=0) + timedelta(days=30)).isoformat() + 'Z',
+                 description: str | None = None):
         self.user_id = user_id
         self.multi_user_google_api = ConfigureGoogleAPI(user_id)
+        self.minTime = minTime
+        self.maxTime = maxTime
+        self.description = description
         try:
             result = self.multi_user_google_api.enable_google_calendar_api()
             
@@ -81,9 +87,6 @@ class RequestSetup:
             template={},
             is_event=False
         )
-        self.fetch_events_list()
-        self.calendar_insights.scheduled_events = self.datetime_handler.sort_datetimes(self.calendar_insights.scheduled_events)
-
     def validate_event_obj(self, event_obj: CalendarEvent) -> tuple[datetime, Optional[datetime]]:
         """Validates and formats the start and end times of a calendar event.
 
@@ -120,23 +123,32 @@ class RequestSetup:
                 raise ConnectionError("Google Calendar or Tasks service is not available.")
         
             try:
-                tasks_list = self.task_service.tasks().list( #type:ignore
-                    tasklist=self.task_list_id,
-                    dueMin=datetime.now().isoformat() + 'Z',
-                ).execute() 
+                if self.description is None:
+                    tasks_list = self.task_service.tasks().list( #type:ignore
+                        tasklist=self.task_list_id,
+                        maxResults="50",
+                        dueMin=self.minTime,
+                        dueMax=self.maxTime
+                    ).execute() 
+                else:
+                    tasks_list = {'items': []}
             except Exception as e:
                 print(f"Error fetching tasks: {e}")
                 tasks_list = {'items': []}
             
             try:
+                print(f"Fetching events with description filter: {self.description}")
                 events_list = self.event_service.events().list( #type:ignore
                     calendarId=self.event_list_id,
-                    timeMin=datetime.now().isoformat() + 'Z',
-                    timeMax=(datetime.now() + timedelta(days=30)).isoformat() + 'Z',
+                    maxResults=100,
+                    q=self.description if self.description else "",
+                    timeMin=self.minTime,
+                    timeMax=self.maxTime,
+                    singleEvents=True,
+                    orderBy='startTime'
                 ).execute() 
             except Exception as e:
-                print(f"Error fetching events: {e}")
-                print(f"Function: {self.fetch_events_list.__name__}")
+                print(f"Error fetching events in {self.fetch_events_list.__name__}: {e}")
                 events_list = {'items': []}
         
             scheduled_events = events_list.get('items', []) + tasks_list.get('items', [])

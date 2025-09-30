@@ -27,7 +27,6 @@ class ValidateProjectHandler:
 
             result = func(self, *args, **kwargs)
             print(f"Result from {func.__name__}: {result}")
-            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
 
@@ -38,7 +37,6 @@ class ValidateProjectHandler:
                 print(f"Project argument: {arg}")
             result = func(self, *args, **kwargs)
             print(f"Result from {func.__name__}: {result}")
-            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
 
@@ -68,7 +66,6 @@ class ValidateProjectHandler:
 
             result = func(self)   
             print(f"Result from {func.__name__}: {result}")  
-            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
     
@@ -86,7 +83,6 @@ class ValidateProjectHandler:
                 result = func(self, *args, **kwargs)
 
             print(f"Result from {func.__name__}: {result}")
-            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
     
@@ -117,48 +113,31 @@ class ValidateProjectHandler:
             
             result = func(self, *args, **kwargs)
             print(f"Result from {func.__name__}: {result}")
-            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
     
     @staticmethod
-    def validate_project_events(func: Callable):
-        def wrapper(self, *args, **kwargs):
-            if not self.calendar_insights.scheduled_events:
-                print(f"No scheduled events found.")
-                raise ValueError("No scheduled events found.")
+    def validate_project_events(func):
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            print(f"Result from {func.__name__}: {result}")
+            if isinstance(result, list):
+                validated_events = []
+                for event in result:
+                    if isinstance(event, dict):
+                        validated_event = event.copy()
+                        
+                        for time_field in ['start', 'end']:
+                            if time_field in validated_event and validated_event[time_field] is not None:
+                                time_value = validated_event[time_field]
+                                if hasattr(time_value, 'strftime'):
+                                    validated_event[time_field] = time_value.strftime("%A, %B %d, %Y %I:%M %p")
+                        
+                        validated_events.append(validated_event)
+                    else:
+                        validated_events.append(event)
+                return validated_events
             
-            result = func(self, *args, **kwargs)
-
-            if not self.calendar_insights.project_events:
-                print(f"No project events found after call {func.__name__}.")
-                pass
-
-            for i, project_event in enumerate(self.calendar_insights.project_events):
-                event_start = project_event['start']
-                event_end = project_event['end']
-                if isinstance(event_start, datetime):
-                    event_start = event_start.strftime("%A, %B %d, %Y %I:%M %p")
-                    self.calendar_insights.project_events[i]['start'] = event_start
-                elif isinstance(event_start, str):
-                    event_start = datetime.strptime(event_start, "%A, %B %d, %Y %I:%M %p")
-                    if not event_start:
-                        print(f"Invalid start datetime format: {event_start}")
-                        raise ValueError("Invalid start datetime format.")
-                    self.calendar_insights.project_events[i]['start'] = event_start
-
-                if isinstance(event_end, datetime):
-                    event_end = event_end.strftime("%A, %B %d, %Y %I:%M %p")
-                    self.calendar_insights.project_events[i]['end'] = event_end
-                elif isinstance(event_end, str):
-                    event_end = datetime.strptime(event_end, "%A, %B %d, %Y %I:%M %p")
-                    if not event_end:
-                        print(f"Invalid end datetime format: {event_end}")
-                        raise ValueError("Invalid end datetime format.")
-                    self.calendar_insights.project_events[i]['end'] = event_end
-
-            print(f"Project Events: {self.calendar_insights.project_events}")
-            print(f"{func.__name__} called with args: {func.__annotations__}")
             return result
         return wrapper
     

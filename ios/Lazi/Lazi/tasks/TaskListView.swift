@@ -53,6 +53,7 @@ struct TasksListView: View {
     @State private var editingEventId: String? = nil
     @State private var updatingEventId: String? = nil
     @State private var targetStart: String? = nil // New state for calendar date filtering
+    @State private var targetEnd: String? = nil // New state for calendar date filtering end
     
     // Text input functionality states
     @State private var userInput: String = ""
@@ -106,7 +107,7 @@ struct TasksListView: View {
         .cornerRadius(12)
         .padding(.horizontal, 20) // Match calendar horizontal padding
         .refreshable {
-            fetchEvents(targetStart: targetStart)
+            fetchEvents(targetStart: targetStart, targetEnd: targetEnd)
         }
     }
     
@@ -164,9 +165,10 @@ struct TasksListView: View {
     }
     
     private var calendarSection: some View {
-        TaskCalendarView(userId: userId) { selectedDate in
+        TaskCalendarView(userId: userId) { selectedDate, endDate in
             targetStart = selectedDate
-            fetchEvents(targetStart: selectedDate)
+            targetEnd = endDate
+            fetchEvents(targetStart: selectedDate, targetEnd: endDate)
         }
         .padding(.horizontal, 20) // Match the horizontal padding of eventsList
         .padding(.top, 8)
@@ -198,7 +200,7 @@ struct TasksListView: View {
                 .multilineTextAlignment(.center)
             
             Button("Refresh") {
-                fetchEvents(targetStart: targetStart)
+                fetchEvents(targetStart: targetStart, targetEnd: targetEnd)
             }
             .buttonStyle(.bordered)
         }
@@ -261,7 +263,7 @@ struct TasksListView: View {
                 self.errorMessage = ""
             }
             Button("Retry") {
-                fetchEvents(targetStart: targetStart)
+                fetchEvents(targetStart: targetStart, targetEnd: targetEnd)
             }
         } message: {
             Text(errorMessage)
@@ -515,7 +517,7 @@ struct TasksListView: View {
                         }
                         
                         // Refresh events list after processing
-                        self.fetchEvents(targetStart: self.targetStart)
+                        self.fetchEvents(targetStart: self.targetStart, targetEnd: self.targetEnd)
                     } else {
                         self.errorMessage = "Invalid response format"
                         self.showingError = true
@@ -599,7 +601,7 @@ struct TasksListView: View {
                     let _ = try JSONSerialization.jsonObject(with: data)
                     print("Event deleted successfully")
                     // Refresh the events list
-                    self.fetchEvents(targetStart: self.targetStart)
+                    self.fetchEvents(targetStart: self.targetStart, targetEnd: self.targetEnd)
                 } catch {
                     self.errorMessage = "Failed to parse delete response: \(error.localizedDescription)"
                     self.showingError = true
@@ -658,7 +660,7 @@ struct TasksListView: View {
                     let _ = try JSONSerialization.jsonObject(with: data)
                     print("Event updated successfully")
                     // Refresh the events list
-                    self.fetchEvents(targetStart: self.targetStart)
+                    self.fetchEvents(targetStart: self.targetStart, targetEnd: self.targetEnd)
                 } catch {
                     self.errorMessage = "Failed to parse update response: \(error.localizedDescription)"
                     self.showingError = true
@@ -770,7 +772,7 @@ struct TasksListView: View {
         speechSynthesizer.speak(utterance)
     }
     
-    private func fetchEvents(targetStart: String? = nil) {
+    private func fetchEvents(targetStart: String? = nil, targetEnd: String? = nil) {
         self.isLoading = true
         self.errorMessage = ""
         
@@ -785,7 +787,7 @@ struct TasksListView: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Updated request body to match backend EventRequest structure with target_start support
+        // Updated request body to match backend EventRequest structure with target_start and target_end support
         var requestBody: [String: Any] = [
             "event_details": [
                 "input_text": "list events",
@@ -804,10 +806,15 @@ struct TasksListView: View {
             "user_id": userId
         ]
         
-        // Add target_start if provided
+        // Add target_start and target_end if provided
         if let targetStart = targetStart {
             requestBody["target_start"] = targetStart
             print("Fetching events with target_start: \(targetStart)")
+        }
+        
+        if let targetEnd = targetEnd {
+            requestBody["target_end"] = targetEnd
+            print("Fetching events with target_end: \(targetEnd)")
         }
         
         print("Request body: \(requestBody)")
@@ -960,7 +967,7 @@ struct TasksListView: View {
                     let _ = try JSONSerialization.jsonObject(with: data)
                     print("Event deleted successfully")
                     // Refresh events after successful deletion
-                    self.fetchEvents(targetStart: self.targetStart)
+                    self.fetchEvents(targetStart: self.targetStart, targetEnd: self.targetEnd)
                 } catch {
                     self.errorMessage = "Failed to parse delete response: \(error.localizedDescription)"
                     self.showingError = true
@@ -1078,7 +1085,7 @@ struct TasksListView: View {
                     let _ = try JSONSerialization.jsonObject(with: data)
                     print("Event name updated successfully")
                     // Refresh events after successful update
-                    self.fetchEvents(targetStart: self.targetStart)
+                    self.fetchEvents(targetStart: self.targetStart, targetEnd: self.targetEnd)
                 } catch {
                     self.errorMessage = "Failed to parse update response: \(error.localizedDescription)"
                     self.showingError = true

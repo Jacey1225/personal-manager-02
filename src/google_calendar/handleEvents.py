@@ -10,6 +10,8 @@ validator = ValidateEventHandling()
 class AddToCalendar(RequestSetup):
     def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com"):
         super().__init__(event_details, user_id, personal_email)
+        self.fetch_events_list()
+        self.calendar_insights.scheduled_events = self.datetime_handler.sort_datetimes(self.calendar_insights.scheduled_events)
 
     @validator.validate_request_status
     def add_event(self):
@@ -48,6 +50,8 @@ class AddToCalendar(RequestSetup):
 class DeleteFromCalendar(RequestSetup):
     def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com"):
         super().__init__(event_details, user_id, personal_email)
+        self.fetch_events_list()
+        self.calendar_insights.scheduled_events = self.datetime_handler.sort_datetimes(self.calendar_insights.scheduled_events)
 
     @validator.validate_request_status
     def delete_event(self, event_id: str):
@@ -82,6 +86,8 @@ class DeleteFromCalendar(RequestSetup):
 class UpdateFromCalendar(RequestSetup):
     def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com"):
         super().__init__(event_details, user_id, personal_email)
+        self.fetch_events_list()
+        self.calendar_insights.scheduled_events = self.datetime_handler.sort_datetimes(self.calendar_insights.scheduled_events)
 
     @validator.log_target_elimination
     def eliminate_targets(self, event_id: str):

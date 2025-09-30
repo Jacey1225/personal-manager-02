@@ -170,28 +170,6 @@ class DateTimeHandler:
                 else:
                     self.datetime_set.target_datetimes.append((start_datetime, None))
     
-    @validator.validate_time_verification
-    def verify_event_time(self, event_start: datetime, target_start: Optional[str | datetime] = datetime.now()) -> bool:
-        """Verify if the event start time is valid.
-
-        Args:
-            event_start (Union[str, datetime]): The start time of the event.
-
-        Returns:
-            bool: True if the event start time is valid, False otherwise.
-        """
-        if not target_start:
-            target_start = datetime.now()
-        if isinstance(event_start, str):
-            event_start = datetime.fromisoformat(event_start)
-        if isinstance(target_start, str):
-            target_start = datetime.fromisoformat(target_start)
-
-        if target_start and event_start.date() < target_start.date(): #type: ignore
-            return False
-                
-        return True
-    
     def sort_datetimes(self, scheduled_events: list) -> list:
         """Sorts the scheduled events by their start times.
 

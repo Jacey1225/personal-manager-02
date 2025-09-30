@@ -22,10 +22,11 @@ struct CalendarDay: Identifiable {
 
 struct TaskCalendarView: View {
     let userId: String
-    let onDateSelected: (String) -> Void
+    let onDateSelected: (String, String) -> Void // Now returns start and end date
     
     @State private var selectedMonth: Int = Calendar.current.component(.month, from: Date())
     @State private var selectedYear: Int = Calendar.current.component(.year, from: Date())
+    @State private var selectedDay: Int? = nil // Track selected day
     @State private var showingMonthPicker = false
     @State private var isExpanded = false
     
@@ -131,6 +132,7 @@ struct TaskCalendarView: View {
                 CalendarDayButton(
                     day: day,
                     isToday: isToday(day.day),
+                    isSelected: isSelected(day.day),
                     onTap: { selectDay(day.day) }
                 )
             }
@@ -185,19 +187,38 @@ struct TaskCalendarView: View {
         return day == todayDay && selectedMonth == todayMonth && selectedYear == todayYear
     }
     
+    private func isSelected(_ day: Int) -> Bool {
+        return selectedDay == day
+    }
+    
     private func selectDay(_ day: Int) {
+        selectedDay = day // Update selected day
+        
         if let date = calendar.date(from: DateComponents(year: selectedYear, month: selectedMonth, day: day)) {
-            let targetStart = formatDateToISO(date)
-            print("Selected day: \(targetStart)")
-            onDateSelected(targetStart)
+            let startOfDay = calendar.startOfDay(for: date)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!.addingTimeInterval(-1)
+            
+            let targetStart = formatDateToISO(startOfDay)
+            let targetEnd = formatDateToISO(endOfDay)
+            
+            print("Selected day: \(targetStart) to \(targetEnd)")
+            onDateSelected(targetStart, targetEnd)
         }
     }
     
     private func selectMonth(_ month: Int, year: Int) {
+        selectedDay = nil // Clear day selection when changing month
+        
         if let date = calendar.date(from: DateComponents(year: year, month: month, day: 1)) {
-            let targetStart = formatDateToISO(date)
-            print("Selected month: \(targetStart)")
-            onDateSelected(targetStart)
+            let startOfMonth = calendar.startOfDay(for: date)
+            let endOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: startOfMonth)!
+            let endOfMonthLastSecond = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: endOfMonth)!
+            
+            let targetStart = formatDateToISO(startOfMonth)
+            let targetEnd = formatDateToISO(endOfMonthLastSecond)
+            
+            print("Selected month: \(targetStart) to \(targetEnd)")
+            onDateSelected(targetStart, targetEnd)
         }
     }
     
@@ -215,6 +236,7 @@ struct TaskCalendarView: View {
 struct CalendarDayButton: View {
     let day: CalendarDay
     let isToday: Bool
+    let isSelected: Bool
     let onTap: () -> Void
     
     var body: some View {
@@ -240,7 +262,13 @@ struct CalendarDayButton: View {
     }
     
     private var textColor: Color {
-        isToday ? .white : .primary
+        if isToday {
+            return .white
+        } else if isSelected {
+            return .white
+        } else {
+            return .primary
+        }
     }
     
     private var eventIndicator: some View {
@@ -251,7 +279,7 @@ struct CalendarDayButton: View {
     
     private var backgroundCircle: some View {
         Circle()
-            .fill(isToday ? Color.blue : Color.clear)
+            .fill(isToday ? Color.blue : (isSelected ? Color.blue.opacity(0.8) : Color.clear))
     }
     
     private var borderCircle: some View {
@@ -348,8 +376,8 @@ struct MonthYearPickerSheet: View {
 
 struct TaskCalendarView_Previews: PreviewProvider {
     static var previews: some View {
-        TaskCalendarView(userId: "preview-user") { targetStart in
-            print("Selected date: \(targetStart)")
+        TaskCalendarView(userId: "preview-user") { targetStart, targetEnd in
+            print("Selected date range: \(targetStart) to \(targetEnd)")
         }
         .padding()
         .previewLayout(.sizeThatFits)

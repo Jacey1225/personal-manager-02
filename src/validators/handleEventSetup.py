@@ -8,7 +8,6 @@ class ValidateEventHandling:
 
             if len(self.calendar_insights.scheduled_events) < 1:
                 print(f"No events found")
-                print(f"Calendar Insights: {self.calendar_insights.scheduled_events}")
                 raise ValueError(f"{func.__name__}, {func.__class__}: No scheduled events found.")
 
             for event in self.calendar_insights.scheduled_events:
@@ -17,6 +16,7 @@ class ValidateEventHandling:
                 if event.event_name == '' or event.event_id == '':
                     raise ValueError(f"{func.__name__}, {func.__class__}: Empty event name or ID found.")
             print(f"Fetched {len(self.calendar_insights.scheduled_events)} events from calendar and tasks from {func.__name__}.")
+            print(f"Calendar Insights: {self.calendar_insights.scheduled_events}")
             return result
         return wrapper
 

@@ -6,6 +6,7 @@ from src.google_calendar.handleDateTimes import DateTimeHandler
 class EventRequest(BaseModel):
     event_details: EventDetails
     target_start: str | None = None
+    target_end: str | None = None
     user_id: str
 
 
@@ -22,7 +23,16 @@ class TaskListModel:
         """
         event_details = event_request.event_details
         user_id = event_request.user_id
-        request_setup = RequestSetup(event_details, user_id)
+        target_start = event_request.target_start
+        target_end = event_request.target_end
+        
+        if target_start and target_end:
+            request_setup = RequestSetup(event_details, user_id, minTime=target_start, maxTime=target_end)
+        else:
+            request_setup = RequestSetup(event_details, user_id)
+        request_setup.fetch_events_list()
+        request_setup.calendar_insights.scheduled_events = request_setup.datetime_handler.sort_datetimes(request_setup.calendar_insights.scheduled_events)
+
         events =  request_setup.calendar_insights.scheduled_events
         for event in events:
             yield event.model_dump()
@@ -37,17 +47,15 @@ class TaskListModel:
         Returns:
             list[dict]: A list of formatted events for the user.
         """
+        print(f"Fetching {TaskListModel.list_events.__name__} request for {event_request.user_id}: {event_request}")
         events = TaskListModel.fetch_events(event_request)
-        target_start = event_request.target_start
         datetime_handler = DateTimeHandler(input_text="None")
         processed_events = []
         for event in events:
-            if datetime_handler.verify_event_time(event["start"], target_start=target_start):
-                formatted_event = datetime_handler.format_datetimes(event["start"], event["end"])
-                event["start"] = formatted_event["start_time"]
-                event["end"] = formatted_event["end_time"]
-                processed_events.append(event)
-        print(f"Processed Events: {processed_events}")
+            formatted_event = datetime_handler.format_datetimes(event["start"], event["end"])
+            event["start"] = formatted_event["start_time"]
+            event["end"] = formatted_event["end_time"]
+            processed_events.append(event)
         return processed_events
 
     

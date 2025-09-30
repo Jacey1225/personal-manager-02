@@ -95,7 +95,7 @@ struct ProjectEvent: Codable, Identifiable {
     let id = UUID()
     let event_name: String
     let start: String
-    let end: String
+    let end: String?
     let description: String?
     let is_event: Bool?
     let event_id: String?
@@ -114,6 +114,7 @@ struct ProjectEvent: Codable, Identifiable {
     }
     
     var formattedEndTime: String {
+        guard let end = end else { return "" }
         return formatDateTime(end)
     }
     
@@ -131,7 +132,21 @@ struct ProjectEvent: Codable, Identifiable {
                 return displayFormatter.string(from: date)
             }
         }
-        // Already in human-readable format, return as-is
+        
+        // Already in human-readable format from backend
+        // Format: "Sunday, September 28, 2025 05:00 PM"
+        // Try to parse and reformat for consistency
+        let inputFormatter = DateFormatter()
+        inputFormatter.dateFormat = "EEEE, MMMM dd, yyyy hh:mm a"
+        
+        if let date = inputFormatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateStyle = .medium
+            displayFormatter.timeStyle = .short
+            return displayFormatter.string(from: date)
+        }
+        
+        // If all parsing fails, return the original string
         return dateString
     }
 }
@@ -847,11 +862,21 @@ struct MainProjectWidget: View {
                     return
                 }
                 
+                // Debug: Print the raw JSON response
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("Raw project events JSON: \(jsonString)")
+                }
+                
                 do {
                     let eventsResponse = try JSONDecoder().decode([ProjectEvent].self, from: data)
+                    print("Successfully decoded \(eventsResponse.count) project events")
+                    for event in eventsResponse {
+                        print("Event: \(event.event_name), Start: \(event.start), End: \(event.end ?? "nil")")
+                    }
                     events = eventsResponse
                 } catch {
                     print("Failed to decode events: \(error.localizedDescription)")
+                    print("Decoding error: \(error)")
                     events = []
                 }
             }
@@ -1598,10 +1623,17 @@ struct ProjectDetailView: View {
                     return
                 }
                 
+                // Debug: Print the raw JSON response
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("Raw project events JSON (ProjectDetailView): \(jsonString)")
+                }
+                
                 do {
                     let eventsResponse = try JSONDecoder().decode([ProjectEvent].self, from: data)
+                    print("Successfully decoded \(eventsResponse.count) project events in ProjectDetailView")
                     events = eventsResponse
                 } catch {
+                    print("Failed to decode events in ProjectDetailView: \(error)")
                     errorMessage = "Failed to decode events: \(error.localizedDescription)"
                     showingError = true
                 }

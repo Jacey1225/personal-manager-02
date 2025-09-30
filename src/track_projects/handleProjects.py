@@ -23,13 +23,15 @@ class ProjectDetails(BaseModel):
 class HostActions(RequestSetup):
     def __init__(self, user_id, event_details: EventDetails = EventDetails()):
         self.event_details = event_details
-        super().__init__(self.event_details, user_id)
         self.user_id = user_id
         self.user_data = user_handler.get_single_doc({"user_id": self.user_id})
 
         self.project_id = str(uuid.uuid4())
+        while project_handler.get_single_doc({"project_id": self.project_id}):
+            self.project_id = str(uuid.uuid4())
 
-        self.all_events = self.calendar_insights.scheduled_events
+        super().__init__(self.event_details, user_id)
+        self.all_events = []
 
     def global_delete(self):
         user = user_handler.get_single_doc({"user_id": self.user_id})
@@ -244,19 +246,17 @@ class HostActions(RequestSetup):
                 for user_id in project["project_members"]:
                     user = user_handler.get_single_doc({"user_id": user_id})
                     if user:
-                        request_setup = RequestSetup(EventDetails(), user_id)
+                        request_setup = RequestSetup(EventDetails(), user_id, description=f"Lazi: {project_id}")
+                        request_setup.fetch_events_list()
                         self.all_events.extend(request_setup.calendar_insights.scheduled_events)
-
+                
                 self.all_events = DateTimeHandler("").sort_datetimes(self.all_events)
                 for event in self.all_events:
-                    if event.description == f"Lazi: {project_id}" and event.model_dump() not in self.calendar_insights.project_events:
-                        self.calendar_insights.project_events.append(event.model_dump())
-                        print(f"Event found for project {project_id}: {event.model_dump()}")
+                    self.calendar_insights.project_events.append(event.model_dump())
             
             return self.calendar_insights.project_events
         except Exception as e:
-            print(f"Error fetching project events: {e}")
-            print(f"Function: {self.fetch_project_events.__name__}")
+            print(f"Error fetching project events in {self.fetch_project_events.__name__}: {e}")
             return []
 
     def edit_transparency(self, project_id: str, transparency: bool) -> None:
