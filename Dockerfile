@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update --allow-releaseinfo-change && \
-    apt-get install -y --fix-missing gcc && \
+    apt-get install -y --fix-missing gcc cmake build-essential libsentencepiece-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

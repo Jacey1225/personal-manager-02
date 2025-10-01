@@ -169,7 +169,7 @@ struct DiscussionsView: View {
     private func fetchDiscussions() {
         isLoadingDiscussions = true
         
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/discussions/list_project_discussions") else {
+    guard let url = URL(string: "http://192.168.1.222:8000/discussions/list_project_discussions") else {
             print("Invalid URL for project discussions")
             isLoadingDiscussions = false
             return
@@ -385,8 +385,8 @@ struct CreateDiscussionSheet: View {
         
         isLoading = true
         errorMessage = ""
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/discussions/create_discussion") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/discussions/create_discussion") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -635,8 +635,8 @@ struct DiscussionDetailView: View {
     
     private func fetchMessages() {
         isLoadingMessages = true
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/discussions/view_discussion") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/discussions/view_discussion") else {
             print("Invalid URL for discussion messages")
             isLoadingMessages = false
             return
@@ -694,8 +694,8 @@ struct DiscussionDetailView: View {
     
     private func joinDiscussion() {
         isJoiningLeaving = true
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/discussions/add_member") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/discussions/add_member") else {
             print("Invalid URL for joining discussion")
             isJoiningLeaving = false
             return
@@ -749,8 +749,8 @@ struct DiscussionDetailView: View {
     
     private func leaveDiscussion() {
         isJoiningLeaving = true
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/discussions/remove_member") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/discussions/remove_member") else {
             print("Invalid URL for leaving discussion")
             isJoiningLeaving = false
             return
@@ -807,8 +807,8 @@ struct DiscussionDetailView: View {
         
         isPostingMessage = true
         let messageContent = newMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/discussions/post_message") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/discussions/post_message") else {
             print("Invalid URL for posting message")
             isPostingMessage = false
             return
@@ -861,7 +861,7 @@ struct DiscussionDetailView: View {
     }
     
     private func deleteMessage(_ message: DiscussionMessage) {
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/discussions/remove_message") else {
+    guard let url = URL(string: "http://192.168.1.222:8000/discussions/remove_message") else {
             print("Invalid URL for deleting message")
             return
         }
@@ -909,8 +909,8 @@ struct DiscussionDetailView: View {
     
     private func deleteDiscussion() {
         isDeleting = true
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/discussions/delete_discussion") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/discussions/delete_discussion") else {
             print("Invalid URL for deleting discussion")
             isDeleting = false
             return

@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from typing import Optional, Any
 
 load_dotenv()
-mongo_client = MongoClient(os.getenv("MONGO_URI"))
+mongo_client = MongoClient(os.getenv("MONGO_URI", 'mongodb://localhost:27017'))
 db = mongo_client["userAuthDatabase"]
 
 class MongoHandler:

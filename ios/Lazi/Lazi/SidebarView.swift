@@ -308,8 +308,8 @@ struct SettingsView: View {
     private func deleteAccount() {
         isDeleting = true
         errorMessage = ""
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/auth/remove_user") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/auth/remove_user") else {
             errorMessage = "Invalid URL"
             showingError = true
             isDeleting = false
@@ -360,7 +360,7 @@ struct SettingsView: View {
         isDeletingProjects = true
         errorMessage = ""
         
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/global_delete") else {
+    guard let url = URL(string: "http://192.168.1.222:8000/projects/global_delete") else {
             errorMessage = "Invalid URL"
             showingError = true
             isDeletingProjects = false

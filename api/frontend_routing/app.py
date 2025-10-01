@@ -24,7 +24,7 @@ commander = MainModel()
 # More restrictive CORS for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://29098e308ec4.ngrok-free.app", "http://localhost:8000/"],  # Allow all origins for development
+    allow_origins=["http://192.168.1.150:8000/", "http://localhost:8000/", "http://localhost:27017"],  # Allow all origins for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -358,8 +358,8 @@ struct ContentView: View {
         }
         
         isLoading = true
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/auth/login?username=\(username)&password=\(password)") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/auth/login?username=\(username)&password=\(password)") else {
             errorMessage = "Invalid URL"
             isLoading = false
             return
@@ -407,7 +407,7 @@ struct ContentView: View {
         
         isLoading = true
 
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/auth/signup?username=\(username)&email=\(email)&password=\(password)") else {
+    guard let url = URL(string: "http://192.168.1.222:8000/auth/signup?username=\(username)&email=\(email)&password=\(password)") else {
             errorMessage = "Invalid URL"
             isLoading = false
             return
@@ -455,7 +455,7 @@ struct ContentView: View {
         
         isLoading = true
 
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/auth/google?user_id=\(userId)") else {
+    guard let url = URL(string: "http://192.168.1.222:8000/auth/google?user_id=\(userId)") else {
             errorMessage = "Invalid URL"
             isLoading = false
             return
@@ -508,8 +508,8 @@ struct ContentView: View {
         }
         
         isLoading = true
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/auth/google/complete") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/auth/google/complete") else {
             errorMessage = "Invalid URL"
             isLoading = false
             return

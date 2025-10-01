@@ -95,7 +95,7 @@ struct ProjectEvent: Codable, Identifiable {
     let id = UUID()
     let event_name: String
     let start: String
-    let end: String?
+    let end: String
     let description: String?
     let is_event: Bool?
     let event_id: String?
@@ -114,7 +114,6 @@ struct ProjectEvent: Codable, Identifiable {
     }
     
     var formattedEndTime: String {
-        guard let end = end else { return "" }
         return formatDateTime(end)
     }
     
@@ -132,21 +131,7 @@ struct ProjectEvent: Codable, Identifiable {
                 return displayFormatter.string(from: date)
             }
         }
-        
-        // Already in human-readable format from backend
-        // Format: "Sunday, September 28, 2025 05:00 PM"
-        // Try to parse and reformat for consistency
-        let inputFormatter = DateFormatter()
-        inputFormatter.dateFormat = "EEEE, MMMM dd, yyyy hh:mm a"
-        
-        if let date = inputFormatter.date(from: dateString) {
-            let displayFormatter = DateFormatter()
-            displayFormatter.dateStyle = .medium
-            displayFormatter.timeStyle = .short
-            return displayFormatter.string(from: date)
-        }
-        
-        // If all parsing fails, return the original string
+        // Already in human-readable format, return as-is
         return dateString
     }
 }
@@ -353,7 +338,7 @@ struct ProjectsView: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/list") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/list") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -413,8 +398,8 @@ struct ProjectsView: View {
         isLoadingProjectDetails = true
         
         print("Fetching project details for: \(project.project_name) (ID: \(project.project_id))")
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/view_project") else {
+
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/view_project") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoadingProjectDetails = false
@@ -517,12 +502,6 @@ struct MainProjectWidget: View {
     
     @State private var events: [ProjectEvent] = []
     @State private var isLoadingEvents = false
-    
-    // Availability checking states
-    @State private var showingAvailabilityCheck = false
-    @State private var availabilityResults: [UserAvailability] = []
-    @State private var availabilityPercentage: Double = 0.0
-    @State private var showingAvailabilityResults = false
     
     // Project management states
     @State private var showingDeleteAlert = false
@@ -763,86 +742,10 @@ struct MainProjectWidget: View {
                 }
             )
         }
-        .sheet(isPresented: $showingAvailabilityCheck) {
-            AvailabilityCheckSheet(
-                userId: userId,
-                projectMembers: currentProject.project_members,
-                onAvailabilityChecked: { results, percentage in
-                    availabilityResults = results
-                    availabilityPercentage = percentage
-                    showingAvailabilityResults = true
-                }
-            )
-        }
-        .sheet(isPresented: $showingAvailabilityResults) {
-            AvailabilityResultsSheet(
-                availability: availabilityResults,
-                percentage: availabilityPercentage
-            )
-        }
     }
     
     private var eventsContent: some View {
         VStack {
-            // Availability Check Button Section
-            HStack {
-                Text("Team Coordination")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-                
-                Button("Check Availability") {
-                    showingAvailabilityCheck = true
-                }
-                .buttonStyle(.borderedProminent)
-                .font(.caption)
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-            
-            // Availability Results Display
-            if !availabilityResults.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Availability: \(String(format: "%.0f", availabilityPercentage))%")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        Spacer()
-                        
-                        Button("View Details") {
-                            showingAvailabilityResults = true
-                        }
-                        .font(.caption)
-                    }
-                    
-                    // Quick summary of available/unavailable users
-                    let availableUsers = availabilityResults.filter { $0.isAvailable }
-                    let unavailableUsers = availabilityResults.filter { !$0.isAvailable }
-                    
-                    HStack {
-                        Label("\(availableUsers.count) Available", systemImage: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                            .font(.caption)
-                        
-                        Spacer()
-                        
-                        Label("\(unavailableUsers.count) Busy", systemImage: "xmark.circle.fill")
-                            .foregroundColor(.red)
-                            .font(.caption)
-                    }
-                }
-                .padding()
-                .background(Color.blue.opacity(0.1))
-                .cornerRadius(8)
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-            }
-            
-            Divider()
-                .padding(.horizontal)
-            
             if isLoadingEvents {
                 ProgressView("Loading events...")
                     .frame(maxWidth: .infinity, minHeight: 150)
@@ -908,8 +811,8 @@ struct MainProjectWidget: View {
     
     private func fetchProjectEvents() {
         isLoadingEvents = true
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/events/\(currentProject.project_id)") else {
+
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/events/\(currentProject.project_id)") else {
             print("Invalid URL for project events")
             isLoadingEvents = false
             return
@@ -944,21 +847,11 @@ struct MainProjectWidget: View {
                     return
                 }
                 
-                // Debug: Print the raw JSON response
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("Raw project events JSON: \(jsonString)")
-                }
-                
                 do {
                     let eventsResponse = try JSONDecoder().decode([ProjectEvent].self, from: data)
-                    print("Successfully decoded \(eventsResponse.count) project events")
-                    for event in eventsResponse {
-                        print("Event: \(event.event_name), Start: \(event.start), End: \(event.end ?? "nil")")
-                    }
                     events = eventsResponse
                 } catch {
                     print("Failed to decode events: \(error.localizedDescription)")
-                    print("Decoding error: \(error)")
                     events = []
                 }
             }
@@ -971,8 +864,7 @@ struct MainProjectWidget: View {
         isLiking = true
         let isCurrentlyLiked = currentProject.is_liked ?? false
         let endpoint = isCurrentlyLiked ? "unlike_project" : "like_project"
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/\(endpoint)") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/\(endpoint)") else {
             isLiking = false
             return
         }
@@ -1020,7 +912,7 @@ struct MainProjectWidget: View {
     private func renameProject() {
         guard !newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/rename_project") else { return }
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/rename_project") else { return }
         
         let requestBody = [
             "project_id": currentProject.project_id,
@@ -1058,8 +950,8 @@ struct MainProjectWidget: View {
     }
     
     private func deleteProject() {
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/delete_project") else { return }
-        
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/delete_project") else { return }
+
         let requestBody = [
             "project_id": currentProject.project_id,
             "user_id": userId,
@@ -1298,8 +1190,8 @@ struct CreateProjectSheet: View {
         
         // Filter out empty members
         let validMembers = members.filter { !$0.0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !$0.1.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/create_project") else {
+
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/create_project") else {
             errorMessage = "Invalid URL"
             showingError = true
             isCreating = false
@@ -1413,8 +1305,8 @@ struct AddMemberSheet: View {
         
         let trimmedEmail = newMemberEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedUsername = newMemberUsername.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/add_member") else {
+
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/add_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isAdding = false
@@ -1666,7 +1558,7 @@ struct ProjectDetailView: View {
         isLoadingEvents = true
         errorMessage = ""
         
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/events/\(project.project_id)") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/events/\(project.project_id)") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoadingEvents = false
@@ -1705,17 +1597,10 @@ struct ProjectDetailView: View {
                     return
                 }
                 
-                // Debug: Print the raw JSON response
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("Raw project events JSON (ProjectDetailView): \(jsonString)")
-                }
-                
                 do {
                     let eventsResponse = try JSONDecoder().decode([ProjectEvent].self, from: data)
-                    print("Successfully decoded \(eventsResponse.count) project events in ProjectDetailView")
                     events = eventsResponse
                 } catch {
-                    print("Failed to decode events in ProjectDetailView: \(error)")
                     errorMessage = "Failed to decode events: \(error.localizedDescription)"
                     showingError = true
                 }
@@ -1724,7 +1609,7 @@ struct ProjectDetailView: View {
     }
     
     private func deleteMember(email: String, username: String) {
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/delete_member") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/delete_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             return
@@ -1765,7 +1650,7 @@ struct ProjectDetailView: View {
     
     private func fetchCurrentUserEmail() {
         // Fetch user data to get current user's email
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/view_project") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/view_project") else {
             print("Invalid URL for fetching user data")
             return
         }
@@ -1895,8 +1780,8 @@ struct JoinProjectSheet: View {
         
         isJoining = true
         errorMessage = ""
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/add_member") else {
+
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/add_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isJoining = false
@@ -1918,7 +1803,7 @@ struct JoinProjectSheet: View {
     
     private func fetchUserEmailAndJoin() {
         // First, get the user's email
-        guard let userUrl = URL(string: "https://29098e308ec4.ngrok-free.app/projects/view_project") else {
+        guard let userUrl = URL(string: "http://192.168.1.222:8000/projects/view_project") else {
             errorMessage = "Invalid URL for user data"
             showingError = true
             isJoining = false
@@ -1975,7 +1860,7 @@ struct JoinProjectSheet: View {
     }
     
     private func addMemberWithEmail(_ email: String) {
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/add_member") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/add_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isJoining = false
@@ -2186,7 +2071,7 @@ struct AvailabilityCheckSheet: View {
     }
     
     private func fetchUsers(completion: @escaping ([[String: Any]]) -> Void) {
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/coordinate/fetch_users") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/coordinate/fetch_users") else {
             errorMessage = "Invalid URL"
             showingError = true
             isChecking = false
@@ -2314,8 +2199,8 @@ struct AvailabilityCheckSheet: View {
             }
             return
         }
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/coordinate/get_availability") else {
+
+        guard let url = URL(string: "http://192.168.1.222:8000/coordinate/get_availability") else {
             DispatchQueue.main.async {
                 errorMessage = "Invalid URL"
                 showingError = true
@@ -2567,8 +2452,8 @@ struct RenameProjectSheet: View {
         errorMessage = ""
         
         let trimmedName = currentName.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/rename_project") else {
+
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/rename_project") else {
             errorMessage = "Invalid URL"
             showingError = true
             isRenaming = false
@@ -2787,7 +2672,7 @@ struct ProjectMemberManagementSheet: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/add_member") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/add_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -2842,7 +2727,7 @@ struct ProjectMemberManagementSheet: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/delete_member") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/delete_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -3033,7 +2918,7 @@ struct EditPermissionSheet: View {
         isUpdating = true
         errorMessage = ""
         
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/projects/edit_permission") else {
+        guard let url = URL(string: "http://192.168.1.222:8000/projects/edit_permission") else {
             errorMessage = "Invalid URL"
             showingError = true
             isUpdating = false

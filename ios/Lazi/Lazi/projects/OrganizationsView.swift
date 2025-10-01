@@ -255,7 +255,7 @@ struct OrganizationsWidget: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/organizations/list_orgs?user_id=\(userId)") else {
+    guard let url = URL(string: "http://192.168.1.222:8000/organizations/list_orgs?user_id=\(userId)") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -398,8 +398,8 @@ struct CreateOrganizationSheet: View {
             members: [userId],
             projects: []
         )
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/organizations/create_org?user_id=\(userId)") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/organizations/create_org?user_id=\(userId)") else {
             errorMessage = "Invalid URL"
             showingError = true
             isCreating = false
@@ -561,7 +561,7 @@ struct ConnectProjectsSheet: View {
                 "project_dict": projectDict
             ] as [String: Any]
             
-            guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/organizations/add_project") else {
+            guard let url = URL(string: "http://192.168.1.222:8000/organizations/add_project") else {
                 hasError = true
                 group.leave()
                 continue
@@ -770,8 +770,8 @@ struct MemberManagementSheet: View {
             user_id: userId,
             organization_id: organization.organizationId
         )
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/organizations/add_member?new_email=\(newMemberEmail)&new_username=\(newMemberUsername)") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/organizations/add_member?new_email=\(newMemberEmail)&new_username=\(newMemberUsername)") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -824,8 +824,8 @@ struct MemberManagementSheet: View {
             user_id: userId,
             organization_id: organization.organizationId
         )
-        
-        guard let url = URL(string: "https://29098e308ec4.ngrok-free.app/organizations/remove_member?email=\(email)") else {
+
+    guard let url = URL(string: "http://192.168.1.222:8000/organizations/remove_member?email=\(email)") else {
             errorMessage = "Invalid URL"
             showingError = true
             return
