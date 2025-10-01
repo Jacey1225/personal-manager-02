@@ -1,4 +1,4 @@
-from transformers.models.t5 import T5Tokenizer, T5ForConditionalGeneration
+from transformers import T5Tokenizer, T5ForConditionalGeneration
 from src.validators.handleModelOutput import ValidateModelOutput
 from src.google_calendar.handleDateTimes import DateTimeSet, DateTimeHandler
 import os

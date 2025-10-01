@@ -8,7 +8,6 @@ class ValidateEventHandling:
 
             if len(self.calendar_insights.scheduled_events) < 1:
                 print(f"No events found")
-                raise ValueError(f"{func.__name__}, {func.__class__}: No scheduled events found.")
 
             for event in self.calendar_insights.scheduled_events:
                 if not event.event_name or not event.start or not event.event_id:

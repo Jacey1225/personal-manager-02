@@ -1,4 +1,4 @@
-from transformers.models.t5 import T5Tokenizer, T5ForConditionalGeneration
+from transformers import T5Tokenizer
 import torch
 import pandas as pd
 import os

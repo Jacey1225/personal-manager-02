@@ -17,6 +17,7 @@ class CoordinateDateTimes(RequestSetup):
             )
         )
         super().__init__(event_details, user_id)
+        self.fetch_events_list()
         self.user_events = self.calendar_insights.scheduled_events
         self.available = True
 
@@ -32,7 +33,8 @@ class CoordinateDateTimes(RequestSetup):
                 event_start = event.start
                 event_end = event.end if event.end else event.start
 
-                if (requested_end > event_start and requested_end < event_end) or (requested_start > event_start and requested_start < event_end):
+                if (requested_end > event_start and requested_end < event_end) or \
+                (requested_start > event_start and requested_start < event_end):
                     self.available = False
                     return self.available
                 

@@ -1,6 +1,6 @@
 import os
 import torch
-from transformers.models.t5 import T5ForConditionalGeneration, T5Tokenizer
+from transformers import T5ForConditionalGeneration, T5Tokenizer
 from proxy_bypass import _configure_proxy_bypass
 
 class TestLLM:

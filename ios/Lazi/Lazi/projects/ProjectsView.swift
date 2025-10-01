@@ -518,6 +518,12 @@ struct MainProjectWidget: View {
     @State private var events: [ProjectEvent] = []
     @State private var isLoadingEvents = false
     
+    // Availability checking states
+    @State private var showingAvailabilityCheck = false
+    @State private var availabilityResults: [UserAvailability] = []
+    @State private var availabilityPercentage: Double = 0.0
+    @State private var showingAvailabilityResults = false
+    
     // Project management states
     @State private var showingDeleteAlert = false
     @State private var showingRenameSheet = false
@@ -757,10 +763,86 @@ struct MainProjectWidget: View {
                 }
             )
         }
+        .sheet(isPresented: $showingAvailabilityCheck) {
+            AvailabilityCheckSheet(
+                userId: userId,
+                projectMembers: currentProject.project_members,
+                onAvailabilityChecked: { results, percentage in
+                    availabilityResults = results
+                    availabilityPercentage = percentage
+                    showingAvailabilityResults = true
+                }
+            )
+        }
+        .sheet(isPresented: $showingAvailabilityResults) {
+            AvailabilityResultsSheet(
+                availability: availabilityResults,
+                percentage: availabilityPercentage
+            )
+        }
     }
     
     private var eventsContent: some View {
         VStack {
+            // Availability Check Button Section
+            HStack {
+                Text("Team Coordination")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button("Check Availability") {
+                    showingAvailabilityCheck = true
+                }
+                .buttonStyle(.borderedProminent)
+                .font(.caption)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+            
+            // Availability Results Display
+            if !availabilityResults.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Availability: \(String(format: "%.0f", availabilityPercentage))%")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Spacer()
+                        
+                        Button("View Details") {
+                            showingAvailabilityResults = true
+                        }
+                        .font(.caption)
+                    }
+                    
+                    // Quick summary of available/unavailable users
+                    let availableUsers = availabilityResults.filter { $0.isAvailable }
+                    let unavailableUsers = availabilityResults.filter { !$0.isAvailable }
+                    
+                    HStack {
+                        Label("\(availableUsers.count) Available", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.caption)
+                        
+                        Spacer()
+                        
+                        Label("\(unavailableUsers.count) Busy", systemImage: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                }
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(8)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+            
+            Divider()
+                .padding(.horizontal)
+            
             if isLoadingEvents {
                 ProgressView("Loading events...")
                     .frame(maxWidth: .infinity, minHeight: 150)
