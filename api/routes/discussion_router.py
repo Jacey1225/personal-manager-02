@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query
-from api.commandline.discussion_model import DiscussionsModel, DiscussionRequest, DiscussionData
+from api.build.discussion_model import DiscussionsModel
+from api.schemas.projects import DiscussionRequest, DiscussionData
 
 discussion_router = APIRouter()
 commander = DiscussionsModel()

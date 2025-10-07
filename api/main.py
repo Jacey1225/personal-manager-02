@@ -8,15 +8,11 @@ from api.routes.organization_router import organization_router
 from api.routes.event_router import event_router
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from api.schemas.model import EventDetails
-from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import uvicorn
 from datetime import datetime, timezone
 import pytz
-from api.commandline.main_model import MainModel
 
-commander = MainModel()
 scheduler = AsyncIOScheduler()
 
 def build_app() -> FastAPI:
@@ -43,6 +39,7 @@ def build_app() -> FastAPI:
     app.include_router(discussion_router)
     app.include_router(organization_router)
     print(f"Routers included: {event_router}, {auth_router}, {task_list_router}, {project_router}, {coordination_router}, {discussion_router}, {organization_router}")
+    return app
 
 async def midnight_refresh():
     utc_now = datetime.now(timezone.utc)

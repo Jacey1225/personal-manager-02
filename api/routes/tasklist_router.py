@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from api.commandline.tasklist_model import TaskListModel, EventRequest
+from api.build.tasklist_model import TaskListModel, EventRequest
 
 task_list_router = APIRouter()
 commander = TaskListModel()

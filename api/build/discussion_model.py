@@ -1,5 +1,5 @@
 from api.services.track_projects.handleDiscussions import HandleDiscussions, DiscussionData
-from api.sechemas.projects import DiscussionRequest
+from api.schemas.projects import DiscussionRequest
 from pydantic import BaseModel, Field
 from typing import Optional
 

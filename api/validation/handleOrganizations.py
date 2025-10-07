@@ -1,5 +1,5 @@
 from typing import Callable
-from src.fetchMongo import MongoHandler
+from api.config.fetchMongo import MongoHandler
 
 user_handler = MongoHandler("userCredentials")
 organization_handler = MongoHandler("openOrganizations")

@@ -1,6 +1,13 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from api.schemas.calendar import DateTimeSet
+from datetime import datetime, time
+
+class DateTimeSet(BaseModel):
+    input_tokens: list[str] = Field(default=[], description="A list of all the input tokens found within an input text")
+    times: list[time] = Field(default=[], description="A list of all the times found within an input text")
+    dates: list[datetime] = Field(default=[], description="A list of all the dates found within an input text")
+    datetimes: list[datetime] = Field(default=[], description="A list of all the datetime objects found within an input text")
+    target_datetimes: list[tuple] = Field(default=[], description="A list of all the target datetime objects found within an input text as tuples representing start and end or due and None")
 
 class EventDetails(BaseModel):
     input_text: str = Field(default="None", description="Raw input text from a user")

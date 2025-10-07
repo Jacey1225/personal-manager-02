@@ -1,4 +1,4 @@
-from api.commandline.coordination_model import CoordinationModel
+from api.build.coordination_model import CoordinationModel
 from fastapi import APIRouter
 
 coordination_router = APIRouter()

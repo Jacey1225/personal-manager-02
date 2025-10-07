@@ -1,7 +1,6 @@
 from api.services.model_setup.structure_model_output import EventDetails, HandleResponse
-from api.schemas.calendar import DateTimeSet
-from api.schemas.google_calendar import CalendarInsights
-from api.schemas.model import InputRequest
+from api.schemas.calendar import CalendarInsights
+from api.schemas.model import InputRequest, DateTimeSet
 from api.services.google_calendar.handleEvents import AddToCalendar, DeleteFromCalendar, UpdateFromCalendar
 from api.services.track_projects.handleProjects import HostActions
 from typing import Optional, Dict, Any

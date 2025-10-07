@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
+import uuid
+from datetime import datetime
 
 class DiscussionRequest(BaseModel):
     user_id: str

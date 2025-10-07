@@ -1,7 +1,10 @@
 from fastapi import APIRouter
-from typing import Dict
+from typing import Dict, Any
+from api.schemas.model import InputRequest
+from api.build.main_model import MainModel
 
 event_router = APIRouter()
+commander = MainModel()
 
 @event_router.post("/scheduler/fetch_events")
 async def fetch_events(input_request: InputRequest) -> list[dict]:

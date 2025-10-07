@@ -1,8 +1,8 @@
-from src.google_calendar.handleEvents import RequestSetup
-from src.google_calendar.handleDateTimes import DateTimeSet
-from src.model_setup.structure_model_output import EventDetails
+from api.services.google_calendar.handleEvents import RequestSetup
+from api.services.google_calendar.handleDateTimes import DateTimeSet
+from api.services.model_setup.structure_model_output import EventDetails
 from datetime import datetime
-from src.validators.handleProjects import ValidateProjectHandler
+from api.validation.handleProjects import ValidateProjectHandler
 
 validator = ValidateProjectHandler()
 class CoordinateDateTimes(RequestSetup):

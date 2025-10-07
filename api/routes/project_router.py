@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query
-from api.commandline.project_model import ProjectModel, ModifyProjectRequest, CreateProjectRequest
+from api.build.project_model import ProjectModel
+from api.schemas.projects import CreateProjectRequest, ModifyProjectRequest
 
 project_router = APIRouter()
 commander = ProjectModel()

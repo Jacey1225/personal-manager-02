@@ -1,8 +1,7 @@
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 from api.validation.handleModelOutput import ValidateModelOutput
 from api.services.google_calendar.handleDateTimes import DateTimeHandler
-from api.schemas.model import EventDetails
-from api.schemas.calendar import DateTimeSet
+from api.schemas.model import EventDetails, DateTimeSet
 import os
 import torch
 from gtts import gTTS

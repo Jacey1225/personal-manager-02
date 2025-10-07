@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, time
 from typing import Union, Optional
-from api.schemas.calendar import DateTimeSet
+from api.schemas.model import DateTimeSet
 from api.validation.handleDatetimes import ValidateDateTimeSet
 
 validator = ValidateDateTimeSet()

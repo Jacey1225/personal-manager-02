@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query
-from api.commandline.organization_model import OrganizationModel, OrgRequest, CreateOrgRequest  
+from api.build.organization_model import OrganizationModel
+from api.schemas.projects import CreateOrgRequest, OrgRequest
 
 organization_router = APIRouter()
 commander = OrganizationModel()

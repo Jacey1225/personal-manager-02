@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from api.schemas.model import EventDetails
 from typing import Optional
 from datetime import datetime, time
 
@@ -33,14 +34,7 @@ class CalendarInsights(BaseModel):
     template: dict = Field(default={}, description="A template used to send the calendar API event info")
     is_event: bool = Field(default=False, description="Determines whether we want to handle the request as an event or task")
     selected_event_id: Optional[str] = Field(default="None", description="The event ID of the selected event to be updated or deleted")
-
-class DateTimeSet(BaseModel):
-    input_tokens: list[str] = Field(default=[], description="A list of all the input tokens found within an input text")
-    times: list[time] = Field(default=[], description="A list of all the times found within an input text")
-    dates: list[datetime] = Field(default=[], description="A list of all the dates found within an input text")
-    datetimes: list[datetime] = Field(default=[], description="A list of all the datetime objects found within an input text")
-    target_datetimes: list[tuple] = Field(default=[], description="A list of all the target datetime objects found within an input text as tuples representing start and end or due and None")
-
+    
 class EventRequest(BaseModel):
     event_details: EventDetails
     target_start: str | None = None
