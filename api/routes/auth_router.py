@@ -6,13 +6,12 @@ import os
 import uuid
 import json
 from dotenv import load_dotenv
-from pymongo import MongoClient
 from typing import Optional
 
 
-mongo_client = MongoHandler("userCredentials")
-project_handler = MongoHandler("openProjects")
-org_handler = MongoHandler("organizations")
+user_handler = await MongoHandler(None, "userAuthDatabase", "userCredentials").get_client()
+project_handler = await MongoHandler(None, "openProjects", "projects").get_client()
+org_handler = await MongoHandler(None, "organizations", "orgs").get_client()
 auth_router = APIRouter()
 
 @auth_router.get("/auth/signup")
@@ -37,14 +36,14 @@ def signup(
 
     # Check if user already exists
     user_id = str(uuid.uuid4())
-    while mongo_client.get_single_doc({"user_id": user_id}):
+    while user_handler.get_single_doc({"user_id": user_id}):
         user_id = str(uuid.uuid4())
 
     query_email = {"email": email}
     query_username = {"username": username}
 
-    if mongo_client.get_single_doc(query_email) or \
-    mongo_client.get_single_doc(query_username):
+    if user_handler.get_single_doc(query_email) or \
+    user_handler.get_single_doc(query_username):
         return {"status": "failed", "message": "Email or username already exists"}
 
     user_data = {
@@ -64,7 +63,7 @@ def signup(
     if org_id:
         user_data["organizations"].append(org_id)
 
-    result = mongo_client.post_insert(user_data)
+    result = user_handler.post_insert(user_data)
     print(f"User created with ID: {result.inserted_id}")
 
     return {"status": "success", "user_id": user_data.get("user_id")}
@@ -96,8 +95,8 @@ def login(
     }
 
     try:
-        if mongo_client.get_single_doc(query_login):
-            user_data = mongo_client.get_single_doc(query_login)
+        if user_handler.get_single_doc(query_login):
+            user_data = user_handler.get_single_doc(query_login)
             if project_id and project_id not in user_data.get("projects", {}):
                 project = project_handler.get_single_doc({"project_id": project_id})
                 user_data["projects"][project_id] = (project.get("project_name"), "view")
@@ -106,7 +105,7 @@ def login(
                 user_data["organizations"].append(org_id)
 
             user_id = user_data.get("user_id") #type: ignore
-            mongo_client.post_update({"user_id": user_id}, user_data)
+            user_handler.post_update({"user_id": user_id}, user_data)
             print(f"User {username} logged in successfully with user_id: {user_id}")
             print(f"User data: {user_data}")
             return {"status": "success", "user_id": user_id}
@@ -128,7 +127,7 @@ def remove_user(request: RemoveUserRequest) -> dict:
     """
     try:
         user_id = request.user_id
-        mongo_client.post_delete({"user_id": user_id})
+        user_handler.post_delete({"user_id": user_id})
         
         # Try to remove the token file, but don't fail if it doesn't exist
         token_file = f"data/tokens/token_{user_id}.json"

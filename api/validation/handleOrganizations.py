@@ -1,9 +1,9 @@
 from typing import Callable
 from api.config.fetchMongo import MongoHandler
 
-user_handler = MongoHandler("userCredentials")
-organization_handler = MongoHandler("openOrganizations")
-project_handler = MongoHandler("projects")
+user_handler = await MongoHandler("userCredentials").get_client()
+organization_handler = await MongoHandler("openOrganizations").get_client()
+project_handler = await MongoHandler("projects").get_client()
 
 class ValidateOrganizations:
     @staticmethod

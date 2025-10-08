@@ -1,0 +1,19 @@
+version: "3.8"
+services:
+  backend:
+      build:
+        context: ..
+        dockerfile: containers/api.Dockerfile
+      ports:
+        - "8000:8000"
+      volumes:
+        - ../api:/app/api
+      environment:
+        - PYTHONUNBUFFERED=1
+  ios:
+      build:
+        context: ../ios/Lazi
+        dockerfile: ../../containers/ios.Dockerfile
+      volumes:
+        - ../ios/Lazi:/ios
+      command: ["ls", "-l", "/ios"]

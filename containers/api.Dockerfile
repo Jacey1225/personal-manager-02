@@ -1,5 +1,5 @@
 # Use official Python image as base
-FROM python:3.11-bookworm
+FROM python:3.11-bookworm 
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -8,6 +8,9 @@ ENV PYTHONUNBUFFERED=1
 # Set work directory
 WORKDIR /app
 
+COPY api app/api
+COPY requirements.txt /app/
+
 # Install system dependencies
 RUN apt-get update --allow-releaseinfo-change && \
     apt-get install -y --fix-missing gcc cmake build-essential libsentencepiece-dev && \
@@ -15,7 +18,7 @@ RUN apt-get update --allow-releaseinfo-change && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt /app/
+
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 

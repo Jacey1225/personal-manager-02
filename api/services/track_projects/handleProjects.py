@@ -8,8 +8,8 @@ from typing import Optional
 import uuid
 from api.config.fetchMongo import MongoHandler
 
-user_handler = MongoHandler("userCredentials")
-project_handler = MongoHandler("openProjects")
+user_handler = await MongoHandler("userCredentials").get_client()
+project_handler = await MongoHandler("openProjects").get_client()
 validator = ValidateProjectHandler()
 
 #MARK: Host Actions
@@ -125,8 +125,8 @@ class HostActions(RequestSetup):
         try:
             projects = []
             for project_id, _ in self.user_data["projects"].items():
-                if project_handler.get_single_doc({"project_id": project_id}):
-                    project = project_handler.get_single_doc({"project_id": project_id})
+                project = project_handler.get_single_doc({"project_id": project_id})
+                if project:
                     for i, member in enumerate(project.get("project_members", [])):
                         user_id = member
                         username, email = self.fetch_name_email(user_id)

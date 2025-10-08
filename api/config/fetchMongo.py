@@ -4,14 +4,48 @@ from dotenv import load_dotenv
 from typing import Optional, Any
 
 load_dotenv()
-mongo_client = MongoClient(os.getenv("MONGO_URI", 'mongodb://localhost:27017'))
-db = mongo_client["userAuthDatabase"]
 
 class MongoHandler:
-    def __init__(self, collection):
+    def __init__(self, 
+                 client: MongoClient | None, 
+                 database: str, 
+                 collection: str):
+        self.client = client
+        self.db = database
         self.collection = db[collection]
 
-    def post_insert(self, insertion: dict) -> Any:
+    async def get_client(self):
+        """Request a MongoDB client connection.
+        """
+        if not self.client:
+            print(f"Setting up Mongo client...")
+            try:
+                self.client = await MongoClient(os.getenv("MONGO_URI", 'mongodb://localhost:27017')).start_session()
+                self.db = self.client[database]
+                self.collection = self.db[collection]
+                print(f"Mongo client set up successfully.")
+            except Exception as e:
+                print(f"Error setting up Mongo client: {e}")
+
+        if self.client:
+            print(f"Testing Connection...")
+            try:
+                await self.client.admin.command('ping')
+                print(f"MongoDB connection successful.")
+            except Exception as e:
+                print(f"Error testing MongoDB connection: {e}")
+
+    async def close_client(self):
+        """Close the MongoDB client and release resources.
+        """
+        if self.client:
+            await self.client.close()
+            self.client = None
+            self.db = None
+            self.collection = None
+            print(f"Mongo client closed.")
+
+    async def post_insert(self, insertion: dict) -> Any:
         """Insert a document into the MongoDB collection.
 
         Args:
@@ -24,7 +58,7 @@ class MongoHandler:
         except Exception as e:
             print(f"Error inserting document: {str(e)}")
 
-    def get_single_doc(self, query: dict, column: Optional[str] = None) -> dict:
+    async def get_single_doc(self, query: dict, column: Optional[str] = None) -> dict:
         """Fetch a single document from the MongoDB collection.
 
         Args:
@@ -43,7 +77,7 @@ class MongoHandler:
             print(f"Error fetching document: {str(e)}")
             return {"error": str(e)}
 
-    def get_multi_doc(self, query: dict, column: Optional[str] = None) -> Optional[list[dict]] | dict:
+    async def get_multi_doc(self, query: dict, column: Optional[str] = None) -> Optional[list[dict]] | dict:
         """Fetch multiple documents from the MongoDB collection.
 
         Args:
@@ -61,7 +95,7 @@ class MongoHandler:
             print(f"Error fetching documents: {str(e)}")
             return {"error": str(e)}
 
-    def post_update(self, query: dict, update: dict) -> None:
+    async def post_update(self, query: dict, update: dict) -> None:
         """Update a document in the MongoDB collection.
 
         Args:
@@ -77,7 +111,7 @@ class MongoHandler:
         except Exception as e:
             print(f"Error updating document: {str(e)}")
 
-    def post_delete(self, query: dict) -> None:
+    async def post_delete(self, query: dict) -> None:
         """Delete a document from the MongoDB collection.
 
         Args:
@@ -92,7 +126,7 @@ class MongoHandler:
         except Exception as e:
             print(f"Error deleting document: {str(e)}")
 
-    def get_all(self):
+    async def get_all(self):
         try:
             result = self.collection.find()
             return [doc for doc in result]
@@ -100,7 +134,7 @@ class MongoHandler:
             print(f"Error fetching documents: {str(e)}")
             return []
 
-    def delete_all(self):
+    async def delete_all(self):
         """Deletes all documents in the collection.
         """
         try:

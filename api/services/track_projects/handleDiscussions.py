@@ -5,8 +5,8 @@ from datetime import datetime
 from api.validation.handleDiscussions import ValidateDiscussions
 from api.schemas.projects import Discussion, DiscussionData
 
-user_handler = MongoHandler("userCredentials")
-discussion_handler = MongoHandler("openDiscussions")
+user_handler = await MongoHandler(None, "userCredentials").get_client()
+discussion_handler = await MongoHandler(None, "openDiscussions").get_client()
 validator = ValidateDiscussions()
 
 class HandleDiscussions:
