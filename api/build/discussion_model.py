@@ -42,7 +42,7 @@ class DiscussionsModel:
         await user_config.get_client()
         await discussion_config.get_client()
         discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
-        discussions = await discussion_control.list_project_discussions()
+        discussions = await discussion_control.project_discussions()
         return {"discussions": discussions}
 
     @staticmethod

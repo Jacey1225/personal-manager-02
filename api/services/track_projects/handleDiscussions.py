@@ -22,10 +22,11 @@ class HandleDiscussions:
     async def fetch(cls,
                     user_id: str,
                     project_id: str,
-                    user_handler: MongoHandler,
-                    discussion_handler: MongoHandler):
+                    user_handler,
+                    discussion_handler):
         self = cls(user_id, project_id, user_handler, discussion_handler)
         self.user_data = await self.user_handler.get_single_doc({"user_id": self.user_id})
+        return self
 
     @validator.validate_discussion
     async def view_discussion(self, discussion_id: str) -> dict:
@@ -71,13 +72,13 @@ class HandleDiscussions:
                     )
         return discussion
 
-    def project_discussion(self) -> Optional[list[dict]] | dict:
+    async def project_discussions(self) -> Optional[list[dict]] | dict:
         """Lists all discussions for the current project.
 
         Returns:
             Optional[list[dict]] | dict: A list of discussions for the specified project, or an error message.
         """
-        discussions = self.discussion_handler.get_multi_doc({"project_id": self.project_id})
+        discussions = await self.discussion_handler.get_multi_doc({"project_id": self.project_id})
         print(f"Fetched discussions for project {self.project_id}: {discussions}")
         
         if discussions:
@@ -85,8 +86,11 @@ class HandleDiscussions:
         
         return discussions
 
-    @validator.validate_new_discussion
-    async def create_discussion(self, title: str, contributors: list[str], content: list[dict], transparency: bool) -> dict:
+    async def create_discussion(self, 
+                                title: str, 
+                                contributors: list[str], 
+                                content: list[dict], 
+                                transparency: bool) -> dict:
         """Creates a new discussion.
 
         Args:
