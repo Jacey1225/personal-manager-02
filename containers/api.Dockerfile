@@ -12,10 +12,12 @@ COPY api app/api
 COPY requirements.txt /app/
 
 # Install system dependencies
-RUN apt-get update --allow-releaseinfo-change && \
-    apt-get install -y --fix-missing gcc cmake build-essential libsentencepiece-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN for i in 1 2 3 4 5; do \
+      apt-get update --allow-releaseinfo-change && \
+      apt-get install -y --fix-missing gcc cmake build-essential libsentencepiece-dev && \
+      apt-get clean && \
+      rm -rf /var/lib/apt/lists/* && break || sleep 5; \
+    done
 
 # Install Python dependencies
 

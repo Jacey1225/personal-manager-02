@@ -1,7 +1,11 @@
 from api.services.track_projects.handleDiscussions import HandleDiscussions, DiscussionData
+from api.config.fetchMongo import MongoHandler
 from api.schemas.projects import DiscussionRequest
 from pydantic import BaseModel, Field
 from typing import Optional
+
+user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+discussion_config = MongoHandler(None, "userAuthDatabase", "openDiscussions")
 
 class DiscussionsModel:
     @staticmethod
@@ -17,8 +21,10 @@ class DiscussionsModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        discussion_handler = HandleDiscussions(user_id, project_id)
-        discussion = discussion_handler.view_discussion(discussion_id)
+        await user_config.get_client()
+        await discussion_config.get_client()
+        discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
+        discussion = await discussion_control.view_discussion(discussion_id)
         return {"discussion": discussion}
 
     @staticmethod
@@ -33,8 +39,10 @@ class DiscussionsModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        discussion_handler = HandleDiscussions(user_id, project_id)
-        discussions = discussion_handler.project_discussion()
+        await user_config.get_client()
+        await discussion_config.get_client()
+        discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
+        discussions = await discussion_control.list_project_discussions()
         return {"discussions": discussions}
 
     @staticmethod
@@ -49,13 +57,15 @@ class DiscussionsModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        discussion_handler = HandleDiscussions(user_id, project_id)
-        discussion_handler.create_discussion(
-            discussion_data.title, 
-            discussion_data.active_contributors, 
-            discussion_data.content, 
+        await user_config.get_client()
+        await discussion_config.get_client()
+        discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
+        await discussion_control.create_discussion(
+            discussion_data.title,
+            discussion_data.active_contributors,
+            discussion_data.content,
             discussion_data.transparency)
-        return {}
+        return {"status": "Discussion created successfully"}
 
     @staticmethod
     async def delete_discussion(request: DiscussionRequest, discussion_id: str) -> dict:
@@ -70,8 +80,10 @@ class DiscussionsModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        discussion_handler = HandleDiscussions(user_id, project_id)
-        result = discussion_handler.delete_discussion(discussion_id)
+        await user_config.get_client()
+        await discussion_config.get_client()
+        discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
+        result = await discussion_control.delete_discussion(discussion_id)
         return result
 
     @staticmethod
@@ -88,8 +100,10 @@ class DiscussionsModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        discussion_handler = HandleDiscussions(user_id, project_id)
-        result = discussion_handler.add_member_to_discussion(discussion_id)
+        await user_config.get_client()
+        await discussion_config.get_client()
+        discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
+        result = await discussion_control.add_member_to_discussion(discussion_id)
         return result
 
     @staticmethod
@@ -105,8 +119,10 @@ class DiscussionsModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        discussion_handler = HandleDiscussions(user_id, project_id)
-        result = discussion_handler.remove_member_from_discussion(discussion_id)
+        await user_config.get_client()
+        await discussion_config.get_client()
+        discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
+        result = await discussion_control.remove_member_from_discussion(discussion_id)
         return result
 
     @staticmethod
@@ -123,10 +139,12 @@ class DiscussionsModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        discussion_handler = HandleDiscussions(user_id, project_id)
-        result = discussion_handler.post_to_discussion(discussion_id, user_id, message)
+        await user_config.get_client()
+        await discussion_config.get_client()
+        discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
+        result = await discussion_control.post_to_discussion(discussion_id, user_id, message)
         return result
-    
+            
     @staticmethod
     async def delete_from_discussion(request: DiscussionRequest, discussion_id: str, message: str) -> dict | None:
         """Deletes a message from an existing discussion.
@@ -141,7 +159,9 @@ class DiscussionsModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        discussion_handler = HandleDiscussions(user_id, project_id)
-        result = discussion_handler.delete_from_discussion(discussion_id, user_id, message)
+        await user_config.get_client()
+        await discussion_config.get_client()
+        discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
+        result = await discussion_control.delete_from_discussion(discussion_id, user_id, message)
         return result
-    
+        

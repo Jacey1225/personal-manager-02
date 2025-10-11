@@ -2,41 +2,56 @@ from api.validation.handleProjects import ValidateProjectHandler
 from api.services.google_calendar.eventSetup import RequestSetup
 from api.services.google_calendar.handleDateTimes import DateTimeHandler
 from api.services.model_setup.structure_model_output import EventDetails
+from api.config.fetchMongo import MongoHandler
 from api.schemas.projects import ProjectDetails
 from pydantic import BaseModel, Field
 from typing import Optional
 import uuid
-from api.config.fetchMongo import MongoHandler
 
-user_handler = await MongoHandler("userCredentials").get_client()
-project_handler = await MongoHandler("openProjects").get_client()
 validator = ValidateProjectHandler()
 
 #MARK: Host Actions
 class HostActions(RequestSetup):
-    def __init__(self, user_id, event_details: EventDetails = EventDetails()):
+    def __init__(self, 
+                 user_id: str, 
+                 user_handler, 
+                 project_handler, 
+                 event_details: EventDetails = EventDetails()):
+        self.user_handler = user_handler
+        self.project_handler = project_handler
         self.event_details = event_details
         self.user_id = user_id
-        self.user_data = user_handler.get_single_doc({"user_id": self.user_id})
-
-        self.project_id = str(uuid.uuid4())
-        while project_handler.get_single_doc({"project_id": self.project_id}):
-            self.project_id = str(uuid.uuid4())
+        self.user_data = None
 
         super().__init__(self.event_details, user_id)
         self.all_events = []
 
-    def global_delete(self):
-        user = user_handler.get_single_doc({"user_id": self.user_id})
+    @classmethod
+    async def fetch(cls, 
+                    user_id: str, 
+                    user_handler, 
+                    project_handler, 
+                    event_details: EventDetails = EventDetails()):
+        self = cls(
+            user_id=user_id,
+            user_handler=user_handler,
+            project_handler=project_handler,
+            event_details=event_details
+        )
+        self.user_data = await self.user_handler.get_single_doc({"user_id": self.user_id})
+        return self
+
+    async def global_delete(self):
+        user = await self.user_handler.get_single_doc({"user_id": self.user_id})
         if not user:
             raise ValueError("User not found")
         username = user["username"]
         email = user["email"]
         password = user["password"]
         if email == "jaceysimps@gmail.com" and username == "jaceysimpson" and password == "WeLoveDoggies16!":
-            project_handler.delete_all()
+            await self.project_handler.delete_all()
 
-    def fetch_user_id(self, email, username):
+    async def fetch_user_id(self, email, username):
         """Fetches the user ID associated with the given email and username.
 
         Args:
@@ -47,14 +62,14 @@ class HostActions(RequestSetup):
             str: The user ID if found, otherwise None.
         """
         try:
-            user = user_handler.get_single_doc({"email": email, "username": username})
+            user = await self.user_handler.get_single_doc({"email": email, "username": username})
             return user["user_id"] if user else None
         except Exception as e:
             print(f"Error fetching user ID: {e}")
             print(f"Function: {self.fetch_user_id.__name__}")
             return None
 
-    def fetch_name_email(self, user_id):
+    async def fetch_name_email(self, user_id):
         """Fetches the name and email associated with the given user ID.
 
         Args:
@@ -64,7 +79,7 @@ class HostActions(RequestSetup):
             tuple: A tuple containing the name and email if found, otherwise (None, None).
         """
         try:
-            user = user_handler.get_single_doc({"user_id": user_id})
+            user = await self.user_handler.get_single_doc({"user_id": user_id})
             if user:
                 return user["username"], user["email"]
         except Exception as e:
@@ -112,7 +127,7 @@ class HostActions(RequestSetup):
             return self.event_details
 
     @validator.validate_project_args
-    def list_projects(self):
+    async def list_projects(self):
         """Lists all projects for the user.
 
         Returns:
@@ -125,11 +140,11 @@ class HostActions(RequestSetup):
         try:
             projects = []
             for project_id, _ in self.user_data["projects"].items():
-                project = project_handler.get_single_doc({"project_id": project_id})
+                project = await self.project_handler.get_single_doc({"project_id": project_id})
                 if project:
                     for i, member in enumerate(project.get("project_members", [])):
                         user_id = member
-                        username, email = self.fetch_name_email(user_id)
+                        username, email = await self.fetch_name_email(user_id)
                         if user_id:
                             project["project_members"][i] = (username, email)
 
@@ -142,7 +157,7 @@ class HostActions(RequestSetup):
 
     @validator.validate_user_data
     @validator.validate_project_args
-    def create_project(self, project_name: str, project_likes: int, project_transparency: bool, 
+    async def create_project(self, project_name: str, project_likes: int, project_transparency: bool, 
                        project_members: Optional[list[tuple[str, str]]] = None, organizations: Optional[list[str]] = None) -> ProjectDetails | None:
         """Creates a new project for the user.
 
@@ -152,10 +167,17 @@ class HostActions(RequestSetup):
             project_transparency (bool): The transparency status of the project.
             project_members (list[tuple[str]]): A list of user IDs associated with the project.
         """
+        self.user_data = await self.user_handler.get_single_doc({"user_id": self.user_id})
+        self.project_id = str(uuid.uuid4())
+        project = await self.project_handler.get_single_doc({"project_id": self.project_id})
+        while project:
+            self.project_id = str(uuid.uuid4())
+            project = await self.project_handler.get_single_doc({"project_id": self.project_id})
+            
         member_ids = []
         if project_members:
             for email, username in project_members:
-                user_id = self.fetch_user_id(email, username)
+                user_id = await self.fetch_user_id(email, username)
                 if user_id:
                     member_ids.append(user_id)
 
@@ -171,8 +193,8 @@ class HostActions(RequestSetup):
             query_item = {"user_id": self.user_data["user_id"]}
             new_data = self.project_details.model_dump()
             self.user_data["projects"][self.project_id] = (project_name, "admin")
-            user_handler.post_update(query_item, self.user_data)
-            project_handler.post_insert(new_data)
+            await self.user_handler.post_update(query_item, self.user_data)
+            await self.project_handler.post_insert(new_data)
         except Exception as e:
             print(f"Error creating project: {e}")
             print(f"Function: {self.create_project.__name__}")
@@ -181,7 +203,7 @@ class HostActions(RequestSetup):
             return self.project_details
 
     @validator.validate_project_existence
-    def delete_project(self, project_id: str) -> None:
+    async def delete_project(self, project_id: str) -> None:
         """Deletes an existing project for the user.
 
         Args:
@@ -198,24 +220,24 @@ class HostActions(RequestSetup):
 
         try:
             query_item = {"user_id": self.user_data["user_id"]}
-            user_handler.post_update(query_item, self.user_data)
+            await self.user_handler.post_update(query_item, self.user_data)
 
-            if project_handler.get_single_doc({"project_id": project_id}):
-                project_handler.post_delete({"project_id": project_id})
+            if await self.project_handler.get_single_doc({"project_id": project_id}):
+                await self.project_handler.post_delete({"project_id": project_id})
         except Exception as e:
             print(f"Error deleting project: {e}")
             print(f"Function: {self.delete_project.__name__}")
             pass
 
     @validator.validate_project_existence
-    def rename_project(self, project_id: str, new_name: str) -> None:
+    async def rename_project(self, project_id: str, new_name: str) -> None:
         user_permission = self.get_user_permission(project_id)
         if user_permission != "admin":
             raise ValueError("User does not have permission to rename this project")
         
         try:
-            if project_handler.get_single_doc({"project_id": project_id}):
-                project_handler.post_update({"project_id": project_id}, {"project_name": new_name})
+            if await self.project_handler.get_single_doc({"project_id": project_id}):
+                await self.project_handler.post_update({"project_id": project_id}, {"project_name": new_name})
         except Exception as e:
             print(f"Error renaming project: {e}")
             print(f"Function: {self.rename_project.__name__}")
@@ -223,7 +245,7 @@ class HostActions(RequestSetup):
 
     @validator.validate_user_data
     @validator.validate_project_events
-    def fetch_project_events(self, project_id: str) -> list[dict]:
+    async def fetch_project_events(self, project_id: str) -> list[dict]:
         """Fetches events associated with a specific project.
 
         Args:
@@ -233,11 +255,10 @@ class HostActions(RequestSetup):
             list[dict]: A list of events associated with the project.
         """
         try:
-            if project_handler.get_single_doc({"project_id": project_id}):
-                project = project_handler.get_single_doc({"project_id": project_id})
-
+            project = await self.project_handler.get_single_doc({"project_id": project_id})
+            if project:
                 for user_id in project["project_members"]:
-                    user = user_handler.get_single_doc({"user_id": user_id})
+                    user = await self.user_handler.get_single_doc({"user_id": user_id})
                     if user:
                         request_setup = RequestSetup(EventDetails(), user_id, description=f"Lazi: {project_id}")
                         request_setup.fetch_events_list()
@@ -252,7 +273,7 @@ class HostActions(RequestSetup):
             print(f"Error fetching project events in {self.fetch_project_events.__name__}: {e}")
             return []
 
-    def edit_transparency(self, project_id: str, transparency: bool) -> None:
+    async def edit_transparency(self, project_id: str, transparency: bool) -> None:
         """Edits the transparency status of an existing project.
 
         Args:
@@ -265,17 +286,17 @@ class HostActions(RequestSetup):
             raise ValueError("User does not have permission to edit project transparency")
 
         try:
-            if project_handler.get_single_doc({"project_id": project_id}):
-                project = project_handler.get_single_doc({"project_id": project_id})
+            project = await self.project_handler.get_single_doc({"project_id": project_id})
+            if project:
                 project["project_transparency"] = transparency
                 query_item = {"project_id": project_id}
-                project_handler.post_update(query_item, project)
+                await self.project_handler.post_update(query_item, project)
         except Exception as e:
             print(f"Error editing project transparency: {e}")
             print(f"Function: {self.edit_transparency.__name__}")
             pass
 
-    def edit_permissions(self, project_id: str, email: str, username: str, permission: str) -> bool:
+    async def edit_permissions(self, project_id: str, email: str, username: str, permission: str) -> bool:
         """Edit the permissions of a user for a specific project.
 
         Args:
@@ -292,7 +313,7 @@ class HostActions(RequestSetup):
             bool: True if the permissions were successfully edited, False otherwise.
         """
         try:
-            user_data = user_handler.get_single_doc({"email": email, "username": username})
+            user_data = await self.user_handler.get_single_doc({"email": email, "username": username})
             if not user_data:
                 raise ValueError("User not found")
 
@@ -303,7 +324,7 @@ class HostActions(RequestSetup):
                 raise ValueError("User does not have permission to edit")
             else:
                 user_data["projects"][project_id][1] = permission
-                user_handler.post_update({"user_id": user_data["user_id"]}, user_data)
+                await self.user_handler.post_update({"user_id": user_data["user_id"]}, user_data)
                 return True
 
         except Exception as e:
@@ -314,15 +335,19 @@ class HostActions(RequestSetup):
 
 #MARK: Guest Actions
 class GuestActions(HostActions):
-    def __init__(self, user_id: str, event_details: EventDetails = EventDetails()):
+    def __init__(self, 
+                 user_id: str, 
+                 user_handler, 
+                 project_handler, 
+                 event_details: EventDetails = EventDetails()):
         self.user_id = user_id
         self.event_details = event_details
-        super().__init__(self.user_id, self.event_details)
-        self.user_data = user_handler.get_single_doc({"user_id": self.user_id})
+        super().__init__(self.user_id, user_handler, project_handler, self.event_details)
 
+    
     @validator.validate_project
     @validator.validate_project_args
-    def view_project(self, project_id: str) -> tuple[dict, dict]:
+    async def view_project(self, project_id: str) -> tuple[dict, dict]:
         """Fetches project details for a specific project.
 
         Args:
@@ -332,11 +357,11 @@ class GuestActions(HostActions):
             tuple: The project details and user data with permissions.
         """
         try:
-            project = project_handler.get_single_doc({"project_id": project_id})
+            project = await self.project_handler.get_single_doc({"project_id": project_id})
             if not project:
                 raise ValueError("Project not found")
             for i, user_id in enumerate(project.get("project_members", [])):
-                username, email = self.fetch_name_email(user_id)
+                username, email = await self.fetch_name_email(user_id)
                 if username and email:
                     project["project_members"][i] = (email, username)
         except Exception as e:
@@ -365,23 +390,22 @@ class GuestActions(HostActions):
             return project, {}
 
     @validator.validate_user_data
-    def like_project(self, project_id: str) -> None:
+    async def like_project(self, project_id: str) -> None:
         """Likes an existing project.
 
         Args:
             project_id (str): The ID of the project to like.
         """
         try:
-            if project_handler.get_single_doc({"project_id": project_id}):
-                project = project_handler.get_single_doc({"project_id": project_id})
-                if project:
-                    if project_id not in self.user_data.get("projects_liked", []):
-                        self.user_data["projects_liked"].append(project_id)
-                        query_item = {"user_id": self.user_data["user_id"]}
-                        user_handler.post_update(query_item, self.user_data)
+            project = await project_handler.get_single_doc({"project_id": project_id})
+            if project:
+                if project_id not in self.user_data.get("projects_liked", []):
+                    self.user_data["projects_liked"].append(project_id)
+                    query_item = {"user_id": self.user_data["user_id"]}
+                    await self.user_handler.post_update(query_item, self.user_data)
 
-                        project["project_likes"] = project.get("project_likes", 0) + 1
-                        project_handler.post_update({"project_id": project_id}, project)
+                    project["project_likes"] = project.get("project_likes", 0) + 1
+                    await self.project_handler.post_update({"project_id": project_id}, project)
         except Exception as e:
             print(f"Error liking project: {e}")
             print(f"Function: {self.like_project.__name__}")
@@ -390,7 +414,7 @@ class GuestActions(HostActions):
         return self.user_data["projects_liked"]
             
     @validator.validate_user_data
-    def remove_like(self, project_id: str) -> None:
+    async def remove_like(self, project_id: str) -> None:
         """Removes a like from an existing project.
 
         Args:
@@ -400,12 +424,11 @@ class GuestActions(HostActions):
             if project_id in self.user_data.get("projects_liked", []):
                 self.user_data["projects_liked"].remove(project_id)
                 query_item = {"user_id": self.user_data["user_id"]}
-                user_handler.post_update(query_item, self.user_data)
-                if project_handler.get_single_doc({"project_id": project_id}):
-                    project = project_handler.get_single_doc({"project_id": project_id})
-                    if project:
-                        project["project_likes"] = max(0, project.get("project_likes", 0) - 1)
-                        project_handler.post_update({"project_id": project_id}, project)
+                await self.user_handler.post_update(query_item, self.user_data)
+                project = await self.project_handler.get_single_doc({"project_id": project_id})
+                if project:
+                    project["project_likes"] = max(0, project.get("project_likes", 0) - 1)
+                    await self.project_handler.post_update({"project_id": project_id}, project)
         except Exception as e:
             print(f"Error removing like: {e}")
             print(f"Function: {self.remove_like.__name__}")
@@ -414,7 +437,7 @@ class GuestActions(HostActions):
         return self.user_data["projects_liked"]
     
     @validator.validate_project
-    def add_project_member(self, project_id: str, new_email: str, username: str, code: str) -> None:
+    async def add_project_member(self, project_id: str, new_email: str, username: str, code: str) -> None:
         """Adds a new member to an existing project.
 
         Args:
@@ -428,22 +451,22 @@ class GuestActions(HostActions):
             raise ValueError("User does not have permission to add members to this project")
             
         try:
-            if project_handler.get_single_doc({"project_id": project_id}):
-                project = project_handler.get_single_doc({"project_id": project_id})
+            project = await self.project_handler.get_single_doc({"project_id": project_id})
+            if project:
                 if (new_email, username) not in project["project_members"] and code == project.get("project_id"):
-                    new_user = user_handler.get_single_doc({"email": new_email, "username": username})
+                    new_user = await self.user_handler.get_single_doc({"email": new_email, "username": username})
                     if new_user:
                         project["project_members"].append(new_user["user_id"])
                         new_user["projects"][project_id] = (project["project_name"], "view")
-                        user_handler.post_update({"user_id": new_user["user_id"]}, new_user)
+                        await self.user_handler.post_update({"user_id": new_user["user_id"]}, new_user)
                     query_item = {"project_id": project_id}
-                    project_handler.post_update(query_item, project)
+                    await self.project_handler.post_update(query_item, project)
         except Exception as e:
             print(f"Error adding project member: {e}")
             print(f"Function: {self.add_project_member.__name__}")
 
     @validator.validate_project
-    def delete_project_member(self, project_id: str, user_id: str) -> None:
+    async def delete_project_member(self, project_id: str, user_id: str) -> None:
         """Deletes a member from an existing project.
 
         Args:
@@ -455,14 +478,13 @@ class GuestActions(HostActions):
             raise ValueError("User does not have permission to delete members from this project")
         
         try:
-            if project_handler.get_single_doc({"project_id": project_id}):
-                project = project_handler.get_single_doc({"project_id": project_id})
-                user = user_handler.get_single_doc({"user_id": user_id})
-                if user and project:
-                    project["project_members"].remove(user["user_id"])
-                    user["projects"].remove(project_id)
-                    project_handler.post_update({"project_id": project_id}, project)
-                    user_handler.post_update({"user_id": user_id}, user)
+            project = await self.project_handler.get_single_doc({"project_id": project_id})
+            user = await self.user_handler.get_single_doc({"user_id": user_id})
+            if user and project:
+                project["project_members"].remove(user["user_id"])
+                user["projects"].remove(project_id)
+                await self.project_handler.post_update({"project_id": project_id}, project)
+                await self.user_handler.post_update({"user_id": user_id}, user)
         except Exception as e:
             print(f"Error deleting project member: {e}")
             print(f"Function: {self.delete_project_member.__name__}")

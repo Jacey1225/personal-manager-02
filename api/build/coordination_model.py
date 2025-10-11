@@ -5,7 +5,7 @@ from datetime import datetime
 import json
 import os
 
-mongo_client = MongoHandler("userCredentials")
+user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
 
 class CoordinationModel:
     @staticmethod
@@ -20,10 +20,11 @@ class CoordinationModel:
         """
         users = []
         members = request_body.get("members", [])
+        user_handler = await user_config.get_client().client
         for member in members:
             query_user = {"email": member.get("email").lower()}
-            user_data = mongo_client.get_single_doc(query_user)
-            all_users = mongo_client.get_all()
+            user_data = await user_handler.get_single_doc(query_user)
+            all_users = await user_handler.get_all()
             print(f"All users in database: {all_users}")
             if user_data:
                 users.append(user_data)

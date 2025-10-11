@@ -1,6 +1,10 @@
 from api.services.track_projects.handleProjects import HostActions, GuestActions
 from api.schemas.projects import CreateProjectRequest, ModifyProjectRequest
+from api.config.fetchMongo import MongoHandler
 from typing import List
+
+user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
 
 class ProjectModel:
     @staticmethod
@@ -14,8 +18,10 @@ class ProjectModel:
             dict: A message indicating the result of the operation.
         """
         user_id = request.user_id
-        project_handler = HostActions(user_id)
-        project_handler.global_delete()
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await HostActions.fetch(user_id, user_config, project_config)
+        await handler.global_delete()
         return {"message": "All projects deleted successfully."}
 
     @staticmethod
@@ -31,8 +37,11 @@ class ProjectModel:
         project_likes = request.project_likes
         transparency = request.project_transparency
         members = request.project_members
-        project_handler = HostActions(request.user_id)
-        project_handler.create_project(request.project_name, project_likes, transparency, members)
+        user_id = request.user_id
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await HostActions.fetch(user_id, user_config, project_config)
+        await handler.create_project(request.project_name, project_likes, transparency, members)
         return {"message": "Project created successfully", "project_name": request.project_name}
 
     @staticmethod
@@ -47,8 +56,10 @@ class ProjectModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        project_handler = GuestActions(user_id)
-        project, user_data = project_handler.view_project(project_id)
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        project, user_data = await handler.view_project(project_id)
         return {"project": project, "user_data": user_data}
 
     @staticmethod
@@ -64,8 +75,10 @@ class ProjectModel:
         """
         print(f"Deleting project: {request.project_id} for user: {request.user_id}")
         user_id = request.user_id
-        project_handler = HostActions(user_id)
-        project_handler.delete_project(request.project_id)
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await HostActions.fetch(user_id, user_config, project_config)
+        await handler.delete_project(request.project_id)
         return {"message": "Project deleted successfully."}
 
     @staticmethod
@@ -84,8 +97,10 @@ class ProjectModel:
         user_id = request.user_id
         project_id = request.project_id
         project_name = request.project_name
-        project_handler = HostActions(user_id)
-        project_handler.rename_project(project_id, project_name)
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await HostActions.fetch(user_id, user_config, project_config)
+        await handler.rename_project(project_id, project_name)
         return {"message": "Project renamed successfully."}
 
     @staticmethod
@@ -100,8 +115,10 @@ class ProjectModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        project_handler = GuestActions(user_id)
-        project_handler.like_project(project_id)
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        await handler.like_project(project_id)
         return {"message": "Project liked successfully."}
 
     @staticmethod
@@ -116,8 +133,10 @@ class ProjectModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        project_handler = GuestActions(user_id)
-        project_handler.remove_like(project_id)
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        await handler.remove_like(project_id)
         return {"message": "Project like removed successfully."}
 
     @staticmethod
@@ -133,9 +152,11 @@ class ProjectModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        project_handler = HostActions(user_id)
-        return project_handler.fetch_project_events(project_id)
-    
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await HostActions.fetch(user_id, user_config, project_config)
+        return await handler.fetch_project_events(project_id)
+
     @staticmethod
     async def add_project_member(request: ModifyProjectRequest, new_email: str, new_username: str, code: str):
         """Adds a new member to an existing project.
@@ -153,8 +174,10 @@ class ProjectModel:
         user_id = request.user_id
         project_id = request.project_id
 
-        project_handler = GuestActions(user_id)
-        project_handler.add_project_member(project_id, new_email, new_username, code)
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        await handler.add_project_member(project_id, new_email, new_username, code)
         return {"message": "Member added successfully."}
     
     @staticmethod
@@ -173,16 +196,15 @@ class ProjectModel:
         user_id = request.user_id
         project_id = request.project_id
         
-        # Get the user_id of the member to be deleted using their email and username
-        project_handler = GuestActions(user_id)
-        
         # We need to find the user_id for the member being deleted
         # This requires a method to fetch user_id from email and username
-        host_handler = HostActions(user_id)  # Use HostActions to access the fetch_user_id method
-        target_user_id = host_handler.fetch_user_id(email, username)
-        
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        target_user_id = await handler.fetch_user_id(email, username)
+
         if target_user_id:
-            project_handler.delete_project_member(project_id, target_user_id)
+            await handler.delete_project_member(project_id, target_user_id)
             return {"message": "Member deleted successfully."}
         else:
             return {"message": "Member not found.", "error": True}
@@ -197,9 +219,11 @@ class ProjectModel:
         Returns:
             list[dict]: A list of projects associated with the user.
         """
-        project_handler = HostActions(user_id)
-        return project_handler.list_projects()
-    
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await HostActions.fetch(user_id, user_config, project_config)
+        return await handler.list_projects()
+
     @staticmethod
     async def edit_transparency(request, new_transparency: bool):
         """Edits the transparency status of an existing project.
@@ -213,8 +237,10 @@ class ProjectModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        project_handler = HostActions(user_id)
-        project_handler.edit_transparency(project_id, new_transparency)
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await HostActions.fetch(user_id, user_config, project_config)
+        await handler.edit_transparency(project_id, new_transparency)
         return {"message": "Project transparency updated successfully."}
     
     @staticmethod
@@ -232,6 +258,8 @@ class ProjectModel:
         """
         user_id = request.user_id
         project_id = request.project_id
-        project_handler = HostActions(user_id)
-        project_handler.edit_permissions(project_id, email, username, new_permission)
+        await user_config.get_client()
+        await project_config.get_client()
+        handler = await HostActions.fetch(user_id, user_config, project_config)
+        await handler.edit_permissions(project_id, email, username, new_permission)
         return {"message": "User permission updated successfully."}

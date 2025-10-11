@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Query
 from api.build.discussion_model import DiscussionsModel
+from api.config.fetchMongo import MongoHandler
 from api.schemas.projects import DiscussionRequest, DiscussionData
 
 discussion_router = APIRouter()
 commander = DiscussionsModel()
-
 
 @discussion_router.get("/discussions/view_discussion")
 async def view_discussion(user_id: str = Query(...), project_id: str = Query(...), discussion_id: str = Query(...)):

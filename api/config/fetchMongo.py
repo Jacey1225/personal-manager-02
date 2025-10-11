@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from dotenv import load_dotenv
 from typing import Optional, Any
@@ -10,9 +11,11 @@ class MongoHandler:
                  client: MongoClient | None, 
                  database: str, 
                  collection: str):
-        self.client = client
-        self.db = database
-        self.collection = db[collection]
+            self.client = client
+            self.database = database
+            self.collection_name = collection
+            self.db = None
+            self.collection = None
 
     async def get_client(self):
         """Request a MongoDB client connection.
@@ -20,9 +23,9 @@ class MongoHandler:
         if not self.client:
             print(f"Setting up Mongo client...")
             try:
-                self.client = await MongoClient(os.getenv("MONGO_URI", 'mongodb://localhost:27017')).start_session()
-                self.db = self.client[database]
-                self.collection = self.db[collection]
+                self.client = AsyncIOMotorClient(os.getenv("MONGO_URI", 'mongodb://localhost:27017'))
+                self.db = self.client[self.database]
+                self.collection = self.db[self.collection_name]
                 print(f"Mongo client set up successfully.")
             except Exception as e:
                 print(f"Error setting up Mongo client: {e}")
@@ -39,7 +42,7 @@ class MongoHandler:
         """Close the MongoDB client and release resources.
         """
         if self.client:
-            await self.client.close()
+            self.client.close()
             self.client = None
             self.db = None
             self.collection = None
@@ -52,7 +55,7 @@ class MongoHandler:
             insertion (dict): The document to be inserted.
         """
         try:
-            result = self.collection.insert_one(insertion)
+            result = await self.collection.insert_one(insertion)
             print(f"Document inserted with ID: {result.inserted_id}")
             return result
         except Exception as e:
@@ -67,11 +70,10 @@ class MongoHandler:
         """
         try:
             if column:
-                query_col = self.collection[column]
-                document = query_col.find_one(query, {"_id": 0})
+                document = await self.collection.find_one(query, {"_id": 0, column: 1})
                 return document if document else {}
             else:
-                document = self.collection.find_one(query, {"_id": 0})
+                document = await self.collection.find_one(query, {"_id": 0})
                 return document if document else {}
         except Exception as e:
             print(f"Error fetching document: {str(e)}")
@@ -86,11 +88,13 @@ class MongoHandler:
         """
         try:
             if column:
-                query_col = self.collection[column]
-                documents = query_col.find(query, {"_id": 0})
-                return [doc for doc in documents] if documents else []
+                cursor = self.collection.find(query, {"_id": 0, column: 1})
             else:
-                return [doc for doc in self.collection.find(query, {"_id": 0})]
+                cursor = self.collection.find(query, {"_id": 0})
+            documents = []
+            async for doc in cursor:
+                documents.append(doc)
+            return documents
         except Exception as e:
             print(f"Error fetching documents: {str(e)}")
             return {"error": str(e)}
@@ -103,7 +107,7 @@ class MongoHandler:
             update (dict): The update operations to apply.
         """
         try:
-            result = self.collection.update_one(query, {"$set": update})
+            result = await self.collection.update_one(query, {"$set": update})
             if result.modified_count > 0:
                 print(f"Document updated successfully.")
             else:
@@ -118,7 +122,7 @@ class MongoHandler:
             query (dict): The query to find the document to delete.
         """
         try:
-            result = self.collection.delete_one(query)
+            result = await self.collection.delete_one(query)
             if result.deleted_count > 0:
                 print(f"Document deleted successfully.")
             else:
@@ -128,8 +132,11 @@ class MongoHandler:
 
     async def get_all(self):
         try:
-            result = self.collection.find()
-            return [doc for doc in result]
+            cursor = self.collection.find()
+            documents = []
+            async for doc in cursor:
+                documents.append(doc)
+            return documents
         except Exception as e:
             print(f"Error fetching documents: {str(e)}")
             return []
@@ -138,7 +145,7 @@ class MongoHandler:
         """Deletes all documents in the collection.
         """
         try:
-            result = self.collection.delete_many({})
+            result = await self.collection.delete_many({})
             print(f"Documents deleted: {result.deleted_count}")
         except Exception as e:
             print(f"Error deleting documents: {str(e)}")

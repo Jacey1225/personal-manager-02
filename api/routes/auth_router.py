@@ -8,14 +8,27 @@ import json
 from dotenv import load_dotenv
 from typing import Optional
 
-
-user_handler = await MongoHandler(None, "userAuthDatabase", "userCredentials").get_client()
-project_handler = await MongoHandler(None, "openProjects", "projects").get_client()
-org_handler = await MongoHandler(None, "organizations", "orgs").get_client()
+user_handler = None
+project_handler = None
 auth_router = APIRouter()
 
+def set_handlers(_user_handler, _project_handler):
+    global user_handler, project_handler
+    user_handler = _user_handler
+    project_handler = _project_handler
+
+
+user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+project_config = MongoHandler(None, "userProjectsDatabase", "projects")
+
+@auth_router.on_event("startup")
+async def startup_event():
+    await user_config.get_client()
+    await project_config.get_client()
+    set_handlers(user_config, project_config)
+
 @auth_router.get("/auth/signup")
-def signup(
+async def signup(
     username: str, 
     email: str, 
     password: str, 
@@ -33,17 +46,18 @@ def signup(
     Returns:
         dict: A dictionary containing the status and user ID.
     """
-
     # Check if user already exists
     user_id = str(uuid.uuid4())
-    while user_handler.get_single_doc({"user_id": user_id}):
+    user_data = await user_handler.get_single_doc({"user_id": user_id})
+    while user_data:
         user_id = str(uuid.uuid4())
+        user_data = await user_handler.get_single_doc({"user_id": user_id})
 
     query_email = {"email": email}
     query_username = {"username": username}
 
-    if user_handler.get_single_doc(query_email) or \
-    user_handler.get_single_doc(query_username):
+    if await user_handler.get_single_doc(query_email) or \
+       await user_handler.get_single_doc(query_username):
         return {"status": "failed", "message": "Email or username already exists"}
 
     user_data = {
@@ -56,20 +70,20 @@ def signup(
     }
 
     if project_id:
-        project = project_handler.get_single_doc({"project_id": project_id})
+        project = await project_handler.get_single_doc({"project_id": project_id})
         if project:
             user_data["projects"][project_id] = (project.get("project_name"), "view")
 
     if org_id:
         user_data["organizations"].append(org_id)
 
-    result = user_handler.post_insert(user_data)
+    result = await user_handler.post_insert(user_data)
     print(f"User created with ID: {result.inserted_id}")
 
     return {"status": "success", "user_id": user_data.get("user_id")}
 
 @auth_router.get("/auth/login")
-def login(
+async def login(
     username: str, 
     password: str, 
     project_id: Optional[str]=None, 
@@ -95,17 +109,17 @@ def login(
     }
 
     try:
-        if user_handler.get_single_doc(query_login):
-            user_data = user_handler.get_single_doc(query_login)
+        user_data = await user_handler.get_single_doc(query_login)
+        if user_data:
             if project_id and project_id not in user_data.get("projects", {}):
-                project = project_handler.get_single_doc({"project_id": project_id})
+                project = await project_handler.get_single_doc({"project_id": project_id})
                 user_data["projects"][project_id] = (project.get("project_name"), "view")
 
             if org_id and org_id not in user_data.get("organizations", []):
                 user_data["organizations"].append(org_id)
 
             user_id = user_data.get("user_id") #type: ignore
-            user_handler.post_update({"user_id": user_id}, user_data)
+            await user_handler.post_update({"user_id": user_id}, user_data)
             print(f"User {username} logged in successfully with user_id: {user_id}")
             print(f"User data: {user_data}")
             return {"status": "success", "user_id": user_id}
@@ -116,7 +130,7 @@ def login(
         return {"status": "failed", "message": "Invalid username or password"}
 
 @auth_router.post("/auth/remove_user")
-def remove_user(request: RemoveUserRequest) -> dict:
+async def remove_user(request: RemoveUserRequest) -> dict:
     """Remove a user.
 
     Args:
@@ -127,7 +141,7 @@ def remove_user(request: RemoveUserRequest) -> dict:
     """
     try:
         user_id = request.user_id
-        user_handler.post_delete({"user_id": user_id})
+        await user_handler.post_delete({"user_id": user_id})
         
         # Try to remove the token file, but don't fail if it doesn't exist
         token_file = f"data/tokens/token_{user_id}.json"

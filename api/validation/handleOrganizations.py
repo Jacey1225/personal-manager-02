@@ -1,10 +1,4 @@
 from typing import Callable
-from api.config.fetchMongo import MongoHandler
-
-user_handler = await MongoHandler("userCredentials").get_client()
-organization_handler = await MongoHandler("openOrganizations").get_client()
-project_handler = await MongoHandler("projects").get_client()
-
 class ValidateOrganizations:
     @staticmethod
     def validate_organization_data(func: Callable):
@@ -15,13 +9,6 @@ class ValidateOrganizations:
                     organization_id = args[0]
                 except IndexError:
                     raise ValueError(f"{func.__name__}, {func.__class__}: Organization ID is required")
-
-            organization = organization_handler.get_single_doc({"id": organization_id})
-            if not organization:
-                print(f"Organization not found for organization_id: {organization_id}")
-                raise ValueError(f"{func.__name__}, {func.__class__}: Organization not found for organization_id: {organization_id}")
-
-            print(f"Found Organization Data: {organization}")
 
             if not self.user_data:
                 print(f"User data not found for user_id: {self.user_id}")

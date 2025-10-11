@@ -1,12 +1,19 @@
 from api.services.track_projects.handleOrganizations import HandleOrganizations, ProjectDetails
 from api.schemas.projects import CreateOrgRequest, OrgRequest, ProjectDetails
+from api.config.fetchMongo import MongoHandler
 
+user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+organization_config = MongoHandler(None, "userAuthDatabase", "openOrganizations")
+project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
 
 class OrganizationModel:
     @staticmethod
     async def create_organization(request: CreateOrgRequest, user_id: str):
-        handler = HandleOrganizations(user_id)
-        return handler.create_organization(
+        await user_config.get_client()
+        await organization_config.get_client()
+        await project_config.get_client()
+        handler = await HandleOrganizations.fetch(user_id, user_config, organization_config, project_config)
+        return await handler.create_organization(
             name=request.name,
             members=request.members,
             projects=request.projects
@@ -14,31 +21,53 @@ class OrganizationModel:
 
     @staticmethod
     async def delete_organization(request: OrgRequest):
-        handler = HandleOrganizations(request.user_id)
-        return handler.delete_organization(request.organization_id)
+        await user_config.get_client()
+        await organization_config.get_client()
+        await project_config.get_client()
+        handler = await HandleOrganizations.fetch(request.user_id, user_config, organization_config, project_config)
+        return await handler.delete_organization(request.organization_id)
 
     @staticmethod
     async def list_organizations(user_id: str):
-        handler = HandleOrganizations(user_id)
-        return handler.list_organizations()
+        await user_config.get_client()
+        await organization_config.get_client()
+        await project_config.get_client()
+        handler = await HandleOrganizations.fetch(user_id, user_config, organization_config, project_config)
+        return await handler.list_organizations()
     
     @staticmethod
     async def add_member(request: OrgRequest, new_email: str, new_username: str):
-        handler = HandleOrganizations(request.user_id)
-        return handler.add_member(request.organization_id, new_email, new_username)
+        user_id = request.user_id
+        await user_config.get_client()
+        await organization_config.get_client()
+        await project_config.get_client()
+        handler = HandleOrganizations(user_id, user_config, organization_config, project_config)
+        return await handler.add_member(request.organization_id, new_email, new_username)
 
     @staticmethod
     async def remove_member(request: OrgRequest, email: str):
-        handler = HandleOrganizations(request.user_id)
-        return handler.delete_member(request.organization_id, email)
+        user_id = request.user_id
+        await user_config.get_client()
+        await organization_config.get_client()
+        await project_config.get_client()
+        handler = await HandleOrganizations.fetch(user_id, user_config, organization_config, project_config)
+        return await handler.delete_member(request.organization_id, email)
 
     @staticmethod
     async def add_project(request: OrgRequest, project_dict: dict):
-        handler = HandleOrganizations(request.user_id)
+        user_id = request.user_id
+        await user_config.get_client()
+        await organization_config.get_client()
+        await project_config.get_client()
+        handler = await HandleOrganizations.fetch(user_id, user_config, organization_config, project_config)
         project_details = ProjectDetails(**project_dict)
         return handler.add_project(request.organization_id, project_details)
 
     @staticmethod
     async def remove_project(request: OrgRequest, project_id: str):
-        handler = HandleOrganizations(request.user_id)
-        return handler.delete_project(request.organization_id, project_id)
+        user_id = request.user_id
+        await user_config.get_client()
+        await organization_config.get_client()
+        await project_config.get_client()
+        handler = await HandleOrganizations.fetch(user_id, user_config, organization_config, project_config)
+        return await handler.delete_project(request.organization_id, project_id)

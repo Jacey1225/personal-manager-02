@@ -5,18 +5,30 @@ from datetime import datetime
 from api.validation.handleDiscussions import ValidateDiscussions
 from api.schemas.projects import Discussion, DiscussionData
 
-user_handler = await MongoHandler(None, "userCredentials").get_client()
-discussion_handler = await MongoHandler(None, "openDiscussions").get_client()
 validator = ValidateDiscussions()
-
 class HandleDiscussions:
-    def __init__(self, user_id: str, project_id: str):
+    def __init__(self, 
+                 user_id: str, 
+                 project_id: str, 
+                 user_handler, 
+                 discussion_handler):
         self.user_id = user_id
-        self.user_data = user_handler.get_single_doc({"user_id": self.user_id})
         self.project_id = project_id
+        self.user_handler = user_handler
+        self.discussion_handler = discussion_handler
+        self.user_data = None
+
+    @classmethod
+    async def fetch(cls,
+                    user_id: str,
+                    project_id: str,
+                    user_handler: MongoHandler,
+                    discussion_handler: MongoHandler):
+        self = cls(user_id, project_id, user_handler, discussion_handler)
+        self.user_data = await self.user_handler.get_single_doc({"user_id": self.user_id})
 
     @validator.validate_discussion
-    def view_discussion(self, discussion_id: str) -> dict:
+    async def view_discussion(self, discussion_id: str) -> dict:
         """Fetches a specific discussion.
 
         Args:
@@ -25,7 +37,7 @@ class HandleDiscussions:
         Returns:
             dict: The details of the requested discussion.
         """
-        discussion = discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
         if discussion:
             # Convert legacy tuple format to new dictionary format if needed
             discussion = self._migrate_content_format(discussion)
@@ -53,7 +65,7 @@ class HandleDiscussions:
                                 "timestamp": discussion["data"]["created_time"]  
                             })
                     discussion["data"]["content"] = migrated_content
-                    discussion_handler.post_update(
+                    self.discussion_handler.post_update(
                         {"discussion_id": discussion["discussion_id"]}, 
                         {"data.content": migrated_content}
                     )
@@ -65,7 +77,7 @@ class HandleDiscussions:
         Returns:
             Optional[list[dict]] | dict: A list of discussions for the specified project, or an error message.
         """
-        discussions = discussion_handler.get_multi_doc({"project_id": self.project_id})
+        discussions = self.discussion_handler.get_multi_doc({"project_id": self.project_id})
         print(f"Fetched discussions for project {self.project_id}: {discussions}")
         
         if discussions:
@@ -74,7 +86,7 @@ class HandleDiscussions:
         return discussions
 
     @validator.validate_new_discussion
-    def create_discussion(self, title: str, contributors: list[str], content: list[dict], transparency: bool) -> dict:
+    async def create_discussion(self, title: str, contributors: list[str], content: list[dict], transparency: bool) -> dict:
         """Creates a new discussion.
 
         Args:
@@ -100,29 +112,29 @@ class HandleDiscussions:
             )
         )
         try:
-            discussion_handler.post_insert(discussion.model_dump())
+            await self.discussion_handler.post_insert(discussion.model_dump())
         except Exception as e:
             return {"status": "error", "message": str(e)}
         
         return {"status": "success", "data": {"discussion_id": discussion.discussion_id}}
 
     @validator.validate_discussion
-    def delete_discussion(self, discussion_id: str) -> dict:
+    async def delete_discussion(self, discussion_id: str) -> dict:
         """Deletes an existing discussion.
 
         Args:
             discussion_id (str): The ID of the discussion to delete.
         """
-        discussion = discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
         if discussion and discussion["data"]["author_id"] == self.user_id:
             query_item = {"discussion_id": discussion_id, "data.author_id": self.user_id}
-            discussion_handler.post_delete(query_item)
+            await self.discussion_handler.post_delete(query_item)
             return {"status": "success", "data": {"discussion_id": discussion_id}}
         else:
             return {"status": "error", "message": "Discussion not found or you don't have permission to delete it"}
     
     @validator.validate_discussion
-    def add_member_to_discussion(self, discussion_id: str):
+    async def add_member_to_discussion(self, discussion_id: str):
         """Adds a new member to the discussion.
 
         Args:
@@ -132,11 +144,11 @@ class HandleDiscussions:
         Returns:
             dict: A dictionary containing the status and any relevant data.
         """
-        discussion = discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
         if discussion and discussion["data"]['author_id'] == self.user_id:
             if self.user_id not in discussion["data"]["active_contributors"]:
                 discussion["data"]["active_contributors"].append(self.user_id)
-                discussion_handler.post_update({"discussion_id": discussion_id}, 
+                await self.discussion_handler.post_update({"discussion_id": discussion_id}, 
                                                {"data.active_contributors": discussion["data"]["active_contributors"]})
                 return {"status": "success", "data": {"discussion_id": discussion_id, "new_member": self.user_id}}
             else:
@@ -145,7 +157,7 @@ class HandleDiscussions:
             return {"status": "error", "message": "Discussion not found"}
 
     @validator.validate_discussion
-    def remove_member_from_discussion(self, discussion_id: str) -> dict | None:
+    async def remove_member_from_discussion(self, discussion_id: str) -> dict | None:
         """Removes a member from the discussion.
 
         Args:
@@ -154,18 +166,18 @@ class HandleDiscussions:
         Returns:
             dict | None: The status and data of the operation.
         """
-        discussion = discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
         if discussion and discussion["data"]['author_id'] == self.user_id:
             if self.user_id in discussion["data"]["active_contributors"]:
                 discussion["data"]["active_contributors"].remove(self.user_id)
-                discussion_handler.post_update({"discussion_id": discussion_id}, 
+                await self.discussion_handler.post_update({"discussion_id": discussion_id}, 
                                                {"data.active_contributors": discussion["data"]["active_contributors"]})
                 return {"status": "success", "data": {"discussion_id": discussion_id, "removed_member": self.user_id}}
             else:
                 return {"status": "error", "message": "User is not a member of the discussion"}
 
     @validator.validate_discussion
-    def post_to_discussion(self, discussion_id: str, user_id: str, message: str) -> dict:
+    async def post_to_discussion(self, discussion_id: str, user_id: str, message: str) -> dict:
         """Posts a message to an existing discussion.
 
         Args:
@@ -173,16 +185,16 @@ class HandleDiscussions:
             user_id (str): The ID of the user posting the message.
             message (str): The content of the message.
         """
-        discussion = discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
         if not discussion:
             return {"error": "Discussion not found"}
             
         try:
-            username = user_handler.get_single_doc({"user_id": user_id}).get("username", "Unknown User")
-            
+            username = (await self.user_handler.get_single_doc({"user_id": user_id})).get("username", "Unknown User")
+
             if username not in discussion["data"]["active_contributors"]:
                 discussion["data"]["active_contributors"].append(username)
-                discussion_handler.post_update(
+                await self.discussion_handler.post_update(
                     {"discussion_id": discussion_id}, 
                     {"data.active_contributors": discussion["data"]["active_contributors"]}
                 )
@@ -194,7 +206,7 @@ class HandleDiscussions:
             }
             
             discussion["data"]["content"].append(new_message)
-            discussion_handler.post_update(
+            await self.discussion_handler.post_update(
                 {"discussion_id": discussion_id}, 
                 {"data.content": discussion["data"]["content"]}
             )
@@ -204,7 +216,7 @@ class HandleDiscussions:
             return {"error": str(e)}
 
     @validator.validate_discussion
-    def delete_from_discussion(self, discussion_id: str, user_id: str, message: str) -> dict | None:
+    async def delete_from_discussion(self, discussion_id: str, user_id: str, message: str) -> dict | None:
         """Deletes a message from a discussion.
 
         Args:
@@ -216,17 +228,17 @@ class HandleDiscussions:
             dict | None: The status and data of the operation.
         """
 
-        discussion = discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
         if discussion:
             try:
-                username = user_handler.get_single_doc({"user_id": user_id}).get("username", "Unknown User")
+                username = (await self.user_handler.get_single_doc({"user_id": user_id})).get("username", "Unknown User")
                 content_list = discussion["data"]["content"]
                 for i, msg_obj in enumerate(content_list):
                     if (isinstance(msg_obj, dict) and 
                         msg_obj.get("username") == username and 
                         msg_obj.get("message") == message):
                         content_list.pop(i)
-                        discussion_handler.post_update({"discussion_id": discussion_id}, {"data.content": content_list})
+                        await self.discussion_handler.post_update({"discussion_id": discussion_id}, {"data.content": content_list})
                         return {"status": "success", "data": {"discussion_id": discussion_id}}
                 return {"error": "Message not found in discussion"}
             except Exception as e:

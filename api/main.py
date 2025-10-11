@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from api.config.fetchMongo import MongoHandler
 from api.routes.auth_router import auth_router
 from api.routes.tasklist_router import task_list_router
 from api.routes.project_router import project_router
@@ -38,7 +39,7 @@ def build_app() -> FastAPI:
     app.include_router(coordination_router)
     app.include_router(discussion_router)
     app.include_router(organization_router)
-    print(f"Routers included: {event_router}, {auth_router}, {task_list_router}, {project_router}, {coordination_router}, {discussion_router}, {organization_router}")
+
     return app
 
 async def midnight_refresh():
