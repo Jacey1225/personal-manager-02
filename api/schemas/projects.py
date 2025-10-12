@@ -6,7 +6,7 @@ from datetime import datetime
 class DiscussionRequest(BaseModel):
     user_id: str
     project_id: str
-
+    force_refresh: bool
 
 class DiscussionData(BaseModel):
     title: str = Field(description="The title of the discussion")
@@ -36,6 +36,7 @@ class CreateOrgRequest(BaseModel):
 class OrgRequest(BaseModel):
     user_id: str
     organization_id: str
+    force_refresh: bool
 
 class ResourceDetails(BaseModel):
     resource_id: str = Field(default=str(uuid.uuid4()), description="Unique identifier for the resource")
@@ -63,3 +64,4 @@ class ModifyProjectRequest(BaseModel):
     project_id: str
     user_id: str
     project_name: str
+    force_refresh: bool = False

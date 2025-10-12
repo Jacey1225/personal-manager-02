@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 from api.build.project_model import ProjectModel
 from api.schemas.projects import CreateProjectRequest, ModifyProjectRequest
+from api.config.cache import project_cache
 
 project_router = APIRouter()
 commander = ProjectModel()
@@ -8,8 +9,10 @@ commander = ProjectModel()
 #MARK: Guest Actions
 
 @project_router.get("/projects/view_project")
-async def view_project(project_id: str = Query(...), user_id: str = Query(...), project_name: str = Query(...)):
-    request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name=project_name)
+async def view_project(project_id: str = Query(...), user_id: str = Query(...), project_name: str = Query(...), force_refresh: bool = Query(False)):
+    request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name=project_name, force_refresh=force_refresh)
+    if request in project_cache and request.force_refresh:
+        project_cache.pop(request)
     return await commander.view_project(request)
 
 @project_router.post("/projects/like_project")
@@ -39,8 +42,10 @@ async def rename_project(request: ModifyProjectRequest):
     return await commander.rename_project(request)
 
 @project_router.get("/projects/events/{project_id}")
-async def get_project_events(project_id: str, user_id: str = Query(...)):
-    request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name="")
+async def get_project_events(project_id: str, user_id: str = Query(...), force_refresh: bool = Query(False)):
+    request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name="", force_refresh=force_refresh)
+    if request in project_cache and request.force_refresh:
+        project_cache.pop(request)
     return await commander.get_project_events(request)
 
 @project_router.get("/projects/add_member")
@@ -55,7 +60,7 @@ async def delete_project_member(project_id: str = Query(...), user_id: str = Que
 
 @project_router.get("/projects/list")
 async def list_projects(user_id: str = Query(...)):
-    return await commander.list_projects(user_id)
+    return await commander.list_projects(user_id=user_id)
 
 @project_router.post("/projects/edit_transparency")
 async def edit_project_transparency(request: ModifyProjectRequest, transparency: bool):

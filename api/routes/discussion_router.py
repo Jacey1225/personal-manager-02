@@ -2,18 +2,23 @@ from fastapi import APIRouter, Query
 from api.build.discussion_model import DiscussionsModel
 from api.config.fetchMongo import MongoHandler
 from api.schemas.projects import DiscussionRequest, DiscussionData
+from api.config.cache import discussion_cache, cached
 
 discussion_router = APIRouter()
 commander = DiscussionsModel()
 
 @discussion_router.get("/discussions/view_discussion")
-async def view_discussion(user_id: str = Query(...), project_id: str = Query(...), discussion_id: str = Query(...)):
-    request = DiscussionRequest(user_id=user_id, project_id=project_id)
+async def view_discussion(user_id: str = Query(...), project_id: str = Query(...), discussion_id: str = Query(...), force_refresh: bool = Query(False)):
+    request = DiscussionRequest(user_id=user_id, project_id=project_id, force_refresh=force_refresh)
+    if request in discussion_cache and request.force_refresh:
+        discussion_cache.pop(request)
     return await commander.view_discussion(request, discussion_id)
 
 @discussion_router.get("/discussions/list_project_discussions")
-async def list_project_discussions(user_id: str = Query(...), project_id: str = Query(...)):
-    request = DiscussionRequest(user_id=user_id, project_id=project_id)
+async def list_project_discussions(user_id: str = Query(...), project_id: str = Query(...), force_refresh: bool = Query(False)):
+    request = DiscussionRequest(user_id=user_id, project_id=project_id, force_refresh=force_refresh)
+    if request in discussion_cache and request.force_refresh:
+        discussion_cache.pop(request)
     return await commander.list_project_discussions(request)
 
 @discussion_router.post("/discussions/create_discussion")

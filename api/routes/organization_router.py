@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 from api.build.organization_model import OrganizationModel
 from api.schemas.projects import CreateOrgRequest, OrgRequest
+from api.config.cache import organization_cache
 
 organization_router = APIRouter()
 commander = OrganizationModel()
@@ -14,8 +15,10 @@ async def delete_organization(request: OrgRequest):
     return await commander.delete_organization(request)
 
 @organization_router.get("/organizations/list_orgs")
-async def list_organizations(user_id: str = Query(...)):
-    return await commander.list_organizations(user_id=user_id)
+async def list_organizations(request: OrgRequest):
+    if request.user_id in organization_cache and request.force_refresh:
+        organization_cache.pop(request.user_id)
+    return await commander.list_organizations(user_id=request.user_id)
 
 @organization_router.post("/organizations/add_member")
 async def add_member(request: OrgRequest, new_email: str, new_username: str):

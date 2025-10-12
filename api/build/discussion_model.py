@@ -2,13 +2,14 @@ from api.services.track_projects.handleDiscussions import HandleDiscussions, Dis
 from api.config.fetchMongo import MongoHandler
 from api.schemas.projects import DiscussionRequest
 from pydantic import BaseModel, Field
+from api.config.cache import discussion_cache, cached
 from typing import Optional
 
 user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
 discussion_config = MongoHandler(None, "userAuthDatabase", "openDiscussions")
-
 class DiscussionsModel:
     @staticmethod
+    @cached(cache=discussion_cache)
     async def view_discussion(request: DiscussionRequest, discussion_id: str) -> dict:
         """Fetches an existing discussion.
 
@@ -28,6 +29,7 @@ class DiscussionsModel:
         return {"discussion": discussion}
 
     @staticmethod
+    @cached(cache=discussion_cache)
     async def list_project_discussions(request: DiscussionRequest) -> dict:
         """Lists all discussions for a project.
 
