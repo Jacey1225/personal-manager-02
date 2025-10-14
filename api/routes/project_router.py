@@ -11,7 +11,7 @@ commander = ProjectModel()
 @project_router.get("/projects/view_project")
 async def view_project(project_id: str = Query(...), user_id: str = Query(...), project_name: str = Query(...), force_refresh: bool = Query(False)):
     request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name=project_name, force_refresh=force_refresh)
-    if request in project_cache and request.force_refresh:
+    if request in project_cache and force_refresh:
         project_cache.pop(request)
     return await commander.view_project(request)
 
@@ -44,7 +44,7 @@ async def rename_project(request: ModifyProjectRequest):
 @project_router.get("/projects/events/{project_id}")
 async def get_project_events(project_id: str, user_id: str = Query(...), force_refresh: bool = Query(False)):
     request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name="", force_refresh=force_refresh)
-    if request in project_cache and request.force_refresh:
+    if request in project_cache and force_refresh:
         project_cache.pop(request)
     return await commander.get_project_events(request)
 

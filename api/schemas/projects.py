@@ -8,6 +8,15 @@ class DiscussionRequest(BaseModel):
     project_id: str
     force_refresh: bool
 
+    def __hash__(self):
+        return hash((self.user_id, self.project_id, self.force_refresh))
+
+    def __eq__(self, other):
+        if not isinstance(other, DiscussionRequest):
+            return False
+        return (self.user_id, self.project_id, self.force_refresh) == \
+               (other.user_id, other.project_id, other.force_refresh)
+
 class DiscussionData(BaseModel):
     title: str = Field(description="The title of the discussion")
     author_id: str = Field(description="The User ID of the discussion author")
@@ -38,6 +47,15 @@ class OrgRequest(BaseModel):
     organization_id: str
     force_refresh: bool
 
+    def __hash__(self):
+        return hash((self.user_id, self.organization_id, self.force_refresh))
+
+    def __eq__(self, other):
+        if not isinstance(other, OrgRequest):
+            return False
+        return (self.user_id, self.organization_id, self.force_refresh) == \
+               (other.user_id, other.organization_id, other.force_refresh)
+
 class ResourceDetails(BaseModel):
     resource_id: str = Field(default=str(uuid.uuid4()), description="Unique identifier for the resource")
     resource_name: str = Field(..., description="Name of the resource")
@@ -65,3 +83,12 @@ class ModifyProjectRequest(BaseModel):
     user_id: str
     project_name: str
     force_refresh: bool = False
+    
+    def __hash__(self):
+        return hash((self.project_id, self.user_id, self.project_name, self.force_refresh))
+    
+    def __eq__(self, other):
+        if not isinstance(other, ModifyProjectRequest):
+            return False
+        return (self.project_id, self.user_id, self.project_name, self.force_refresh) == \
+               (other.project_id, other.user_id, other.project_name, other.force_refresh)
