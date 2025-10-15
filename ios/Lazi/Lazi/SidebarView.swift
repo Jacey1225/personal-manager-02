@@ -309,7 +309,7 @@ struct SettingsView: View {
         isDeleting = true
         errorMessage = ""
 
-    guard let url = URL(string: "http://192.168.1.222:8000/auth/remove_user") else {
+    guard let url = URL(string: "http://192.168.1.188:8000/auth/remove_user") else {
             errorMessage = "Invalid URL"
             showingError = true
             isDeleting = false
@@ -360,7 +360,7 @@ struct SettingsView: View {
         isDeletingProjects = true
         errorMessage = ""
         
-    guard let url = URL(string: "http://192.168.1.222:8000/projects/global_delete") else {
+    guard let url = URL(string: "http://192.168.1.188:8000/projects/global_delete") else {
             errorMessage = "Invalid URL"
             showingError = true
             isDeletingProjects = false

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, APIRouter
-from api.services.google_calendar.enable_google_api import ConfigureGoogleAPI
+from api.config.extensions.enable_google_api import ConfigureGoogleAPI
 from api.schemas.auth import OAuthCompleteRequest, RemoveUserRequest
 from api.config.fetchMongo import MongoHandler
 import os

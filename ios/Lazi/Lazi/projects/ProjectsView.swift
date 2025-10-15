@@ -338,7 +338,7 @@ struct ProjectsView: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/list") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/list") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -399,7 +399,7 @@ struct ProjectsView: View {
         
         print("Fetching project details for: \(project.project_name) (ID: \(project.project_id))")
 
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/view_project") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/view_project") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoadingProjectDetails = false
@@ -812,7 +812,7 @@ struct MainProjectWidget: View {
     private func fetchProjectEvents() {
         isLoadingEvents = true
 
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/events/\(currentProject.project_id)") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/events/\(currentProject.project_id)") else {
             print("Invalid URL for project events")
             isLoadingEvents = false
             return
@@ -864,7 +864,7 @@ struct MainProjectWidget: View {
         isLiking = true
         let isCurrentlyLiked = currentProject.is_liked ?? false
         let endpoint = isCurrentlyLiked ? "unlike_project" : "like_project"
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/\(endpoint)") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/\(endpoint)") else {
             isLiking = false
             return
         }
@@ -912,7 +912,7 @@ struct MainProjectWidget: View {
     private func renameProject() {
         guard !newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/rename_project") else { return }
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/rename_project") else { return }
         
         let requestBody = [
             "project_id": currentProject.project_id,
@@ -950,7 +950,7 @@ struct MainProjectWidget: View {
     }
     
     private func deleteProject() {
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/delete_project") else { return }
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/delete_project") else { return }
 
         let requestBody = [
             "project_id": currentProject.project_id,
@@ -1191,7 +1191,7 @@ struct CreateProjectSheet: View {
         // Filter out empty members
         let validMembers = members.filter { !$0.0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !$0.1.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/create_project") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/create_project") else {
             errorMessage = "Invalid URL"
             showingError = true
             isCreating = false
@@ -1306,7 +1306,7 @@ struct AddMemberSheet: View {
         let trimmedEmail = newMemberEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedUsername = newMemberUsername.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/add_member") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/add_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isAdding = false
@@ -1558,7 +1558,7 @@ struct ProjectDetailView: View {
         isLoadingEvents = true
         errorMessage = ""
         
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/events/\(project.project_id)") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/events/\(project.project_id)") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoadingEvents = false
@@ -1609,7 +1609,7 @@ struct ProjectDetailView: View {
     }
     
     private func deleteMember(email: String, username: String) {
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/delete_member") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/delete_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             return
@@ -1650,7 +1650,7 @@ struct ProjectDetailView: View {
     
     private func fetchCurrentUserEmail() {
         // Fetch user data to get current user's email
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/view_project") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/view_project") else {
             print("Invalid URL for fetching user data")
             return
         }
@@ -1781,7 +1781,7 @@ struct JoinProjectSheet: View {
         isJoining = true
         errorMessage = ""
 
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/add_member") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/add_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isJoining = false
@@ -1803,7 +1803,7 @@ struct JoinProjectSheet: View {
     
     private func fetchUserEmailAndJoin() {
         // First, get the user's email
-        guard let userUrl = URL(string: "http://192.168.1.222:8000/projects/view_project") else {
+        guard let userUrl = URL(string: "http://192.168.1.188:8000/projects/view_project") else {
             errorMessage = "Invalid URL for user data"
             showingError = true
             isJoining = false
@@ -1860,7 +1860,7 @@ struct JoinProjectSheet: View {
     }
     
     private func addMemberWithEmail(_ email: String) {
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/add_member") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/add_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isJoining = false
@@ -2071,7 +2071,7 @@ struct AvailabilityCheckSheet: View {
     }
     
     private func fetchUsers(completion: @escaping ([[String: Any]]) -> Void) {
-        guard let url = URL(string: "http://192.168.1.222:8000/coordinate/fetch_users") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/coordinate/fetch_users") else {
             errorMessage = "Invalid URL"
             showingError = true
             isChecking = false
@@ -2200,7 +2200,7 @@ struct AvailabilityCheckSheet: View {
             return
         }
 
-        guard let url = URL(string: "http://192.168.1.222:8000/coordinate/get_availability") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/coordinate/get_availability") else {
             DispatchQueue.main.async {
                 errorMessage = "Invalid URL"
                 showingError = true
@@ -2453,7 +2453,7 @@ struct RenameProjectSheet: View {
         
         let trimmedName = currentName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/rename_project") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/rename_project") else {
             errorMessage = "Invalid URL"
             showingError = true
             isRenaming = false
@@ -2672,7 +2672,7 @@ struct ProjectMemberManagementSheet: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/add_member") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/add_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -2727,7 +2727,7 @@ struct ProjectMemberManagementSheet: View {
         isLoading = true
         errorMessage = ""
         
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/delete_member") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/delete_member") else {
             errorMessage = "Invalid URL"
             showingError = true
             isLoading = false
@@ -2918,7 +2918,7 @@ struct EditPermissionSheet: View {
         isUpdating = true
         errorMessage = ""
         
-        guard let url = URL(string: "http://192.168.1.222:8000/projects/edit_permission") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/projects/edit_permission") else {
             errorMessage = "Invalid URL"
             showingError = true
             isUpdating = false

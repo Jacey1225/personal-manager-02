@@ -406,7 +406,7 @@ struct TasksListView: View {
     }
     
     private func fetchEventsFromInput(inputText: String) {
-    guard let url = URL(string: "http://192.168.1.222:8000/scheduler/fetch_events") else {
+    guard let url = URL(string: "http://192.168.1.188:8000/scheduler/fetch_events") else {
             self.errorMessage = "Invalid fetch_events URL."
             self.showingError = true
             self.isProcessing = false
@@ -468,7 +468,7 @@ struct TasksListView: View {
     }
     
     private func processEventsInput(events: [[String: Any]]) {
-    guard let url = URL(string: "http://192.168.1.222:8000/scheduler/process_input") else {
+    guard let url = URL(string: "http://192.168.1.188:8000/scheduler/process_input") else {
             self.errorMessage = "Invalid process_input URL."
             self.showingError = true
             self.isProcessing = false
@@ -552,7 +552,7 @@ struct TasksListView: View {
     }
     
     private func callDeleteEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
-    guard let url = URL(string: "http://192.168.1.222:8000/scheduler/delete_event/\(eventId)") else {
+    guard let url = URL(string: "http://192.168.1.188:8000/scheduler/delete_event/\(eventId)") else {
             self.errorMessage = "Invalid delete URL."
             self.showingError = true
             return
@@ -611,7 +611,7 @@ struct TasksListView: View {
     }
     
     private func callUpdateEvent(eventId: String, selectedEvent: SelectableEvent, responseRequest: ResponseRequest) {
-    guard let url = URL(string: "http://192.168.1.222:8000/scheduler/update_event/\(eventId)") else {
+    guard let url = URL(string: "http://192.168.1.188:8000/scheduler/update_event/\(eventId)") else {
             self.errorMessage = "Invalid update URL."
             self.showingError = true
             return
@@ -776,7 +776,7 @@ struct TasksListView: View {
         self.isLoading = true
         self.errorMessage = ""
 
-    guard let url = URL(string: "http://192.168.1.222:8000/task_list/list_events") else {
+    guard let url = URL(string: "http://192.168.1.188:8000/task_list/list_events") else {
             self.errorMessage = "Invalid URL"
             self.isLoading = false
             self.showingError = true
@@ -887,7 +887,7 @@ struct TasksListView: View {
     private func deleteEvent(_ event: TaskEvent) {
         self.deletingEventId = event.event_id
 
-        guard let url = URL(string: "http://192.168.1.222:8000/scheduler/delete_event/\(event.event_id)") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/scheduler/delete_event/\(event.event_id)") else {
             self.errorMessage = "Invalid URL"
             self.showingError = true
             self.deletingEventId = nil
@@ -1009,7 +1009,7 @@ struct TasksListView: View {
     }
     
     private func updateEventName(_ event: TaskEvent, newName: String) {
-        guard let url = URL(string: "http://192.168.1.222:8000/scheduler/update_event/\(event.event_id)") else {
+        guard let url = URL(string: "http://192.168.1.188:8000/scheduler/update_event/\(event.event_id)") else {
             self.errorMessage = "Invalid URL"
             self.showingError = true
             self.updatingEventId = nil

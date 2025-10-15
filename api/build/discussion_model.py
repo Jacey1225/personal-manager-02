@@ -9,7 +9,7 @@ user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
 discussion_config = MongoHandler(None, "userAuthDatabase", "openDiscussions")
 class DiscussionsModel:
     @staticmethod
-    @cached(cache=discussion_cache)
+    @async_cached(cache=discussion_cache)
     async def view_discussion(request: DiscussionRequest, discussion_id: str) -> dict:
         """Fetches an existing discussion.
 
@@ -29,7 +29,7 @@ class DiscussionsModel:
         return {"discussion": discussion}
 
     @staticmethod
-    @cached(cache=discussion_cache)
+    @async_cached(cache=discussion_cache)
     async def list_project_discussions(request: DiscussionRequest) -> dict:
         """Lists all discussions for a project.
 

@@ -28,6 +28,7 @@ class CalendarInsights(BaseModel):
         TypeError: Event ID conflict
         TypeError: Template conflict
     """
+    services: dict = Field(default={}, description="A list of all services used in the calendar(Google, Apple, etc.)")
     scheduled_events: list[CalendarEvent] = Field(default=[], description="List of all processed events existing in the calendar")
     matching_events: list[dict] = Field(default=[], description="List of all matching events found in the calendar")
     project_events: list[dict] = Field(default=[], description="List of all project events found in the calendar")

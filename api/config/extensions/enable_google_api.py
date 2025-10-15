@@ -83,7 +83,7 @@ class ConfigureGoogleAPI:
             traceback.print_exc()
             return None, None
 
-    def enable_google_calendar_api(self):
+    def enable_google_calendar_api(self) -> tuple | str | None:
         """Enable Google Calendar API - returns services if authenticated, auth URL if not"""
         token_path = f'data/tokens/token_{self.user_id}.json'
         

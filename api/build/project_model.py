@@ -46,7 +46,7 @@ class ProjectModel:
         return {"message": "Project created successfully", "project_name": request.project_name}
 
     @staticmethod
-    @cached(cache=project_cache)
+    @async_cached(cache=project_cache)
     async def view_project(request: ModifyProjectRequest):
         """Fetches an existing project.
 
@@ -142,7 +142,7 @@ class ProjectModel:
         return {"message": "Project like removed successfully."}
 
     @staticmethod
-    @cached(cache=project_cache)
+    @async_cached(cache=project_cache)
     async def get_project_events(request: ModifyProjectRequest):
         """Fetches events associated with a specific project.
 

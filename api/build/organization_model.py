@@ -29,7 +29,7 @@ class OrganizationModel:
         return await handler.delete_organization(request.organization_id)
 
     @staticmethod
-    @cached(cache=organization_cache)
+    @async_cached(cache=organization_cache)
     async def list_organizations(user_id: str):
         await user_config.get_client()
         await organization_config.get_client()

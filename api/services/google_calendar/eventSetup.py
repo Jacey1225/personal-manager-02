@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime, timedelta
-from api.services.google_calendar.enable_google_api import ConfigureGoogleAPI
+from api.config.extensions.enable_google_api import ConfigureGoogleAPI
+from api.config.fetchMongo import MongoHandler
 from api.services.model_setup.structure_model_output import EventDetails
 from api.services.google_calendar.handleDateTimes import DateTimeHandler
 from api.schemas.calendar import CalendarEvent, CalendarInsights   
@@ -8,38 +9,20 @@ from api.validation.handleEventSetup import ValidateEventHandling
 import pytz
 
 validator = ValidateEventHandling()
-def check_service(event_service, task_service):
-    if event_service is None:
-        raise ConnectionError("Failed to connect to Google Calendar API.")
-    if task_service is None:
-        raise ConnectionError("Failed to connect to Google Tasks API.")
-    return True
-
+user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
 class RequestSetup:
     """Handles event setup for Google Calendar and Google Tasks.
     """
-    def __init__(self, event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com", 
+    def __init__(self, 
+                 event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com", 
                  minTime: str | None = (datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)).isoformat() + 'Z', 
                  maxTime: str | None = (datetime.now().replace(hour=23, minute=59, second=59, microsecond=0) + timedelta(days=30)).isoformat() + 'Z',
                  description: str | None = None):
         self.user_id = user_id
-        self.multi_user_google_api = ConfigureGoogleAPI(user_id)
         self.minTime = minTime
         self.maxTime = maxTime
         self.description = description
-        try:
-            result = self.multi_user_google_api.enable_google_calendar_api()
-            
-            self.event_service = None
-            self.task_service = None
-            if isinstance(result, str):
-                raise ConnectionError(f"User authentication required. Please complete Google OAuth first. Auth URL: {result}")
-            elif result is not None and len(result) == 2:
-                self.event_service, self.task_service = result
-            else:
-                raise ConnectionError("Failed to initialize Google API services")
-        except Exception as e:
-            print(f"Error initializing Google API services: {e}")
+        self.event_service, self.task_service = None, None
         self.personal_email = personal_email
         self.event_details = event_details
         self.datetime_handler = DateTimeHandler(self.event_details.input_text)
@@ -52,12 +35,28 @@ class RequestSetup:
             print(f"Input Text: {self.event_details.input_text}")
             raise ValueError("Event name and action must be provided in event_details.")
         
-#MARK: Request Setup
         self.calendar_insights = CalendarInsights(
             scheduled_events=[],
             template={},
             is_event=False
         )
+
+    async def fetch_calendar_service(self) -> None:
+        """Fetches the Events and Tasks services for the user based on their enabled services.
+        """
+        await user_config.get_client()
+        user_handler = user_config.client
+        user_info: dict = await user_handler.get_single_doc({"user_id": self.user_id})
+        services: dict = user_info.get("services", {})
+        if services:
+            if 'google' in services:
+                self.event_service, self.task_service = \
+                ConfigureGoogleAPI(self.user_id).enable_google_calendar_api()
+            elif 'apple' in services:
+                pass # Future implementation for Apple Calendar
+        else:
+            print(f"No services found for user_id: {self.user_id}")
+        
     def validate_event_obj(self, event_obj: CalendarEvent) -> tuple[datetime, Optional[datetime]]:
         """Validates and formats the start and end times of a calendar event.
 
@@ -94,73 +93,65 @@ class RequestSetup:
             RuntimeError: If an error occurs while fetching events.
         """
         try:
-            if not check_service(self.event_service, self.task_service):
-                raise ConnectionError("Google Calendar or Tasks service is not available.")
-        
-            try:
-                if self.description is None:
-                    tasks_list = self.task_service.tasks().list( #type:ignore
-                        tasklist=self.task_list_id,
-                        maxResults="50",
-                        dueMin=self.minTime,
+            if self.description is None:
+                tasks_list = self.task_service.tasks().list( #type:ignore
+                    tasklist=self.task_list_id,
+                    maxResults="50",
+                    dueMin=self.minTime,
                         dueMax=self.maxTime
                     ).execute() 
                 else:
                     tasks_list = {'items': []}
-            except Exception as e:
-                print(f"Error fetching tasks: {e}")
-                tasks_list = {'items': []}
-            
-            try:
-                print(f"Fetching events with description filter: {self.description}")
-                events_list = self.event_service.events().list( #type:ignore
-                    calendarId=self.event_list_id,
-                    maxResults=100,
-                    q=self.description if self.description else "",
-                    timeMin=self.minTime,
-                    timeMax=self.maxTime,
-                    singleEvents=True,
-                    orderBy='startTime'
-                ).execute() 
-            except Exception as e:
-                print(f"Error fetching events in {self.fetch_events_list.__name__}: {e}")
-                events_list = {'items': []}
-        
-            scheduled_events = events_list.get('items', []) + tasks_list.get('items', [])
-            for event in scheduled_events:
-                event_obj = CalendarEvent(
-                    event_name='',
-                    start=datetime.now(),
-                    end=None,
-                    is_event=False
-                )
-                if 'summary' in event:
-                    event_obj.event_name = event['summary']
-                    event_obj.is_event = True
-                    event_obj.start = (event.get('start', {}).get('dateTime'))
-                    event_obj.end = event.get('end', {}).get('dateTime')
-                    event_obj.description = event.get('description', 'No description provided')
-                    event_obj.timezone = event.get('start', {}).get('timeZone', "America/Los_Angeles")
-                    event_obj.event_id = event.get('id')
-                elif 'title' in event:
-                    event_obj.event_name = event['title']
-                    event_obj.start = event.get('due')
-                    event_obj.description = event.get('description', 'No description provided')
-                    event_obj.timezone = event.get('start', {}).get('timeZone', "America/Los_Angeles")
-                    event_obj.event_id = event.get('id')
-
-                if event_obj.start:
-                    event_obj.start, event_obj.end = self.validate_event_obj(event_obj)
-                else:
-                    Warning(f"No valid start or end time found for event: {event}")
-                    continue
-
-                self.calendar_insights.scheduled_events.append(event_obj)
-        except AttributeError as e:
-            print(f"Service attribute error: {e}")
-            pass
         except Exception as e:
-            raise RuntimeError(f"An error occurred while fetching events: {e}")
+            print(f"Error fetching tasks: {e}")
+            tasks_list = {'items': []}
+        
+            
+        try:
+            print(f"Fetching events with description filter: {self.description}")
+            events_list = self.event_service.events().list( #type:ignore
+                calendarId=self.event_list_id,
+                maxResults=100,
+                q=self.description if self.description else "",
+                timeMin=self.minTime,
+                timeMax=self.maxTime,
+                singleEvents=True,
+                orderBy='startTime'
+            ).execute() 
+        except Exception as e:
+            print(f"Error fetching events in {self.fetch_events_list.__name__}: {e}")
+            events_list = {'items': []}
+        
+        scheduled_events = events_list.get('items', []) + tasks_list.get('items', [])
+        for event in scheduled_events:
+            event_obj = CalendarEvent(
+                event_name='',
+                start=datetime.now(),
+                end=None,
+                is_event=False
+            )
+            if 'summary' in event:
+                event_obj.event_name = event['summary']
+                event_obj.is_event = True
+                event_obj.start = (event.get('start', {}).get('dateTime'))
+                event_obj.end = event.get('end', {}).get('dateTime')
+                event_obj.description = event.get('description', 'No description provided')
+                event_obj.timezone = event.get('start', {}).get('timeZone', "America/Los_Angeles")
+                event_obj.event_id = event.get('id')
+            elif 'title' in event:
+                event_obj.event_name = event['title']
+                event_obj.start = event.get('due')
+                event_obj.description = event.get('description', 'No description provided')
+                event_obj.timezone = event.get('start', {}).get('timeZone', "America/Los_Angeles")
+                event_obj.event_id = event.get('id')
+
+            if event_obj.start:
+                event_obj.start, event_obj.end = self.validate_event_obj(event_obj)
+            else:
+                Warning(f"No valid start or end time found for event: {event}")
+                continue
+
+            self.calendar_insights.scheduled_events.append(event_obj)
 
     def fetch_event_template(self):
         """Fetch the event template for creating a new event.
@@ -215,7 +206,7 @@ class RequestSetup:
     
     @validator.validate_request_classifier
     def classify_request(self, target_datetime: Optional[tuple]=None, event_id: Optional[str]=None):
-        """Classify the request based on the target datetime and event ID.
+        """Classify the request as an event or task based on the target datetime and event ID.
 
         Args:
             target_datetime (tuple): The target datetime for the event.
