@@ -4,6 +4,9 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build 
 from googleapiclient.errors import HttpError
+from typing import Optional, Any, Dict, List
+from datetime import datetime
+from api.schemas.calendar import CalendarEvent
 
 # Updated scopes - removed conflicting readonly scopes
 SCOPES = [
@@ -118,5 +121,3 @@ class ConfigureGoogleAPI:
                 return self.get_auth_url()
         else:
             return self.get_auth_url()
-
-

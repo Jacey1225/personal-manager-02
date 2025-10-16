@@ -1,5 +1,5 @@
-from api.services.google_calendar.handleEvents import RequestSetup
-from api.services.google_calendar.handleDateTimes import DateTimeSet
+from api.services.calendar.handleEvents import RequestSetup
+from api.services.calendar.handleDateTimes import DateTimeSet
 from api.services.model_setup.structure_model_output import EventDetails
 from datetime import datetime
 from api.validation.handleProjects import ValidateProjectHandler

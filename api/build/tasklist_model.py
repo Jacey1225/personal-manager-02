@@ -1,7 +1,7 @@
-from api.services.google_calendar.eventSetup import RequestSetup
+from api.services.calendar.eventSetup import RequestSetup
 from api.schemas.model import EventDetails
 from api.schemas.calendar import EventRequest
-from api.services.google_calendar.handleDateTimes import DateTimeHandler
+from api.services.calendar.handleDateTimes import DateTimeHandler
 from pydantic import BaseModel
 
 class TaskListModel:

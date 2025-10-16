@@ -1,7 +1,7 @@
 from api.services.model_setup.structure_model_output import EventDetails, HandleResponse
 from api.schemas.calendar import CalendarInsights
 from api.schemas.model import InputRequest, DateTimeSet
-from api.services.google_calendar.handleEvents import AddToCalendar, DeleteFromCalendar, UpdateFromCalendar
+from api.services.calendar.handleEvents import AddToCalendar, DeleteFromCalendar, UpdateFromCalendar
 from api.services.track_projects.handleProjects import HostActions
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -130,6 +130,7 @@ class MainModel:
                 print(f"Event Details: {event_details}")
                 if event_details.action.lower() == "add":
                     add_handler = AddToCalendar(event_details, user_id)
+                    await add_handler._setup()
                     add_handler.add_event()
                     result = add_handler.event_details.response
 
@@ -138,6 +139,7 @@ class MainModel:
 
                 elif event_details.action.lower() == "delete":
                     delete_handler = DeleteFromCalendar(event_details, user_id)
+                    await delete_handler._setup()
                     delete_handler.find_matching_events()
                     calendar_insights_dict = {
                         "matching_events": delete_handler.calendar_insights.matching_events,
@@ -149,6 +151,7 @@ class MainModel:
 
                 elif event_details.action.lower() == "update":
                     update_handler = UpdateFromCalendar(event_details, user_id)
+                    await update_handler._setup()
                     update_handler.find_matching_events()
                     calendar_insights_dict = {
                         "matching_events": update_handler.calendar_insights.matching_events,
@@ -207,6 +210,7 @@ class MainModel:
             )
 
             delete_handler = DeleteFromCalendar(event_details, user_id)
+            await delete_handler._setup()
             delete_handler.calendar_insights = calendar_insights
 
             delete_handler.delete_event(event_id)  
@@ -256,6 +260,7 @@ class MainModel:
             calendar_insights = CalendarInsights(**calendar_insights_dict)
 
             update_handler = UpdateFromCalendar(event_details, user_id)
+            await update_handler._setup()
             update_handler.calendar_insights = calendar_insights
             update_handler.event_details = event_details
             print(f"Event Details: {update_handler.event_details}")

@@ -1,6 +1,8 @@
 from typing import Optional
 from datetime import datetime, timedelta
-from api.config.extensions.enable_google_api import ConfigureGoogleAPI
+from api.config.extensions.enable_google_api import ConfigureGoogleAPI, MapGoogleFuncs
+from api.config.extensions.enable_apple_api import ConfigureAppleAPI
+from api.config.map_services import UniversalServices
 from api.config.fetchMongo import MongoHandler
 from api.services.model_setup.structure_model_output import EventDetails
 from api.services.google_calendar.handleDateTimes import DateTimeHandler
@@ -23,6 +25,14 @@ class RequestSetup:
         self.maxTime = maxTime
         self.description = description
         self.event_service, self.task_service = None, None
+        self.uni_service = UniversalServices(
+            google_calendar_name='@Home',
+            google_events=None,
+            google_tasks_name='@default',
+            google_tasks=None,
+            apple_calendar_name='Personal',
+            apple_events=None
+        )
         self.personal_email = personal_email
         self.event_details = event_details
         self.datetime_handler = DateTimeHandler(self.event_details.input_text)
@@ -52,8 +62,12 @@ class RequestSetup:
             if 'google' in services:
                 self.event_service, self.task_service = \
                 ConfigureGoogleAPI(self.user_id).enable_google_calendar_api()
-            elif 'apple' in services:
-                pass # Future implementation for Apple Calendar
+                self.uni_service.google_events = self.event_service
+                self.uni_service.google_tasks = self.task_service
+            if 'apple' in services:
+                self.event_service = \
+                ConfigureAppleAPI(self.user_id).enable_apple_calendar_api()
+                self.uni_service.apple_events = self.event_service
         else:
             print(f"No services found for user_id: {self.user_id}")
         
@@ -93,65 +107,28 @@ class RequestSetup:
             RuntimeError: If an error occurs while fetching events.
         """
         try:
-            if self.description is None:
-                tasks_list = self.task_service.tasks().list( #type:ignore
-                    tasklist=self.task_list_id,
-                    maxResults="50",
-                    dueMin=self.minTime,
-                        dueMax=self.maxTime
-                    ).execute() 
-                else:
-                    tasks_list = {'items': []}
+            scheduled_events = self.uni_service.event_list(
+                maxResults=100,
+                dueMin=self.minTime,
+                dueMax=self.maxTime,
+                timeMin=self.minTime,
+                timeMax=self.maxTime,
+                description=self.description
+            )
         except Exception as e:
             print(f"Error fetching tasks: {e}")
             tasks_list = {'items': []}
         
-            
         try:
-            print(f"Fetching events with description filter: {self.description}")
-            events_list = self.event_service.events().list( #type:ignore
-                calendarId=self.event_list_id,
-                maxResults=100,
-                q=self.description if self.description else "",
-                timeMin=self.minTime,
-                timeMax=self.maxTime,
-                singleEvents=True,
-                orderBy='startTime'
-            ).execute() 
-        except Exception as e:
-            print(f"Error fetching events in {self.fetch_events_list.__name__}: {e}")
-            events_list = {'items': []}
-        
-        scheduled_events = events_list.get('items', []) + tasks_list.get('items', [])
-        for event in scheduled_events:
-            event_obj = CalendarEvent(
-                event_name='',
-                start=datetime.now(),
-                end=None,
-                is_event=False
+            events = self.uni_service.format_events(
+                scheduled_events
             )
-            if 'summary' in event:
-                event_obj.event_name = event['summary']
-                event_obj.is_event = True
-                event_obj.start = (event.get('start', {}).get('dateTime'))
-                event_obj.end = event.get('end', {}).get('dateTime')
-                event_obj.description = event.get('description', 'No description provided')
-                event_obj.timezone = event.get('start', {}).get('timeZone', "America/Los_Angeles")
-                event_obj.event_id = event.get('id')
-            elif 'title' in event:
-                event_obj.event_name = event['title']
-                event_obj.start = event.get('due')
-                event_obj.description = event.get('description', 'No description provided')
-                event_obj.timezone = event.get('start', {}).get('timeZone', "America/Los_Angeles")
-                event_obj.event_id = event.get('id')
-
-            if event_obj.start:
-                event_obj.start, event_obj.end = self.validate_event_obj(event_obj)
-            else:
-                Warning(f"No valid start or end time found for event: {event}")
-                continue
-
-            self.calendar_insights.scheduled_events.append(event_obj)
+            for event in events:
+                self.calendar_insights.scheduled_events.append(
+                    event
+                )
+        except Exception as e:
+            print(f"Error formatting events: {e}")
 
     def fetch_event_template(self):
         """Fetch the event template for creating a new event.

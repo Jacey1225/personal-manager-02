@@ -1,15 +1,18 @@
 from fastapi import FastAPI, HTTPException, APIRouter
 from api.config.extensions.enable_google_api import ConfigureGoogleAPI
-from api.schemas.auth import OAuthCompleteRequest, RemoveUserRequest
+from api.schemas.auth import OAuthCompleteRequest, RemoveUserRequest, ICloudUserRequest
 from api.config.fetchMongo import MongoHandler
 import os
 import uuid
 import json
 from dotenv import load_dotenv
 from typing import Optional
+import keyring
 
 user_handler = None
 project_handler = None
+service_name = "user_auth"
+
 auth_router = APIRouter()
 
 def set_handlers(_user_handler, _project_handler):
@@ -63,8 +66,12 @@ async def signup(
     user_data = {
         "username": username,
         "email": email,
-        "password": password,
+        "apple_email": None,
         "user_id": user_id,
+        "services": {
+            'google': False,
+            'apple': False
+        },
         "projects": {},
         "organizations": []
     }
@@ -77,6 +84,7 @@ async def signup(
     if org_id:
         user_data["organizations"].append(org_id)
 
+    keyring.set_password(service_name, user_id, password)
     result = await user_handler.post_insert(user_data)
     print(f"User created with ID: {result.inserted_id}")
 
@@ -99,35 +107,24 @@ async def login(
     Returns:
         dict: A dictionary containing the login status and user ID if successful.
     """
-    query_login = {
-        "$expr": {
-            "$and": [
-                {"$eq": ["$username", username]},
-                {"$eq": ["$password", password]}
-            ]
-        }
-    }
-
-    try:
-        user_data = await user_handler.get_single_doc(query_login)
-        if user_data:
-            if project_id and project_id not in user_data.get("projects", {}):
-                project = await project_handler.get_single_doc({"project_id": project_id})
-                user_data["projects"][project_id] = (project.get("project_name"), "view")
-
-            if org_id and org_id not in user_data.get("organizations", []):
-                user_data["organizations"].append(org_id)
-
-            user_id = user_data.get("user_id") #type: ignore
-            await user_handler.post_update({"user_id": user_id}, user_data)
-            print(f"User {username} logged in successfully with user_id: {user_id}")
-            print(f"User data: {user_data}")
-            return {"status": "success", "user_id": user_id}
+    found_password = keyring.get_password(service_name, username) else None
+    if not found_password:
+        return {"status": "failed", "message": "Invalid username or password"}
+    else:
+        if found_password == password:
+            user_info = await user_handler.get_single_doc({"username": username})
+            return {"status": "success", "user_id": user_info.get("user_id")}
         else:
             return {"status": "failed", "message": "Invalid username or password"}
-    except Exception as e:
-        print(f"Error in login: {str(e)}")
-        return {"status": "failed", "message": "Invalid username or password"}
+
+@auth_router.post("/auth/set_icloud_user")
+async def set_icloud_user(request: ICloudUserRequest):
+    found_pass = True if keyring.get_password(request.service_name, request.apple_user) else False
+    if not found_pass:
+        keyring.set_password(request.service_name, request.apple_user, request.apple_pass)
+        return {"status": "success", "message": "iCloud user set successfully"}
+    else:
+        return {"status": "failed", "message": "iCloud user already set"}
 
 @auth_router.post("/auth/remove_user")
 async def remove_user(request: RemoveUserRequest) -> dict:
