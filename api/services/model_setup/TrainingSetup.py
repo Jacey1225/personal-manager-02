@@ -7,7 +7,6 @@ from transformers.trainer_seq2seq import Seq2SeqTrainer
 from api.schemas.model import TrainingConfig
 from pydantic import BaseModel
 from torch.utils.data import random_split, Dataset
-import proxy_bypass
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -31,7 +30,6 @@ class TrainingData(Dataset):
 
 class ModelTrainer:
     def __init__(self, config: TrainingConfig):
-        proxy_bypass._configure_proxy_bypass()  # Bypass proxy for Huggingface
         self.config = config
         self.model = T5ForConditionalGeneration.from_pretrained(self.config.model_name)
         if not os.path.exists(self.config.output_dir):

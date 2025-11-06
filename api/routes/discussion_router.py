@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Query
-from api.build.discussion_model import DiscussionsModel
-from api.config.fetchMongo import MongoHandler
+from api.resources.discussion_model import DiscussionsModel
 from api.schemas.projects import DiscussionRequest, DiscussionData
-from api.config.cache import discussion_cache, cached
+from api.config.cache import discussion_cache
 
 discussion_router = APIRouter()
 commander = DiscussionsModel()
@@ -10,15 +9,32 @@ commander = DiscussionsModel()
 @discussion_router.get("/discussions/view_discussion")
 async def view_discussion(user_id: str = Query(...), project_id: str = Query(...), discussion_id: str = Query(...), force_refresh: bool = Query(False)):
     request = DiscussionRequest(user_id=user_id, project_id=project_id, force_refresh=force_refresh)
-    if request in discussion_cache and request.force_refresh:
-        discussion_cache.pop(request)
+    cache_key = discussion_cache.get_cache_key("view_discussion", (user_id, project_id, discussion_id), {"force_refresh": force_refresh}) 
+    discussion_data = await discussion_cache.get_or_set(
+        cache_key,
+        commander.view_discussion,
+        request,
+        discussion_id
+    ) if not force_refresh else None
+    if discussion_data and force_refresh:
+        await discussion_cache.pop(cache_key)
+    
     return await commander.view_discussion(request, discussion_id)
 
 @discussion_router.get("/discussions/list_project_discussions")
 async def list_project_discussions(user_id: str = Query(...), project_id: str = Query(...), force_refresh: bool = Query(False)):
     request = DiscussionRequest(user_id=user_id, project_id=project_id, force_refresh=force_refresh)
-    if request in discussion_cache and request.force_refresh:
-        discussion_cache.pop(request)
+    cache_key = discussion_cache.get_cache_key("list_project_discussions", (user_id, project_id), {"force_refresh": force_refresh})
+    discussion_data = await discussion_cache.get_or_set(
+        discussion_cache.get_cache_key(
+            "list_project_discussions",
+            (user_id, project_id),
+            {"force_refresh": force_refresh}),
+        commander.list_project_discussions,
+        request
+    ) if not force_refresh else None
+    if discussion_data and force_refresh:
+        await discussion_cache.pop(cache_key)
     return await commander.list_project_discussions(request)
 
 @discussion_router.post("/discussions/create_discussion")

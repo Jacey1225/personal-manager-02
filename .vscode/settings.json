@@ -13,5 +13,6 @@
             "name": "Preset Connection",
             "connectionString": "mongodb+srv://jaceysimps:xj2gtfmBg2i3uttL@cluster0.3frb8ee.mongodb.net/"
         }
-    ]
+    ],
+    "editor.smoothScrolling": true
 }

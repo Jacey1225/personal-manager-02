@@ -1,12 +1,12 @@
 from typing import Optional
 from datetime import datetime, timedelta
-from api.config.extensions.enable_google_api import ConfigureGoogleAPI, MapGoogleFuncs
-from api.config.extensions.enable_apple_api import ConfigureAppleAPI
-from api.config.map_services import UniversalServices
+from api.config.plugins.enable_google_api import SyncGoogleEvents, SyncGoogleTasks
+from api.config.plugins.enable_apple_api import SyncAppleEvents
+from api.config.uniformInterface import UniformInterface
 from api.config.fetchMongo import MongoHandler
-from api.services.model_setup.structure_model_output import EventDetails
-from api.services.google_calendar.handleDateTimes import DateTimeHandler
+from api.services.calendar.handleDateTimes import DateTimeHandler
 from api.schemas.calendar import CalendarEvent, CalendarInsights   
+from api.schemas.model import EventOutput
 from api.validation.handleEventSetup import ValidateEventHandling
 import pytz
 
@@ -16,87 +16,28 @@ class RequestSetup:
     """Handles event setup for Google Calendar and Google Tasks.
     """
     def __init__(self, 
-                 event_details: EventDetails, user_id: str, personal_email: str = "jaceysimps@gmail.com", 
-                 minTime: str | None = (datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)).isoformat() + 'Z', 
-                 maxTime: str | None = (datetime.now().replace(hour=23, minute=59, second=59, microsecond=0) + timedelta(days=30)).isoformat() + 'Z',
-                 description: str | None = None):
+                 calendar_event: CalendarEvent, 
+                 event_output: EventOutput,
+                 user_id: str, 
+                 calendar_service, 
+                 minTime: Optional[str] = (datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)).isoformat() + 'Z', 
+                 maxTime: Optional[str] = (datetime.now().replace(hour=23, minute=59, second=59, microsecond=0) + timedelta(days=30)).isoformat() + 'Z',
+                 description: Optional[str] = None):
         self.user_id = user_id
         self.minTime = minTime
         self.maxTime = maxTime
         self.description = description
-        self.event_service, self.task_service = None, None
-        self.uni_service = UniversalServices(
-            google_calendar_name='@Home',
-            google_events=None,
-            google_tasks_name='@default',
-            google_tasks=None,
-            apple_calendar_name='Personal',
-            apple_events=None
-        )
-        self.personal_email = personal_email
-        self.event_details = event_details
-        self.datetime_handler = DateTimeHandler(self.event_details.input_text)
-        self.task_list_id: str = '@default'
-        self.event_list_id: str = 'primary'
+        self.event_output = event_output
+        self.calendar_event = calendar_event
+        self.calendar_service: Optional[SyncAppleEvents | SyncGoogleEvents | SyncGoogleTasks] = calendar_service
+        self.datetime_handler = DateTimeHandler(self.event_output.input_text)
+        self.calendar_insights = CalendarInsights()
 
-        if not self.event_details.event_name or not self.event_details.action:
-            print(f"Event Name: {self.event_details.event_name}")
-            print(f"Event Action: {self.event_details.action}")
-            print(f"Input Text: {self.event_details.input_text}")
-            raise ValueError("Event name and action must be provided in event_details.")
-        
-        self.calendar_insights = CalendarInsights(
-            scheduled_events=[],
-            template={},
-            is_event=False
-        )
-
-    async def fetch_calendar_service(self) -> None:
-        """Fetches the Events and Tasks services for the user based on their enabled services.
-        """
-        await user_config.get_client()
-        user_handler = user_config.client
-        user_info: dict = await user_handler.get_single_doc({"user_id": self.user_id})
-        services: dict = user_info.get("services", {})
-        if services:
-            if 'google' in services:
-                self.event_service, self.task_service = \
-                ConfigureGoogleAPI(self.user_id).enable_google_calendar_api()
-                self.uni_service.google_events = self.event_service
-                self.uni_service.google_tasks = self.task_service
-            if 'apple' in services:
-                self.event_service = \
-                ConfigureAppleAPI(self.user_id).enable_apple_calendar_api()
-                self.uni_service.apple_events = self.event_service
-        else:
-            print(f"No services found for user_id: {self.user_id}")
-        
-    def validate_event_obj(self, event_obj: CalendarEvent) -> tuple[datetime, Optional[datetime]]:
-        """Validates and formats the start and end times of a calendar event.
-
-        Args:
-            event_obj (CalendarEvent): The event object to validate.
-
-        Returns:
-            tuple[datetime, Optional[datetime]]: The validated start and end times.
-        """
-        event_tz = None
-        if event_obj.timezone:
-            try:
-                event_tz = pytz.timezone(event_obj.timezone)
-            except Exception as e:
-                event_tz = pytz.timezone("America/Los_Angeles")
-
-        if isinstance(event_obj.start, str):
-            event_obj.start = datetime.fromisoformat(event_obj.start)
-            if event_obj.start.tzinfo is not None:
-                event_obj.start = event_obj.start.astimezone(event_tz)                
-        if isinstance(event_obj.end, str):
-            event_obj.end = datetime.fromisoformat(event_obj.end)
-            if event_obj.end.tzinfo is not None:
-                event_obj.end = event_obj.end.astimezone(event_tz)
-
-        return event_obj.start, event_obj.end
+        if not self.calendar_event.event_name or not self.event_output.intent:
+            print(f"Event Name: {self.calendar_event.event_name}")
+            print(f"Event Action: {self.event_output.intent}")
+            print(f"Input Text: {self.event_output.input_text}")
+            raise ValueError("Event name and action must be provided in event_output.")
 
     @validator.validate_events_list
     def fetch_events_list(self):
@@ -107,98 +48,75 @@ class RequestSetup:
             RuntimeError: If an error occurs while fetching events.
         """
         try:
-            scheduled_events = self.uni_service.event_list(
+            if self.calendar_service is None:
+                raise ConnectionError("Calendar service is not initialized.")
+            scheduled_events = self.calendar_service.list_events(
                 maxResults=100,
-                dueMin=self.minTime,
-                dueMax=self.maxTime,
-                timeMin=self.minTime,
-                timeMax=self.maxTime,
-                description=self.description
+                timeMin=self.calendar_event.start,
+                timeMax=self.calendar_event.end,
+                description=self.calendar_event.description
             )
+            self.calendar_insights.scheduled_events = scheduled_events
         except Exception as e:
             print(f"Error fetching tasks: {e}")
-            tasks_list = {'items': []}
-        
-        try:
-            events = self.uni_service.format_events(
-                scheduled_events
-            )
-            for event in events:
-                self.calendar_insights.scheduled_events.append(
-                    event
-                )
-        except Exception as e:
-            print(f"Error formatting events: {e}")
 
     def fetch_event_template(self):
         """Fetch the event template for creating a new event.
 
         Raises:
-            ValueError: If event name or personal email is not provided.
+            ValueError: If the event template cannot be fetched.
         """
-        if not self.calendar_insights.is_event:
-            self.calendar_insights.template = {
-                'title': self.event_details.event_name,
-                'due': None,  # This will hold the RFC 3339 timestamp for due date and time
-            }
-        else:
-            self.calendar_insights.template = {
-                'summary': self.event_details.event_name,
-                'description': self.event_details.description,
-                'transparency': self.event_details.transparency,
-                'guestsCanModify': self.event_details.guestsCanModify,
-                'start': {
-                    'dateTime': None,
-                    'timeZone': 'America/Los_Angeles',
-                },
-                'end': {
-                    'dateTime': None,
-                    'timeZone': 'America/Los_Angeles',
-                },
-                'attendees': [{'email': self.personal_email}],
-            }
+        try:
+            if self.calendar_service is None:
+                raise ConnectionError("Calendar service is not initialized.")
+            self.calendar_insights.template = self.calendar_service.template(
+                **self.calendar_event.__dict__)
+        except:
+            print(f"Error fetching event template in: {self.fetch_event_template.__name__} with Calendar Event: {self.calendar_event.__dict__}")
+            self.calendar_insights.template = None
+
+        if not self.calendar_insights.template:
+            raise ValueError("Failed to fetch event template.")
+        return self.calendar_insights.template
 
     @validator.log_matching_events
-    def find_matching_events(self) -> list[dict]:
+    def find_matching_events(self) -> list[CalendarEvent]:
         """Fetch the events currently in the calendar that closely match the event of interest 
 
         Returns:
-            list[dict]: A list of matching event dictionaries.
+            list[CalendarEvent]: A list of matching CalendarEvent objects.
         """
-        for token in self.event_details.event_name.lower().split(" "):
+        for token in self.calendar_event.event_name.lower().split(" "):
             for event in self.calendar_insights.scheduled_events:
-                if token in event.event_name.lower():
-                    event_dict = {
-                        "event_name": event.event_name,
-                        "start": event.start.isoformat(),
-                        "end": event.end.isoformat() if event.end else None,
-                        "is_event": event.is_event,
-                        "event_id": event.event_id
-                    }
-                    if event_dict not in self.calendar_insights.matching_events:
-                        self.calendar_insights.matching_events.append(event_dict)
+                if event and token in event.event_name.lower():
+                    if event not in self.calendar_insights.matching_events:
+                        self.calendar_insights.matching_events.append(event)
                     else:
                         continue
         return self.calendar_insights.matching_events
-    
-    @validator.validate_request_classifier
-    def classify_request(self, target_datetime: Optional[tuple]=None, event_id: Optional[str]=None):
-        """Classify the request as an event or task based on the target datetime and event ID.
+
+    def tie_project(self, 
+                    user_data: dict) -> CalendarEvent:  # Not part of the model API
+        """Ties a project to the event details based on the project name.
 
         Args:
-            target_datetime (tuple): The target datetime for the event.
-            event_id (Optional[str], optional): The ID of the event. Defaults to None.
+            event_details (EventDetails): The details of the event being processed.
+
+        Returns:
+            EventDetails: The updated event details with project information.
         """
-        if event_id and self.calendar_insights.matching_events:
-            calendar_target = next((event for event in self.calendar_insights.matching_events if event['event_id'] == event_id), None)
-            if calendar_target:
-                if calendar_target['is_event']:
-                    self.calendar_insights.is_event = True
-                else:
-                    self.calendar_insights.is_event = False
-        else:
-            if target_datetime:
-                if target_datetime[1]:
-                    self.calendar_insights.is_event = True
-                else:
-                    self.calendar_insights.is_event = False
+        try:
+            for key, (project_name, permission) in user_data["projects"].items():
+                if permission == "view":
+                    continue
+                if project_name.lower() in self.event_output.input_text.lower():
+                    self.calendar_event.transparency = "transparent"
+                    self.calendar_event.guestsCanModify = True
+                    self.calendar_event.description = f"Lazi: {key}"
+                    break
+
+            return self.calendar_event
+        except Exception as e:
+            print(f"Error tying project to event details: {e}")
+            print(f"Function: {self.tie_project.__name__}")
+            return self.calendar_event

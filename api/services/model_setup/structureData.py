@@ -2,13 +2,12 @@ from transformers import T5Tokenizer
 import torch
 import pandas as pd
 import os
-from pydantic import BaseModel 
-from proxy_bypass import _configure_proxy_bypass
-from api.schemas.model import EventRequest  
+from api.schemas.model import EventOutput  
+from api.schemas.calendar import CalendarEvent, DateTimeSet
+from typing import Optional
 
 class EventScheduler:
     def __init__(self, filename: str='event_scheduling', batch_size: int=8):
-        _configure_proxy_bypass() #bypass proxy for huggingface
         self.tokenizer = T5Tokenizer.from_pretrained('t5-small')
         self.batch_size = batch_size
 
@@ -33,6 +32,8 @@ class EventScheduler:
                 raise ValueError(f"Missing required column: {col} -- {self.data.columns.tolist()}")
         
         self.clean_data = self.data.dropna(subset=columns).reset_index(drop=True) #drop rows with missing values
+        self.event: Optional[CalendarEvent] = None
+        self.output: Optional[EventOutput] = None
 
     def fetch_feature(self):
         """Fetch features from the event data.
@@ -41,19 +42,20 @@ class EventScheduler:
             TypeError: If any of the event fields are not strings.
             ValueError: If feature_context and feature_response are not provided.
         """
-        for col, content in self.event:
-            if not isinstance(content, str):
-                raise TypeError(f"Field {content} is not of type str")
+        if not self.event:
+            raise ValueError("Event data is not set.")
+        if not self.output:
+            raise ValueError("Output data is not set.")
+        
+        feature_context = f"\nEvent Time: {self.event.start}," \
+        f"\nEvent Date: {self.event.end}, " \
+        f"\nEvent Input: {self.output.input_text}"
 
-        feature_context = f"\nEvent Time: {self.event.event_time}," \
-        f"\nEvent Date: {self.event.event_date}, " \
-        f"\nEvent Input: {self.event.input_text}"
-
-        feature_response = f"Event: {self.event.event_name}, Action: {self.event.intent}" \
-        f"Desired Response: {self.event.response_text}"
-        if self.event.feature_context == '' and self.event.feature_response == '':
-            self.event.feature_context = feature_context
-            self.event.feature_response = feature_response
+        feature_response = f"Event: {self.event.event_name}, Action: {self.output.intent}" \
+        f"Desired Response: {self.output.response_text}"
+        if self.output.feature_context == '' and self.output.feature_response == '':
+            self.output.feature_context = feature_context
+            self.output.feature_response = feature_response
         else:
             raise ValueError("feature_context and feature_response must be provided.")
             
@@ -66,11 +68,13 @@ class EventScheduler:
         Returns:
             Tuple[Dict[str, Tensor], Dict[str, Tensor]]: The tokenized context and response.
         """
-        if self.event.feature_context == '' or self.event.feature_response == '':
+        if not self.event or not self.output:
+            raise ValueError("Event and output data must be set before tokenization.")
+        if not self.output.feature_context or self.output.feature_response == '':
             raise ValueError("feature_context and feature_response must be set before tokenization.")
         
         context_encoding = self.tokenizer(
-            self.event.feature_context,
+            self.output.feature_context,
             max_length=250,
             padding='max_length',
             truncation=True,
@@ -78,7 +82,7 @@ class EventScheduler:
         )
 
         response_encoding = self.tokenizer(
-            self.event.feature_response,
+            self.output.feature_response,
             max_length=250,
             padding='max_length',
             truncation=True,
@@ -104,13 +108,18 @@ class EventScheduler:
                 "labels": torch.empty((0, 250), dtype=torch.long), #labels
             }
             for _, row in batch_data.iterrows():
-                self.event = EventRequest(
-                    input_text=row['input_text'],
+                self.output = EventOutput(
+                    input_text=row['input_text'],\
                     response_text=row['response_text'],
-                    intent=row['type'],
+                    intent=row['type']
+                )
+                datetime_obj = DateTimeSet(
+                    dates=row["event_date"],
+                    times=row["event_time"]
+                )
+                self.event = CalendarEvent(
                     event_name=row['event_name'],
-                    event_time=row['event_time'],
-                    event_date=row['event_date']
+                    datetime_obj=datetime_obj,
                 )
                 self.fetch_feature()
                 context_encoding, response_encoding = self.tokenize_feature()

@@ -16,7 +16,6 @@ class DiscussionRequest(BaseModel):
             return False
         return (self.user_id, self.project_id, self.force_refresh) == \
                (other.user_id, other.project_id, other.force_refresh)
-
 class DiscussionData(BaseModel):
     title: str = Field(description="The title of the discussion")
     author_id: str = Field(description="The User ID of the discussion author")
@@ -33,8 +32,24 @@ class Discussion(BaseModel):
 class Organization(BaseModel):
     name: str = Field(description="The name of the organization")
     members: List[str] = Field(description="List of user IDs associated with the organization")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique identifier for the organization")
+    id: str = Field(default=str(uuid.uuid4()), description="Unique identifier for the organization")
     projects: List[str] = Field(default_factory=list, description="List of project IDs associated with the organization")
+
+class ResourceDetails(BaseModel):
+    project_id: str = Field(..., description="ID of the project this resource is associated with")
+    resource_id: str = Field(default=str(uuid.uuid4()), description="Unique identifier for the resource")
+    resource_name: str = Field(..., description="Name of the resource")
+    resource_link: str = Field(..., description="Link to the resource (e.g., document, link, sheet)")
+    resource_owner: str = Field(..., description="User ID of the resource owner")
+    resource_timestamp: str = Field(default=datetime.now().isoformat(), description="Timestamp when the resource was created or modified")
+
+class ProjectDetails(BaseModel):
+    project_name: str = Field(..., description="Name of the project")
+    project_id: str = Field(..., description="Unique identifier for the project")
+    project_likes: int = Field(default=0, description="Number of likes for the project")
+    project_transparency: bool = Field(default=True, description="Transparency status of the project(True: public - False: private)")
+    project_members: List[str] = Field(..., description="List of user IDs associated with the project")
+    organizations: Optional[List[str]] = Field(default=[], description="Organization IDs associated with the project")
 
 class CreateOrgRequest(BaseModel):
     id: str
@@ -55,22 +70,6 @@ class OrgRequest(BaseModel):
             return False
         return (self.user_id, self.organization_id, self.force_refresh) == \
                (other.user_id, other.organization_id, other.force_refresh)
-
-class ResourceDetails(BaseModel):
-    resource_id: str = Field(default=str(uuid.uuid4()), description="Unique identifier for the resource")
-    resource_name: str = Field(..., description="Name of the resource")
-    resource_link: str = Field(..., description="Link to the resource (e.g., document, link, sheet)")
-    resource_owner: str = Field(..., description="User ID of the resource owner")
-    resource_timestamp: str = Field(default=datetime.now().isoformat(), description="Timestamp when the resource was created or modified")
-
-class ProjectDetails(BaseModel):
-    project_name: str = Field(..., description="Name of the project")
-    project_id: str = Field(..., description="Unique identifier for the project")
-    project_likes: int = Field(default=0, description="Number of likes for the project")
-    project_transparency: bool = Field(default=True, description="Transparency status of the project(True: public - False: private)")
-    project_members: List[str] = Field(..., description="List of user IDs associated with the project")
-    organizations: Optional[List[str]] = Field(default=[], description="Organization IDs associated with the project")
-
 class CreateProjectRequest(BaseModel):
     project_name: str
     project_transparency: bool

@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException, APIRouter
-from api.config.extensions.enable_google_api import ConfigureGoogleAPI
+from fastapi import HTTPException, APIRouter
+from api.config.plugins.enable_google_api import ConfigureGoogleAPI
 from api.schemas.auth import OAuthCompleteRequest, RemoveUserRequest, ICloudUserRequest
 from api.config.fetchMongo import MongoHandler
 import os
@@ -50,6 +50,8 @@ async def signup(
         dict: A dictionary containing the status and user ID.
     """
     # Check if user already exists
+    if not user_handler:
+        raise HTTPException(status_code=500, detail="User handler not initialized")
     user_id = str(uuid.uuid4())
     user_data = await user_handler.get_single_doc({"user_id": user_id})
     while user_data:
@@ -77,6 +79,8 @@ async def signup(
     }
 
     if project_id:
+        if not project_handler:
+            raise HTTPException(status_code=500, detail="Project handler not initialized")
         project = await project_handler.get_single_doc({"project_id": project_id})
         if project:
             user_data["projects"][project_id] = (project.get("project_name"), "view")
@@ -107,11 +111,14 @@ async def login(
     Returns:
         dict: A dictionary containing the login status and user ID if successful.
     """
-    found_password = keyring.get_password(service_name, username) else None
+    found_password = keyring.get_password(service_name, username)
+    if not user_handler:
+        raise HTTPException(status_code=500, detail="User handler not initialized")
     if not found_password:
         return {"status": "failed", "message": "Invalid username or password"}
     else:
         if found_password == password:
+
             user_info = await user_handler.get_single_doc({"username": username})
             return {"status": "success", "user_id": user_info.get("user_id")}
         else:
@@ -137,6 +144,8 @@ async def remove_user(request: RemoveUserRequest) -> dict:
         dict: A dictionary containing the removal status.
     """
     try:
+        if not user_handler:
+            raise HTTPException(status_code=500, detail="User handler not initialized")
         user_id = request.user_id
         await user_handler.post_delete({"user_id": user_id})
         
@@ -163,7 +172,7 @@ def google_auth(user_id: str) -> dict:
             )
         
         google_api = ConfigureGoogleAPI(user_id)
-        result = google_api.enable_google_calendar_api()
+        result = google_api.enable()
         
         print(f"Result type: {type(result)}, Result: {result}")
         

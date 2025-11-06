@@ -1,7 +1,10 @@
 from api.services.track_projects.handleProjects import HostActions, GuestActions
 from api.schemas.projects import CreateProjectRequest, ModifyProjectRequest
+from api.schemas.calendar import CalendarEvent
+from api.schemas.model import EventOutput
 from api.config.fetchMongo import MongoHandler
-from api.config.cache import project_cache, cached
+from api.config.uniformInterface import UniformInterface
+from api.config.cache import project_cache, async_cached
 from typing import List
 
 user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
@@ -19,9 +22,16 @@ class ProjectModel:
             dict: A message indicating the result of the operation.
         """
         user_id = request.user_id
+        service = await UniformInterface(user_id).fetch_service()
         await user_config.get_client()
         await project_config.get_client()
-        handler = await HostActions.fetch(user_id, user_config, project_config)
+        handler = await HostActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
         await handler.global_delete()
         return {"message": "All projects deleted successfully."}
 
@@ -39,9 +49,16 @@ class ProjectModel:
         transparency = request.project_transparency
         members = request.project_members
         user_id = request.user_id
+        service = await UniformInterface(user_id).fetch_service()
         await user_config.get_client()
         await project_config.get_client()
-        handler = await HostActions.fetch(user_id, user_config, project_config)
+        handler = await HostActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
         await handler.create_project(request.project_name, project_likes, transparency, members)
         return {"message": "Project created successfully", "project_name": request.project_name}
 
@@ -58,9 +75,16 @@ class ProjectModel:
         """
         user_id = request.user_id
         project_id = request.project_id
+        service = await UniformInterface(user_id).fetch_service()
         await user_config.get_client()
         await project_config.get_client()
-        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        handler = await GuestActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
         project, user_data = await handler.view_project(project_id)
         return {"project": project, "user_data": user_data}
 
@@ -79,7 +103,14 @@ class ProjectModel:
         user_id = request.user_id
         await user_config.get_client()
         await project_config.get_client()
-        handler = await HostActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await HostActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
         await handler.delete_project(request.project_id)
         return {"message": "Project deleted successfully."}
 
@@ -101,7 +132,14 @@ class ProjectModel:
         project_name = request.project_name
         await user_config.get_client()
         await project_config.get_client()
-        handler = await HostActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await HostActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
         await handler.rename_project(project_id, project_name)
         return {"message": "Project renamed successfully."}
 
@@ -119,7 +157,14 @@ class ProjectModel:
         project_id = request.project_id
         await user_config.get_client()
         await project_config.get_client()
-        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await GuestActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
         await handler.like_project(project_id)
         return {"message": "Project liked successfully."}
 
@@ -137,7 +182,15 @@ class ProjectModel:
         project_id = request.project_id
         await user_config.get_client()
         await project_config.get_client()
-        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await GuestActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
+        
         await handler.remove_like(project_id)
         return {"message": "Project like removed successfully."}
 
@@ -157,7 +210,15 @@ class ProjectModel:
         project_id = request.project_id
         await user_config.get_client()
         await project_config.get_client()
-        handler = await HostActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await HostActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
+        
         return await handler.fetch_project_events(project_id)
 
     @staticmethod
@@ -179,7 +240,15 @@ class ProjectModel:
 
         await user_config.get_client()
         await project_config.get_client()
-        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await GuestActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
+        
         await handler.add_project_member(project_id, new_email, new_username, code)
         return {"message": "Member added successfully."}
     
@@ -203,7 +272,15 @@ class ProjectModel:
         # This requires a method to fetch user_id from email and username
         await user_config.get_client()
         await project_config.get_client()
-        handler = await GuestActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await GuestActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
+        
         target_user_id = await handler.fetch_user_id(email, username)
 
         if target_user_id:
@@ -224,7 +301,15 @@ class ProjectModel:
         """
         await user_config.get_client()
         await project_config.get_client()
-        handler = await HostActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await HostActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
+        
         return await handler.list_projects()
 
     @staticmethod
@@ -242,7 +327,15 @@ class ProjectModel:
         project_id = request.project_id
         await user_config.get_client()
         await project_config.get_client()
-        handler = await HostActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await HostActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
+        
         await handler.edit_transparency(project_id, new_transparency)
         return {"message": "Project transparency updated successfully."}
     
@@ -263,6 +356,14 @@ class ProjectModel:
         project_id = request.project_id
         await user_config.get_client()
         await project_config.get_client()
-        handler = await HostActions.fetch(user_id, user_config, project_config)
+        service = await UniformInterface(user_id).fetch_service()
+        handler = await HostActions.fetch(
+            CalendarEvent(),
+            EventOutput(),
+            user_id, 
+            service,
+            user_config, 
+            project_config)
+        
         await handler.edit_permissions(project_id, email, username, new_permission)
         return {"message": "User permission updated successfully."}

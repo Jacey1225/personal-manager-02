@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from api.build.organization_model import OrganizationModel
+from api.resources.organization_model import OrganizationModel
 from api.schemas.projects import CreateOrgRequest, OrgRequest
 from api.config.cache import organization_cache
 
@@ -16,8 +16,18 @@ async def delete_organization(request: OrgRequest):
 
 @organization_router.get("/organizations/list_orgs")
 async def list_organizations(request: OrgRequest):
-    if request.user_id in organization_cache and request.force_refresh:
-        organization_cache.pop(request.user_id)
+    cache_key = organization_cache.get_cache_key(
+        "list_organizations",
+        (request.user_id,),
+        {"force_refresh": request.force_refresh})
+    if request.force_refresh:
+        org_data = await organization_cache.get_or_set(
+            cache_key,
+            commander.list_organizations,
+            user_id=request.user_id
+        )
+        if request.user_id in org_data:
+            await organization_cache.pop(cache_key)
     return await commander.list_organizations(user_id=request.user_id)
 
 @organization_router.post("/organizations/add_member")

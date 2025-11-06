@@ -8,7 +8,7 @@ load_dotenv()
 
 class MongoHandler:
     def __init__(self, 
-                 client: MongoClient | None, 
+                 client: AsyncIOMotorClient | None, 
                  database: str, 
                  collection: str):
             self.client = client
@@ -55,6 +55,8 @@ class MongoHandler:
             insertion (dict): The document to be inserted.
         """
         try:
+            if not insertion or not self.collection:
+                raise ValueError("Insertion document cannot be empty.")
             result = await self.collection.insert_one(insertion)
             print(f"Document inserted with ID: {result.inserted_id}")
             return result
@@ -69,6 +71,8 @@ class MongoHandler:
             column (Optional[Any]): The specific column to retrieve. If None, retrieves the entire document.
         """
         try:
+            if not self.collection:
+                raise ValueError("Collection is not initialized.")
             if column:
                 document = await self.collection.find_one(query, {"_id": 0, column: 1})
                 return document if document else {}
@@ -87,6 +91,8 @@ class MongoHandler:
             column (Optional[str]): The specific column to retrieve. If None, retrieves the entire document.
         """
         try:
+            if not self.collection:
+                raise ValueError("Collection is not initialized.")
             if column:
                 cursor = self.collection.find(query, {"_id": 0, column: 1})
             else:
@@ -107,6 +113,8 @@ class MongoHandler:
             update (dict): The update operations to apply.
         """
         try:
+            if not self.collection:
+                raise ValueError("Collection is not initialized.")
             result = await self.collection.update_one(query, {"$set": update})
             if result.modified_count > 0:
                 print(f"Document updated successfully.")
@@ -122,6 +130,8 @@ class MongoHandler:
             query (dict): The query to find the document to delete.
         """
         try:
+            if not self.collection:
+                raise ValueError("Collection is not initialized.")
             result = await self.collection.delete_one(query)
             if result.deleted_count > 0:
                 print(f"Document deleted successfully.")
@@ -132,6 +142,8 @@ class MongoHandler:
 
     async def get_all(self):
         try:
+            if not self.collection:
+                raise ValueError("Collection is not initialized.")
             cursor = self.collection.find()
             documents = []
             async for doc in cursor:
@@ -145,6 +157,8 @@ class MongoHandler:
         """Deletes all documents in the collection.
         """
         try:
+            if not self.collection:
+                raise ValueError("Collection is not initialized.")
             result = await self.collection.delete_many({})
             print(f"Documents deleted: {result.deleted_count}")
         except Exception as e:

@@ -1,9 +1,13 @@
+from pymongo import AsyncMongoClient
 from api.validation.handleProjects import ValidateProjectHandler
 from api.services.calendar.eventSetup import RequestSetup
 from api.services.calendar.handleDateTimes import DateTimeHandler
-from api.services.model_setup.structure_model_output import EventDetails
 from api.config.fetchMongo import MongoHandler
 from api.schemas.projects import ProjectDetails
+from api.schemas.model import EventOutput
+from api.schemas.calendar import CalendarEvent
+from api.config.plugins.enable_google_api import SyncGoogleEvents, SyncGoogleTasks
+from api.config.plugins.enable_apple_api import SyncAppleEvents
 from pydantic import BaseModel, Field
 from typing import Optional
 import uuid
@@ -13,35 +17,57 @@ validator = ValidateProjectHandler()
 #MARK: Host Actions
 class HostActions(RequestSetup):
     def __init__(self, 
+                 calendar_event: CalendarEvent,
+                 event_output: EventOutput,
                  user_id: str, 
-                 user_handler, 
-                 project_handler, 
-                 event_details: EventDetails = EventDetails()):
+                 calendar_service, 
+                 user_handler: MongoHandler, 
+                 project_handler: MongoHandler):
         self.user_handler = user_handler
         self.project_handler = project_handler
-        self.event_details = event_details
-        self.user_id = user_id
         self.user_data = None
 
-        super().__init__(self.event_details, user_id)
-        self.all_events = []
+        super().__init__(
+            calendar_event, 
+            event_output, 
+            user_id, 
+            calendar_service)
 
     @classmethod
     async def fetch(cls, 
+                    calendar_event: CalendarEvent,
+                    event_output: EventOutput,
                     user_id: str, 
-                    user_handler, 
-                    project_handler, 
-                    event_details: EventDetails = EventDetails()):
+                    calendar_service,
+                    user_handler,
+                    project_handler):
+        """Fetches the necessary data for the host actions.
+
+        Args:
+            user_id (str): The ID of the user.
+            user_handler (_type_): The user handler instance.
+            project_handler (_type_): The project handler instance.
+            calendar_event (CalendarEvent, optional): The calendar event instance. Defaults to CalendarEvent().
+
+        Returns:
+            HostActions: An instance of the HostActions class.
+        """
         self = cls(
+            event_output=event_output,
+            calendar_event=calendar_event,
             user_id=user_id,
+            calendar_service=calendar_service,
             user_handler=user_handler,
-            project_handler=project_handler,
-            event_details=event_details
-        )
+            project_handler=project_handler)
         self.user_data = await self.user_handler.get_single_doc({"user_id": self.user_id})
         return self
 
     async def global_delete(self):
+        """Deletes all projects for the user.
+
+        Raises:
+            ValueError: If the user is not found.
+        """
         user = await self.user_handler.get_single_doc({"user_id": self.user_id})
         if not user:
             raise ValueError("User not found")
@@ -51,7 +77,7 @@ class HostActions(RequestSetup):
         if email == "jaceysimps@gmail.com" and username == "jaceysimpson" and password == "WeLoveDoggies16!":
             await self.project_handler.delete_all()
 
-    async def fetch_user_id(self, email, username):
+    async def fetch_user_id(self, email: str, username: str):
         """Fetches the user ID associated with the given email and username.
 
         Args:
@@ -69,7 +95,7 @@ class HostActions(RequestSetup):
             print(f"Function: {self.fetch_user_id.__name__}")
             return None
 
-    async def fetch_name_email(self, user_id):
+    async def fetch_name_email(self, user_id: str):
         """Fetches the name and email associated with the given user ID.
 
         Args:
@@ -96,36 +122,11 @@ class HostActions(RequestSetup):
         Returns:
             str: The user's permission level ('view', 'edit', 'admin').
         """
-        if "projects" in self.user_data and project_id in self.user_data["projects"]:
-            return self.user_data["projects"][project_id][1]  # The permission is the second element in the tuple
+        if self.user_data is not None:
+            if "projects" in self.user_data and project_id in self.user_data["projects"]:
+                return self.user_data["projects"][project_id][1]  # The permission is the second element in the tuple
         return "view"  # Default permission
-
-    @validator.validate_project_identifier 
-    def tie_project(self) -> EventDetails: #Not part of the model API
-        """Ties a project to the event details based on the project name.
-
-        Args:
-            event_details (EventDetails): The details of the event being processed.
-
-        Returns:
-            EventDetails: The updated event details with project information.
-        """
-        try:
-            for key, (project_name, permission) in self.user_data["projects"].items():
-                if permission == "view":
-                    continue
-                if project_name.lower() in self.event_details.input_text.lower():
-                    self.event_details.transparency = "transparent"
-                    self.event_details.guestsCanModify = True
-                    self.event_details.description = f"Lazi: {key}"
-                    break
-
-            return self.event_details
-        except Exception as e:
-            print(f"Error tying project to event details: {e}")
-            print(f"Function: {self.tie_project.__name__}")
-            return self.event_details
-
+    
     @validator.validate_project_args
     async def list_projects(self):
         """Lists all projects for the user.
@@ -134,11 +135,13 @@ class HostActions(RequestSetup):
             list[dict]: A list of projects associated with the user.
         """
         print(f"User Data: {self.user_data}")
-        if "projects" not in self.user_data:
+        if self.user_data and "projects" not in self.user_data:
             return []
         
         try:
             projects = []
+            if self.user_data is None:
+                raise ValueError("User data not found")
             for project_id, _ in self.user_data["projects"].items():
                 project = await self.project_handler.get_single_doc({"project_id": project_id})
                 if project:
@@ -157,8 +160,11 @@ class HostActions(RequestSetup):
 
     @validator.validate_user_data
     @validator.validate_project_args
-    async def create_project(self, project_name: str, project_likes: int, project_transparency: bool, 
-                       project_members: Optional[list[tuple[str, str]]] = None, organizations: Optional[list[str]] = None) -> ProjectDetails | None:
+    async def create_project(self, project_name: str,
+                            project_likes: int,
+                            project_transparency: bool,
+                            project_members: Optional[list[tuple[str, str]]] = None,
+                            organizations: Optional[list[str]] = None) -> ProjectDetails | None:
         """Creates a new project for the user.
 
         Args:
@@ -213,7 +219,9 @@ class HostActions(RequestSetup):
         user_permission = self.get_user_permission(project_id)
         if user_permission != "admin":
             raise ValueError("User does not have permission to delete this project")
-            
+        
+        if not self.user_data:
+            raise ValueError("User data not found")
         del self.user_data["projects"][project_id]
         if project_id in self.user_data.get("projects_liked", []):
             self.user_data["projects_liked"].remove(project_id)
@@ -255,18 +263,23 @@ class HostActions(RequestSetup):
             list[dict]: A list of events associated with the project.
         """
         try:
+            all_events = []
             project = await self.project_handler.get_single_doc({"project_id": project_id})
             if project:
                 for user_id in project["project_members"]:
                     user = await self.user_handler.get_single_doc({"user_id": user_id})
                     if user:
-                        request_setup = RequestSetup(EventDetails(), user_id, description=f"Lazi: {project_id}")
+                        request_setup = RequestSetup(
+                            CalendarEvent(description=f"Lazi: {project_id}"), 
+                            EventOutput(), 
+                            user_id, 
+                            self.calendar_service)
                         request_setup.fetch_events_list()
-                        self.all_events.extend(request_setup.calendar_insights.scheduled_events)
+                        all_events.extend(request_setup.calendar_insights.scheduled_events)
                 
-                self.all_events = DateTimeHandler("").sort_datetimes(self.all_events)
-                for event in self.all_events:
-                    self.calendar_insights.project_events.append(event.model_dump())
+                all_events = DateTimeHandler("").sort_datetimes(all_events)
+                for event in all_events:
+                    self.calendar_insights.project_events.append(event)
             
             return self.calendar_insights.project_events
         except Exception as e:
@@ -316,11 +329,10 @@ class HostActions(RequestSetup):
             user_data = await self.user_handler.get_single_doc({"email": email, "username": username})
             if not user_data:
                 raise ValueError("User not found")
-
             if permission not in ["view", "edit", "admin"]:
                 raise ValueError("Invalid permission level")
 
-            if self.user_data.get("projects", {}).get(project_id, [])[1] != "admin":
+            if user_data.get("projects", {}).get(project_id, [])[1] != "admin":
                 raise ValueError("User does not have permission to edit")
             else:
                 user_data["projects"][project_id][1] = permission
@@ -336,13 +348,19 @@ class HostActions(RequestSetup):
 #MARK: Guest Actions
 class GuestActions(HostActions):
     def __init__(self, 
+                 calendar_event: CalendarEvent,
+                 event_output: EventOutput,
+                 calendar_service,
                  user_id: str, 
-                 user_handler, 
-                 project_handler, 
-                 event_details: EventDetails = EventDetails()):
-        self.user_id = user_id
-        self.event_details = event_details
-        super().__init__(self.user_id, user_handler, project_handler, self.event_details)
+                 user_handler,
+                 project_handler):
+        super().__init__(
+            calendar_event,
+            event_output,
+            user_id,
+            calendar_service,
+            user_handler, 
+            project_handler)
 
     
     @validator.validate_project
@@ -374,6 +392,8 @@ class GuestActions(HostActions):
             if self.user_data and "projects" in self.user_data and project_id in self.user_data["projects"]:
                 permission = self.user_data["projects"][project_id][1]  
 
+            if not self.user_data:
+                raise ValueError("User data not found")
             user_info = {
                 "user_id": self.user_data.get("user_id", ""),
                 "email": self.user_data.get("email", ""),
@@ -397,7 +417,9 @@ class GuestActions(HostActions):
             project_id (str): The ID of the project to like.
         """
         try:
-            project = await project_handler.get_single_doc({"project_id": project_id})
+            project = await self.project_handler.get_single_doc({"project_id": project_id})
+            if not self.user_data:
+                raise ValueError("User data not found")
             if project:
                 if project_id not in self.user_data.get("projects_liked", []):
                     self.user_data["projects_liked"].append(project_id)
@@ -410,8 +432,6 @@ class GuestActions(HostActions):
             print(f"Error liking project: {e}")
             print(f"Function: {self.like_project.__name__}")
             pass
-
-        return self.user_data["projects_liked"]
             
     @validator.validate_user_data
     async def remove_like(self, project_id: str) -> None:
@@ -421,6 +441,8 @@ class GuestActions(HostActions):
             project_id (str): The ID of the project to remove a like from.
         """
         try:
+            if not self.user_data:
+                raise ValueError("User data not found")
             if project_id in self.user_data.get("projects_liked", []):
                 self.user_data["projects_liked"].remove(project_id)
                 query_item = {"user_id": self.user_data["user_id"]}
@@ -434,8 +456,6 @@ class GuestActions(HostActions):
             print(f"Function: {self.remove_like.__name__}")
             pass
 
-        return self.user_data["projects_liked"]
-    
     @validator.validate_project
     async def add_project_member(self, project_id: str, new_email: str, username: str, code: str) -> None:
         """Adds a new member to an existing project.

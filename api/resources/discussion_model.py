@@ -1,9 +1,7 @@
 from api.services.track_projects.handleDiscussions import HandleDiscussions, DiscussionData
 from api.config.fetchMongo import MongoHandler
 from api.schemas.projects import DiscussionRequest
-from pydantic import BaseModel, Field
-from api.config.cache import discussion_cache, cached
-from typing import Optional
+from api.config.cache import discussion_cache, async_cached
 
 user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
 discussion_config = MongoHandler(None, "userAuthDatabase", "openDiscussions")

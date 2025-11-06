@@ -20,11 +20,11 @@ class CoordinationModel:
         """
         users = []
         members = request_body.get("members", [])
-        user_handler = await user_config.get_client().client
+        user_handler = await user_config.get_client()
         for member in members:
             query_user = {"email": member.get("email").lower()}
-            user_data = await user_handler.get_single_doc(query_user)
-            all_users = await user_handler.get_all()
+            user_data = await user_config.get_single_doc(query_user)
+            all_users = await user_config.get_all()
             print(f"All users in database: {all_users}")
             if user_data:
                 users.append(user_data)

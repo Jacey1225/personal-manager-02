@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, time
 from typing import Union, Optional
-from api.schemas.model import DateTimeSet
+from api.schemas.calendar import DateTimeSet
 from api.validation.handleDatetimes import ValidateDateTimeSet
 
 validator = ValidateDateTimeSet()
@@ -185,7 +185,7 @@ class DateTimeHandler:
 
         return sorted_events
     
-    def format_datetimes(self, event_start: datetime, event_end: Optional[datetime]) -> dict:
+    def format_datetimes(self, event_start: datetime, event_end: Optional[datetime]) -> tuple:
         """Formats the start and end times of an event in ISO format for frontend compatibility.
 
         Args:
@@ -201,7 +201,4 @@ class DateTimeHandler:
             end_formatted = event_end.strftime("%A %B %d, %Y %I:%M %p")
         else:
             end_formatted = start_formatted  # For tasks without end time, use start time
-        return {
-            "start_time": start_formatted,
-            "end_time": end_formatted
-        }
+        return start_formatted, end_formatted

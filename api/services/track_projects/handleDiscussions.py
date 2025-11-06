@@ -10,12 +10,12 @@ class HandleDiscussions:
     def __init__(self, 
                  user_id: str, 
                  project_id: str, 
-                 user_handler, 
-                 discussion_handler):
+                 user_handler: MongoHandler, 
+                 discussion_handler: MongoHandler):
         self.user_id = user_id
         self.project_id = project_id
         self.user_handler = user_handler
-        self.discussion_handler = discussion_handler
+        self.discussion_handler: MongoHandler = discussion_handler
         self.user_data = None
 
     @classmethod
@@ -41,10 +41,10 @@ class HandleDiscussions:
         discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
         if discussion:
             # Convert legacy tuple format to new dictionary format if needed
-            discussion = self._migrate_content_format(discussion)
+            discussion = await self._migrate_content_format(discussion)
         return discussion
     
-    def _migrate_content_format(self, discussion: dict) -> dict:
+    async def _migrate_content_format(self, discussion: dict) -> dict:
         """Migrates old tuple-based content format to new dictionary format.
         
         Args:
@@ -66,7 +66,7 @@ class HandleDiscussions:
                                 "timestamp": discussion["data"]["created_time"]  
                             })
                     discussion["data"]["content"] = migrated_content
-                    self.discussion_handler.post_update(
+                    await self.discussion_handler.post_update(
                         {"discussion_id": discussion["discussion_id"]}, 
                         {"data.content": migrated_content}
                     )
@@ -82,7 +82,7 @@ class HandleDiscussions:
         print(f"Fetched discussions for project {self.project_id}: {discussions}")
         
         if discussions:
-            discussions = [self._migrate_content_format(disc) for disc in discussions]
+            discussions = [await self._migrate_content_format(disc) for disc in discussions]
         
         return discussions
 

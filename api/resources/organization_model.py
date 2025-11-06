@@ -1,7 +1,7 @@
 from api.services.track_projects.handleOrganizations import HandleOrganizations, ProjectDetails
 from api.schemas.projects import CreateOrgRequest, OrgRequest, ProjectDetails
 from api.config.fetchMongo import MongoHandler
-from api.config.cache import organization_cache, cached
+from api.config.cache import organization_cache, async_cached
 
 user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
 organization_config = MongoHandler(None, "userAuthDatabase", "openOrganizations")

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from api.build.project_model import ProjectModel
+from api.resources.project_model import ProjectModel
 from api.schemas.projects import CreateProjectRequest, ModifyProjectRequest
 from api.config.cache import project_cache
 
@@ -11,8 +11,17 @@ commander = ProjectModel()
 @project_router.get("/projects/view_project")
 async def view_project(project_id: str = Query(...), user_id: str = Query(...), project_name: str = Query(...), force_refresh: bool = Query(False)):
     request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name=project_name, force_refresh=force_refresh)
-    if request in project_cache and force_refresh:
-        project_cache.pop(request)
+    cache_key = project_cache.get_cache_key(
+        "view_project",
+        (project_id, user_id, project_name), 
+        {"force_refresh": force_refresh})
+    if force_refresh:
+        project_data = await project_cache.get_or_set(
+            cache_key,
+            commander.view_project,
+            request)
+        if request in project_data:
+            await project_cache.pop(cache_key)
     return await commander.view_project(request)
 
 @project_router.post("/projects/like_project")
@@ -44,8 +53,18 @@ async def rename_project(request: ModifyProjectRequest):
 @project_router.get("/projects/events/{project_id}")
 async def get_project_events(project_id: str, user_id: str = Query(...), force_refresh: bool = Query(False)):
     request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name="", force_refresh=force_refresh)
-    if request in project_cache and force_refresh:
-        project_cache.pop(request)
+    cache_key = project_cache.get_cache_key(
+        "get_project_events",
+        (project_id, user_id), 
+        {"force_refresh": force_refresh})
+    if force_refresh:
+        project_data = await project_cache.get_or_set(
+            cache_key,
+            commander.get_project_events,
+            request)    
+        if request in project_data:
+            await project_cache.pop(cache_key)
+        
     return await commander.get_project_events(request)
 
 @project_router.get("/projects/add_member")

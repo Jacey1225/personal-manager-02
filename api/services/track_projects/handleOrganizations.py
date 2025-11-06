@@ -1,18 +1,22 @@
 from api.config.fetchMongo import MongoHandler
 from api.validation.handleOrganizations import ValidateOrganizations
-from pydantic import BaseModel, Field
 from api.services.track_projects.handleProjects import ProjectDetails
 from api.schemas.projects import Organization
 import uuid 
 
 validator = ValidateOrganizations()
 
-class HandleOrganizations():
-    def __init__(self, user_id: str, user_handler, organization_handler, project_handler):
+class HandleOrganizations:
+    def __init__(self, 
+                 user_id: str, 
+                 user_handler: MongoHandler, 
+                 organization_handler: MongoHandler, 
+                 project_handler: MongoHandler):
         self.user_id = user_id
         self.user_handler = user_handler
         self.organization_handler = organization_handler
         self.project_handler = project_handler
+        self.user_data = None
 
     @classmethod
     async def fetch(cls, 
@@ -39,18 +43,20 @@ class HandleOrganizations():
             str: The ID of the newly created organization.
         """
         organization = Organization(name=name, members=members, projects=projects)
-        organization = await self.organization_handler.get_single_doc({"id": self.organization_id})
+        if not self.user_data:
+            self.user_data = await self.user_handler.get_single_doc({"user_id": self.user_id})
+
         organization_id = organization.id
-        while organization:
+        while organization_id in self.user_data["organizations"]:
             organization_id = str(uuid.uuid4())
-            organization = await self.organization_handler.get_single_doc({"id": organization_id})
+        organization.id = organization_id
 
         await self.organization_handler.post_insert(organization.model_dump())
 
-        self.user_data["organizations"].append(organization_id)
+        self.user_data["organizations"].append(organization.id)
         await self.user_handler.post_update({"user_id": self.user_id}, self.user_data)
-        return organization_id
-    
+        return organization.id
+
     @validator.validate_organization_data
     async def delete_organization(self, organization_id: str) -> bool:
         """Deletes an existing organization.
@@ -64,9 +70,10 @@ class HandleOrganizations():
         if await self.organization_handler.get_single_doc({"id": organization_id}):
             await self.organization_handler.post_delete({"id": organization_id})
 
-            self.user_data["organizations"].remove(organization_id)
-            await self.user_handler.post_update({"user_id": self.user_id}, self.user_data)
-            return True
+            if self.user_data:
+                self.user_data["organizations"].remove(organization_id)
+                await self.user_handler.post_update({"user_id": self.user_id}, self.user_data)
+                return True
         return False
 
     async def list_organizations(self) -> list[Organization]:
@@ -75,7 +82,8 @@ class HandleOrganizations():
         Returns:
             list[Organization]: A list of all organizations.
         """
-        organizations = self.user_data["organizations"]
+        if self.user_data:
+            organizations = self.user_data["organizations"]
 
         user_organizations = []
         for organization_id in organizations:

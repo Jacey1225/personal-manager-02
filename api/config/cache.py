@@ -1,4 +1,6 @@
 from cachetools import cached, TTLCache
+from typing import Callable, Any
+from functools import wraps
 import asyncio
 
 class AsyncCache:
@@ -18,28 +20,33 @@ class AsyncCache:
 
     async def get_or_set(self,
                          key: str,
-                         coro_unc: Callable,
+                         coro_func: Callable,
                          *args,
                          **kwargs) -> Any:
         if key in self._cache:
             return self._cache[key]
-        if key not in self_locks:
+        if key not in self._locks:
             self._locks[key] = asyncio.Lock()
         
         async with self._locks[key]:
             if key in self._cache:
                 return self._cache[key]
 
-        result = await coro_unc(*args, **kwargs)
+        result = await coro_func(*args, **kwargs)
         self._cache[key] = result
         return result
 
-
+    async def pop(self, key: str):
+        if key in self._cache:
+            del self._cache[key]
+            del self._locks[key]
+            
+event_cache = AsyncCache(maxsize=100, ttl=3600)
 discussion_cache = AsyncCache(maxsize=100, ttl=3600)
 organization_cache = AsyncCache(maxsize=100, ttl=3600)
 project_cache = AsyncCache(maxsize=100, ttl=3600)
 
-def async_cached(cache: TTLCache):
+def async_cached(cache: AsyncCache):
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):

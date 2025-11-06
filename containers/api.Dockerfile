@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY api app/api
-COPY requirements.txt /app/
+COPY requirements/api.txt /app/
 
 # Install system dependencies
 RUN for i in 1 2 3 4 5; do \
@@ -22,7 +22,7 @@ RUN for i in 1 2 3 4 5; do \
 # Install Python dependencies
 
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements/api.txt
 
 # Copy project files
 COPY . /app/
