@@ -1,31 +1,11 @@
-from api.services.track_projects.handleDiscussions import HandleDiscussions, DiscussionData
+from api.services.track_projects.handleDiscussions import HandleDiscussions
 from api.config.fetchMongo import MongoHandler
-from api.schemas.projects import DiscussionRequest
+from api.schemas.projects import DiscussionRequest, PageSchema
 from api.config.cache import discussion_cache, async_cached
 
 user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
 discussion_config = MongoHandler(None, "userAuthDatabase", "openDiscussions")
 class DiscussionsModel:
-    @staticmethod
-    @async_cached(cache=discussion_cache)
-    async def view_discussion(request: DiscussionRequest, discussion_id: str) -> dict:
-        """Fetches an existing discussion.
-
-        Args:
-            request (DiscussionRequest): The request object containing user and project information.
-            discussion_id (str): The ID of the discussion to fetch.
-
-        Returns:
-            dict: The details of the requested discussion.
-        """
-        user_id = request.user_id
-        project_id = request.project_id
-        await user_config.get_client()
-        await discussion_config.get_client()
-        discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
-        discussion = await discussion_control.view_discussion(discussion_id)
-        return {"discussion": discussion}
-
     @staticmethod
     @async_cached(cache=discussion_cache)
     async def list_project_discussions(request: DiscussionRequest) -> dict:
@@ -46,7 +26,7 @@ class DiscussionsModel:
         return {"discussions": discussions}
 
     @staticmethod
-    async def create_discussion(request: DiscussionRequest, discussion_data: DiscussionData) -> dict:
+    async def create_discussion(request: DiscussionRequest, discussion_data: PageSchema) -> dict:
         """Creates a new discussion for a project.
 
         Args:
@@ -61,10 +41,10 @@ class DiscussionsModel:
         await discussion_config.get_client()
         discussion_control = await HandleDiscussions.fetch(user_id, project_id, user_config, discussion_config)
         await discussion_control.create_discussion(
-            discussion_data.title,
-            discussion_data.active_contributors,
-            discussion_data.content,
-            discussion_data.transparency)
+            discussion_data.name,
+            discussion_data.contributors,
+            discussion_data.metadata
+        )
         return {"status": "Discussion created successfully"}
 
     @staticmethod

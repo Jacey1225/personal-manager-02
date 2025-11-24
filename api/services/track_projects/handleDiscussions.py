@@ -3,46 +3,30 @@ from typing import Optional
 import uuid
 from datetime import datetime
 from api.validation.handleDiscussions import ValidateDiscussions
-from api.schemas.projects import Discussion, DiscussionData
+from api.schemas.projects import PageSchema
 
 validator = ValidateDiscussions()
 class HandleDiscussions:
     def __init__(self, 
                  user_id: str, 
                  project_id: str, 
-                 user_handler: MongoHandler, 
-                 discussion_handler: MongoHandler):
+                 user_handler: MongoHandler,
+                 widget_handler: MongoHandler):
         self.user_id = user_id
         self.project_id = project_id
         self.user_handler = user_handler
-        self.discussion_handler: MongoHandler = discussion_handler
+        self.widget_handler = widget_handler
         self.user_data = None
 
     @classmethod
     async def fetch(cls,
                     user_id: str,
                     project_id: str,
-                    user_handler,
-                    discussion_handler):
-        self = cls(user_id, project_id, user_handler, discussion_handler)
+                    user_handler: MongoHandler,
+                    widget_handler: MongoHandler):
+        self = cls(user_id, project_id, user_handler, widget_handler)
         self.user_data = await self.user_handler.get_single_doc({"user_id": self.user_id})
         return self
-
-    @validator.validate_discussion
-    async def view_discussion(self, discussion_id: str) -> dict:
-        """Fetches a specific discussion.
-
-        Args:
-            discussion_id (str): The ID of the discussion to fetch.
-
-        Returns:
-            dict: The details of the requested discussion.
-        """
-        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
-        if discussion:
-            # Convert legacy tuple format to new dictionary format if needed
-            discussion = await self._migrate_content_format(discussion)
-        return discussion
     
     async def _migrate_content_format(self, discussion: dict) -> dict:
         """Migrates old tuple-based content format to new dictionary format.
@@ -66,8 +50,8 @@ class HandleDiscussions:
                                 "timestamp": discussion["data"]["created_time"]  
                             })
                     discussion["data"]["content"] = migrated_content
-                    await self.discussion_handler.post_update(
-                        {"discussion_id": discussion["discussion_id"]}, 
+                    await self.widget_handler.post_update(
+                        {"id": discussion["discussion_id"]}, 
                         {"data.content": migrated_content}
                     )
         return discussion
@@ -78,7 +62,7 @@ class HandleDiscussions:
         Returns:
             Optional[list[dict]] | dict: A list of discussions for the specified project, or an error message.
         """
-        discussions = await self.discussion_handler.get_multi_doc({"project_id": self.project_id})
+        discussions = await self.widget_handler.get_multi_doc({"project_id": self.project_id})
         print(f"Fetched discussions for project {self.project_id}: {discussions}")
         
         if discussions:
@@ -89,38 +73,36 @@ class HandleDiscussions:
     async def create_discussion(self, 
                                 title: str, 
                                 contributors: list[str], 
-                                content: list[dict], 
-                                transparency: bool) -> dict:
+                                content: dict) -> dict:
         """Creates a new discussion.
 
         Args:
             title (str): The title of the discussion.
             contributors (list[str]): A list of user IDs who are contributing to the discussion.
-            content (list[dict]): A list of message objects with username, message, and timestamp.
-            transparency (str): The visibility status of the discussion (e.g., public, private).
+            content (dict): A dictionary containing the message objects with username, message, and timestamp.
             project_id (Optional[str]): The ID of the project that this discussion is related to.
 
         Returns:
             str: The ID of the created discussion.
         """
-        discussion = Discussion(
-            discussion_id=str(uuid.uuid4()),
+        discussion = PageSchema(
+            id=str(uuid.uuid4()),
             project_id=self.project_id,
-            data=DiscussionData(
-                title=title,
-                author_id=self.user_id,
-                active_contributors=contributors,
-                content=content,
-                created_time=datetime.now().isoformat(),
-                transparency=transparency,
-            )
+            name=title,
+            author_id=self.user_id,
+            contributors=contributors,
+            creation_time=datetime.now().isoformat(),
+            page_type="chat",
+            interface_type="chat",
+            api_config={},
+            metadata=content
         )
         try:
-            await self.discussion_handler.post_insert(discussion.model_dump())
+            await self.widget_handler.post_insert(discussion.model_dump())
         except Exception as e:
             return {"status": "error", "message": str(e)}
         
-        return {"status": "success", "data": {"discussion_id": discussion.discussion_id}}
+        return {"status": "success", "data": {"page_id": discussion.id}}
 
     @validator.validate_discussion
     async def delete_discussion(self, discussion_id: str) -> dict:
@@ -129,11 +111,11 @@ class HandleDiscussions:
         Args:
             discussion_id (str): The ID of the discussion to delete.
         """
-        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.widget_handler.get_single_doc({"id": discussion_id})
         if discussion and discussion["data"]["author_id"] == self.user_id:
-            query_item = {"discussion_id": discussion_id, "data.author_id": self.user_id}
-            await self.discussion_handler.post_delete(query_item)
-            return {"status": "success", "data": {"discussion_id": discussion_id}}
+            query_item = {"id": discussion_id, "data.author_id": self.user_id}
+            await self.widget_handler.post_delete(query_item)
+            return {"status": "success", "data": {"page_id": discussion_id}}
         else:
             return {"status": "error", "message": "Discussion not found or you don't have permission to delete it"}
     
@@ -148,13 +130,13 @@ class HandleDiscussions:
         Returns:
             dict: A dictionary containing the status and any relevant data.
         """
-        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.widget_handler.get_single_doc({"id": discussion_id})
         if discussion and discussion["data"]['author_id'] == self.user_id:
             if self.user_id not in discussion["data"]["active_contributors"]:
                 discussion["data"]["active_contributors"].append(self.user_id)
-                await self.discussion_handler.post_update({"discussion_id": discussion_id}, 
+                await self.widget_handler.post_update({"id": discussion_id}, 
                                                {"data.active_contributors": discussion["data"]["active_contributors"]})
-                return {"status": "success", "data": {"discussion_id": discussion_id, "new_member": self.user_id}}
+                return {"status": "success", "data": {"page_id": discussion_id, "new_member": self.user_id}}
             else:
                 return {"status": "error", "message": "User is already a member of the discussion"}
         else:
@@ -170,13 +152,13 @@ class HandleDiscussions:
         Returns:
             dict | None: The status and data of the operation.
         """
-        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.widget_handler.get_single_doc({"id": discussion_id})
         if discussion and discussion["data"]['author_id'] == self.user_id:
             if self.user_id in discussion["data"]["active_contributors"]:
                 discussion["data"]["active_contributors"].remove(self.user_id)
-                await self.discussion_handler.post_update({"discussion_id": discussion_id}, 
+                await self.widget_handler.post_update({"id": discussion_id}, 
                                                {"data.active_contributors": discussion["data"]["active_contributors"]})
-                return {"status": "success", "data": {"discussion_id": discussion_id, "removed_member": self.user_id}}
+                return {"status": "success", "data": {"page_id": discussion_id, "removed_member": self.user_id}}
             else:
                 return {"status": "error", "message": "User is not a member of the discussion"}
 
@@ -189,7 +171,7 @@ class HandleDiscussions:
             user_id (str): The ID of the user posting the message.
             message (str): The content of the message.
         """
-        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.widget_handler.get_single_doc({"id": discussion_id})
         if not discussion:
             return {"error": "Discussion not found"}
             
@@ -198,8 +180,8 @@ class HandleDiscussions:
 
             if username not in discussion["data"]["active_contributors"]:
                 discussion["data"]["active_contributors"].append(username)
-                await self.discussion_handler.post_update(
-                    {"discussion_id": discussion_id}, 
+                await self.widget_handler.post_update(
+                    {"id": discussion_id}, 
                     {"data.active_contributors": discussion["data"]["active_contributors"]}
                 )
             
@@ -210,12 +192,12 @@ class HandleDiscussions:
             }
             
             discussion["data"]["content"].append(new_message)
-            await self.discussion_handler.post_update(
-                {"discussion_id": discussion_id}, 
+            await self.widget_handler.post_update(
+                {"id": discussion_id}, 
                 {"data.content": discussion["data"]["content"]}
             )
-            
-            return {"status": "success", "data": {"discussion_id": discussion_id, "message": new_message}}
+
+            return {"status": "success", "data": {"page_id": discussion_id, "message": new_message}}
         except Exception as e:
             return {"error": str(e)}
 
@@ -232,7 +214,7 @@ class HandleDiscussions:
             dict | None: The status and data of the operation.
         """
 
-        discussion = await self.discussion_handler.get_single_doc({"discussion_id": discussion_id})
+        discussion = await self.widget_handler.get_single_doc({"id": discussion_id})
         if discussion:
             try:
                 username = (await self.user_handler.get_single_doc({"user_id": user_id})).get("username", "Unknown User")
@@ -242,8 +224,8 @@ class HandleDiscussions:
                         msg_obj.get("username") == username and 
                         msg_obj.get("message") == message):
                         content_list.pop(i)
-                        await self.discussion_handler.post_update({"discussion_id": discussion_id}, {"data.content": content_list})
-                        return {"status": "success", "data": {"discussion_id": discussion_id}}
+                        await self.widget_handler.post_update({"id": discussion_id}, {"data.content": content_list})
+                        return {"status": "success", "data": {"page_id": discussion_id}}
                 return {"error": "Message not found in discussion"}
             except Exception as e:
                 return {"error": str(e)}

@@ -8,6 +8,10 @@ from api.config.fetchMongo import MongoHandler
 from typing import Optional, Dict, Any
 from datetime import datetime
 import pytz
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 responseRequest = {
     "user_id": str,
@@ -63,9 +67,9 @@ class MainModel:
                     end_pdt = pdt.localize(end_dt).isoformat()
                 else:
                     end_pdt = None
-                print(f"Converted {start} and {end} to PDT: {start_pdt}, {end_pdt}")
+                logger.info(f"Converted {start} and {end} to PDT: {start_pdt}, {end_pdt}")
             except Exception as e:
-                print(f"Datetimes do not conform to format: {e}")
+                logger.error(f"Datetimes do not conform to format: {e}")
                 start_pdt = start
                 end_pdt = end
 
@@ -86,6 +90,7 @@ class MainModel:
 
         response_handler = HandleResponse(input_text)
         events = response_handler.process_response() 
+        logger.info(f"Generated events: {events}")
         return events
     
     @staticmethod
@@ -119,7 +124,7 @@ class MainModel:
                     user_id,
                     service
                 ).tie_project(user_data)
-                print(f"Calendar Event: {calendar_event}")
+                logger.info(f"Calendar Event: {calendar_event}")
                 if event_output.action.lower() == "add":
                     add_handler = AddToCalendar(
                         calendar_event, 
@@ -178,7 +183,7 @@ class MainModel:
 
             return requests
         except Exception as e:
-            print(f"I'm sorry, something went wrong. Please try again: {e}")
+            logger.error(f"I'm sorry, something went wrong. Please try again: {e}")
             return [{"status": "failed", "message": f"Something went wrong please try again."}]
 
     @staticmethod
@@ -226,7 +231,7 @@ class MainModel:
             delete_handler.delete_event(event_id)  
             return {"status": "success", "message": event_output.feature_response}
         except Exception as e:
-            print(f"I'm sorry, something went wrong. Please try again: {e}")
+            logger.error(f"I'm sorry, something went wrong. Please try again: {e}")
             return {"status": "failed", "message": f"Something went wrong please try again."}
         
     @staticmethod
@@ -264,7 +269,7 @@ class MainModel:
                 datetime_obj=datetime_set,
                 event_id=event_id
             )
-            print(f"Event Details Target Datetimes: {calendar_event.datetime_obj.target_datetimes}")
+            logger.info(f"Event Details Target Datetimes: {calendar_event.datetime_obj.target_datetimes}")
 
             calendar_insights_dict = request_body.get("calendar_insights", {})
             user_id = request_body.get("user_id", "None")
@@ -278,8 +283,8 @@ class MainModel:
                 )
             update_handler.calendar_insights = CalendarInsights(**calendar_insights_dict)
             update_handler.event_output = event_output
-            print(f"Event Details: {update_handler.event_output}")
-            print(f"Calendar Insights: {update_handler.calendar_insights}")
+            logger.info(f"Event Details: {update_handler.event_output}")
+            logger.info(f"Calendar Insights: {update_handler.calendar_insights}")
 
             if len(target_dates) > 1:
                 update_handler.eliminate_targets(event_id)
@@ -288,5 +293,5 @@ class MainModel:
 
             return {"status": "success", "message": event_output.feature_response}
         except Exception as e:
-            print(f"I'm sorry, something went wrong. Please try again: {e}")
+            logger.error(f"I'm sorry, something went wrong. Please try again: {e}")
             return {"status": "failed", "message": f"Something went wrong please try again."}

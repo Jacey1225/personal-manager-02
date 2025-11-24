@@ -1,5 +1,6 @@
 import sys
 import os
+import logging
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 
@@ -7,6 +8,10 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from api.main import app
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 client = TestClient(app)
 
@@ -17,6 +22,7 @@ def test_fetch_users(mock_user_config):
     """
     Test fetching users.
     """
+    logger.info("Starting test_fetch_users")
     # Since the endpoint is async, we need to mock the async methods
     async def async_get_single_doc(*args, **kwargs):
         return {"username": "testuser", "email": "test@example.com"}
@@ -33,15 +39,19 @@ def test_fetch_users(mock_user_config):
         ]
     }
     response = client.post("/coordinate/fetch_users", json=request_body)
+    logger.info(f"Response status code: {response.status_code}")
+    logger.info(f"Response JSON: {response.json()}")
     
     assert response.status_code == 200
     assert response.json() == {"users": [{"username": "testuser", "email": "test@example.com"}]}
+    logger.info("Finished test_fetch_users")
 
 @patch('api.resources.coordination_model.CoordinateDateTimes')
 def test_get_availability(MockCoordinateDateTimes):
     """
     Test getting user availability.
     """
+    logger.info("Starting test_get_availability")
     mock_coordinator = MagicMock()
     mock_coordinator.coordinate.return_value = True
     MockCoordinateDateTimes.return_value = mock_coordinator
@@ -53,9 +63,12 @@ def test_get_availability(MockCoordinateDateTimes):
     }
     
     response = client.post("/coordinate/get_availability", json=request_body)
+    logger.info(f"Response status code: {response.status_code}")
+    logger.info(f"Response JSON: {response.json()}")
     
     assert response.status_code == 200
     json_response = response.json()
     assert json_response["status"] == "success"
     assert json_response["percent_available"] == 100
     assert json_response["users"] == [["testuser", True]]
+    logger.info("Finished test_get_availability")

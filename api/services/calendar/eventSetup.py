@@ -33,11 +33,17 @@ class RequestSetup:
         self.datetime_handler = DateTimeHandler(self.event_output.input_text)
         self.calendar_insights = CalendarInsights()
 
-        if not self.calendar_event.event_name or not self.event_output.intent:
+        # Only validate calendar event data if calendar service is provided
+        # This allows non-calendar operations to work without calendar events
+        if self.calendar_service is not None and (not self.calendar_event.event_name or not self.event_output.intent):
             print(f"Event Name: {self.calendar_event.event_name}")
             print(f"Event Action: {self.event_output.intent}")
             print(f"Input Text: {self.event_output.input_text}")
             raise ValueError("Event name and action must be provided in event_output.")
+        
+        # For non-calendar operations, initialize default calendar insights
+        if self.calendar_service is None:
+            self.calendar_insights = CalendarInsights()
 
     @validator.validate_events_list
     def fetch_events_list(self):

@@ -6,9 +6,10 @@ from api.config.fetchMongo import MongoHandler
 from api.config.uniformInterface import UniformInterface
 from api.config.cache import project_cache, async_cached
 from typing import List
+import logging
 
-user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class ProjectModel:
     @staticmethod
@@ -21,6 +22,10 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
+        # Create new instances for each request to avoid event loop issues
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+        
         user_id = request.user_id
         service = await UniformInterface(user_id).fetch_service()
         await user_config.get_client()
@@ -33,6 +38,8 @@ class ProjectModel:
             user_config, 
             project_config)
         await handler.global_delete()
+        await user_config.close_client()
+        await project_config.close_client()
         return {"message": "All projects deleted successfully."}
 
     @staticmethod
@@ -45,6 +52,8 @@ class ProjectModel:
         Returns:
             dict: A success message with the created project details.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
         project_likes = request.project_likes
         transparency = request.project_transparency
         members = request.project_members
@@ -73,6 +82,9 @@ class ProjectModel:
         Returns:
             dict: The details of the requested project.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         user_id = request.user_id
         project_id = request.project_id
         service = await UniformInterface(user_id).fetch_service()
@@ -99,8 +111,11 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
-        print(f"Deleting project: {request.project_id} for user: {request.user_id}")
+        logger.info(f"Deleting project: {request.project_id} for user: {request.user_id}")
         user_id = request.user_id
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         await user_config.get_client()
         await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
@@ -126,7 +141,10 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
-        print(f"Renaming project: {request.project_id} to {request.project_name} for user: {request.user_id}")
+        logger.info(f"Renaming project: {request.project_id} to {request.project_name} for user: {request.user_id}")
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         user_id = request.user_id
         project_id = request.project_id
         project_name = request.project_name
@@ -153,6 +171,9 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         user_id = request.user_id
         project_id = request.project_id
         await user_config.get_client()
@@ -178,6 +199,9 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         user_id = request.user_id
         project_id = request.project_id
         await user_config.get_client()
@@ -206,6 +230,9 @@ class ProjectModel:
         Returns:
             list[dict]: A list of events associated with the project.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         user_id = request.user_id
         project_id = request.project_id
         await user_config.get_client()
@@ -235,6 +262,9 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         user_id = request.user_id
         project_id = request.project_id
 
@@ -265,6 +295,9 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         user_id = request.user_id
         project_id = request.project_id
         
@@ -299,6 +332,9 @@ class ProjectModel:
         Returns:
             list[dict]: A list of projects associated with the user.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         await user_config.get_client()
         await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
@@ -323,6 +359,9 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         user_id = request.user_id
         project_id = request.project_id
         await user_config.get_client()
@@ -352,6 +391,9 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
+        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+
         user_id = request.user_id
         project_id = request.project_id
         await user_config.get_client()

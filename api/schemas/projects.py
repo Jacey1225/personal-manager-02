@@ -1,8 +1,32 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List
 import uuid
 from datetime import datetime
+    
+class PageSchema(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="The unique identifier for the page")
+    project_id: str = Field(..., description="The ID of the project this page belongs to")
+    name: str = Field(default="", description="The name of the page")
+    author_id: str = Field(description="The User ID of the page author")
+    contributors: List[str] = Field(default=[], description="List of User IDs who contributed to the page")
+    creation_time: str = Field(default_factory=lambda: datetime.now().isoformat(), description="The timestamp when the page was created")
+    page_type: str = Field(description="The type of the page (e.g., 'discussion', 'gallery', etc.)")
+    interface_type: str = Field(description="The interface type of the page (e.g., 'file_upload', 'chat', etc.)")
+    api_config: dict = Field(default_factory=dict, description="API configuration for the page")
+    metadata: dict = Field(default_factory=dict, description="Additional metadata about the page")
 
+class ProjectDetails(BaseModel):
+    project_name: str = Field(..., description="Name of the project")
+    project_id: str = Field(..., description="Unique identifier for the project")
+    project_likes: int = Field(default=0, description="Number of likes for the project")
+    project_transparency: bool = Field(default=True, description="Transparency status of the project(True: public - False: private)")
+    project_members: List[str] = Field(..., description="List of user IDs associated with the project")
+    organizations: Optional[List[str]] = Field(default=[], description="Organization IDs associated with the project")
+class Organization(BaseModel):
+    name: str = Field(description="The name of the organization")
+    members: List[str] = Field(description="List of user IDs associated with the organization")
+    id: str = Field(default=str(uuid.uuid4()), description="Unique identifier for the organization")
+    projects: List[str] = Field(default_factory=list, description="List of project IDs associated with the organization")
 class DiscussionRequest(BaseModel):
     user_id: str
     project_id: str
@@ -16,41 +40,6 @@ class DiscussionRequest(BaseModel):
             return False
         return (self.user_id, self.project_id, self.force_refresh) == \
                (other.user_id, other.project_id, other.force_refresh)
-class DiscussionData(BaseModel):
-    title: str = Field(description="The title of the discussion")
-    author_id: str = Field(description="The User ID of the discussion author")
-    active_contributors: List[str] = Field(description="The usernames of everyone who currently contributes to this discussion")
-    content: List[Dict[str, str]] = Field(description="A list of message objects with username, message, and timestamp")
-    created_time: str = Field(default_factory=lambda: datetime.now().isoformat(), description="The timestamp when the discussion was created")
-    transparency: bool = Field(description="The visibility status of the discussion (e.g., True, False)")
-
-class Discussion(BaseModel):
-    discussion_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="The UUID of the discussion")
-    project_id: str = Field(default="", description="The ID of the project this discussion is linked to, if any")
-    data: DiscussionData
-
-class Organization(BaseModel):
-    name: str = Field(description="The name of the organization")
-    members: List[str] = Field(description="List of user IDs associated with the organization")
-    id: str = Field(default=str(uuid.uuid4()), description="Unique identifier for the organization")
-    projects: List[str] = Field(default_factory=list, description="List of project IDs associated with the organization")
-
-class ResourceDetails(BaseModel):
-    project_id: str = Field(..., description="ID of the project this resource is associated with")
-    resource_id: str = Field(default=str(uuid.uuid4()), description="Unique identifier for the resource")
-    resource_name: str = Field(..., description="Name of the resource")
-    resource_link: str = Field(..., description="Link to the resource (e.g., document, link, sheet)")
-    resource_owner: str = Field(..., description="User ID of the resource owner")
-    resource_timestamp: str = Field(default=datetime.now().isoformat(), description="Timestamp when the resource was created or modified")
-
-class ProjectDetails(BaseModel):
-    project_name: str = Field(..., description="Name of the project")
-    project_id: str = Field(..., description="Unique identifier for the project")
-    project_likes: int = Field(default=0, description="Number of likes for the project")
-    project_transparency: bool = Field(default=True, description="Transparency status of the project(True: public - False: private)")
-    project_members: List[str] = Field(..., description="List of user IDs associated with the project")
-    organizations: Optional[List[str]] = Field(default=[], description="Organization IDs associated with the project")
-
 class CreateOrgRequest(BaseModel):
     id: str
     name: str

@@ -6,7 +6,10 @@ from api.config.plugins.enable_google_api import SyncGoogleEvents, SyncGoogleTas
 from api.config.plugins.enable_apple_api import SyncAppleEvents
 from datetime import datetime, timezone
 from typing import Optional
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 validator = ValidateEventHandling()
 
@@ -60,7 +63,7 @@ class DeleteFromCalendar(RequestSetup):
                  calendar_event: CalendarEvent, 
                  event_output: EventOutput,
                  user_id: str, 
-                 calendar_service: Optional[SyncAppleEvents | SyncGoogleEvents | SyncGoogleTasks]):
+                 calendar_service):
         super().__init__(
             calendar_event, 
             event_output, 
@@ -104,7 +107,7 @@ class UpdateFromCalendar(RequestSetup):
                  calendar_event: CalendarEvent, 
                  event_output: EventOutput,
                  user_id: str, 
-                 calendar_service: Optional[SyncAppleEvents | SyncGoogleEvents | SyncGoogleTasks]):
+                 calendar_service):
         super().__init__(
             calendar_event, 
             event_output, 

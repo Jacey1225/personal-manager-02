@@ -2,6 +2,10 @@ from fastapi import APIRouter
 from typing import Dict, Any
 from api.schemas.model import InputRequest
 from api.resources.main_model import MainModel
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 event_router = APIRouter()
 commander = MainModel()
