@@ -1,0 +1,2597 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Jacey1225">
+      
+      
+        <link rel="canonical" href="https://jacey1225.github.io/personal-manager-02/api/widgets/">
+      
+      
+        <link rel="prev" href="../authentication/">
+      
+      
+        <link rel="next" href="../projects/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Widgets - Personal Manager 02</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#widgets-api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Personal Manager 02" class="md-header__button md-logo" aria-label="Personal Manager 02" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Personal Manager 02
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Widgets
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Jacey1225/personal-manager-02" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Jacey1225/personal-manager-02
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../tutorial/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../sdk/installation/" class="md-tabs__link">
+          
+  
+  
+  SDK Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../overview/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../advanced/scopes/" class="md-tabs__link">
+          
+  
+  
+  Advanced
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Personal Manager 02" class="md-nav__button md-logo" aria-label="Personal Manager 02" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Personal Manager 02
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Jacey1225/personal-manager-02" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Jacey1225/personal-manager-02
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    SDK Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            SDK Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Authentication
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Widget Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Authentication
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Widgets
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Widgets
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Endpoints
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list-widgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      List Widgets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="List Widgets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      Get Widget
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Get Widget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create Widget
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Create Widget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update Widget
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Update Widget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      Delete Widget
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Delete Widget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attach-media" class="md-nav__link">
+    <span class="md-ellipsis">
+      Attach Media
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Attach Media">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#record-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Record Interaction
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Record Interaction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#widget-size-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Widget Size Options
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Logic
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Logic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#logic-function-signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logic Function Signature
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Modules
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-logic-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Logic Functions
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error Responses
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Error Responses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#400-bad-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      400 Bad Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-forbidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      403 Forbidden
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#404-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      404 Not Found
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#422-validation-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      422 Validation Error
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rate-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rate Limits
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../projects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Projects
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Advanced
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/scopes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    OAuth2 Scopes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/custom-endpoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Custom Endpoints
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Endpoints
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list-widgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      List Widgets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="List Widgets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      Get Widget
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Get Widget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create Widget
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Create Widget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update Widget
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Update Widget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      Delete Widget
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Delete Widget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attach-media" class="md-nav__link">
+    <span class="md-ellipsis">
+      Attach Media
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Attach Media">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#record-interaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Record Interaction
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Record Interaction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#widget-size-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Widget Size Options
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Logic
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Logic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#logic-function-signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logic Function Signature
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Modules
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-logic-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Logic Functions
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error Responses
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Error Responses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#400-bad-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      400 Bad Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#403-forbidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      403 Forbidden
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#404-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      404 Not Found
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#422-validation-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      422 Validation Error
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rate-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rate Limits
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="widgets-api-reference">Widgets API Reference</h1>
+<p>Widget management endpoints for the Lazi Public API.</p>
+<h2 id="overview">Overview</h2>
+<p>Widgets are customizable dashboard components that can display data from external sources, execute custom logic, and include media attachments.</p>
+<p><strong>Base Path</strong>: <code>/public/widgets</code></p>
+<p><strong>Required Scopes</strong>: 
+- <code>widgets:read</code> - Read widget data
+- <code>widgets:write</code> - Create/update widgets
+- <code>widgets:delete</code> - Delete widgets</p>
+<h2 id="endpoints">Endpoints</h2>
+<h3 id="list-widgets">List Widgets</h3>
+<p>Retrieve a list of widgets for a specific project.</p>
+<pre><code>GET /widgets
+</code></pre>
+<h4 id="request">Request</h4>
+<p><strong>Headers</strong>:</p>
+<pre><code>Authorization: Bearer YOUR_ACCESS_TOKEN
+</code></pre>
+<p><strong>Query Parameters</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Project identifier</td>
+</tr>
+<tr>
+<td><code>page</code></td>
+<td>integer</td>
+<td>No</td>
+<td>Page number (default: 1)</td>
+</tr>
+<tr>
+<td><code>per_page</code></td>
+<td>integer</td>
+<td>No</td>
+<td>Items per page (default: 20, max: 100)</td>
+</tr>
+<tr>
+<td><code>size</code></td>
+<td>string</td>
+<td>No</td>
+<td>Filter by size: "small", "medium", "large", "extra_large"</td>
+</tr>
+<tr>
+<td><code>sort</code></td>
+<td>string</td>
+<td>No</td>
+<td>Sort field and order (e.g., "created_at:desc")</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example-request">Example Request</h4>
+<pre><code class="language-bash">curl -X GET &quot;https://api.lazi.app/public/widgets?project_id=proj_123abc&amp;per_page=10&quot; \
+  -H &quot;Authorization: Bearer eyJhbGciOi...&quot;
+</code></pre>
+<p><strong>Python Example</strong>:</p>
+<pre><code class="language-python">from lazi_sdk import ReadWidget
+
+async def list_widgets():
+    reader = ReadWidget(
+        username=&quot;john@example.com&quot;,
+        token=&quot;eyJhbGciOi...&quot;,
+        project_id=&quot;proj_123abc&quot;
+    )
+
+    widgets = await reader.list_widgets()
+
+    for widget in widgets:
+        print(f&quot;{widget.name} - {widget.size}&quot;)
+</code></pre>
+<h4 id="response">Response</h4>
+<p><strong>Status</strong>: <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;widget_123abc&quot;,
+      &quot;name&quot;: &quot;Sales Dashboard&quot;,
+      &quot;description&quot;: &quot;Real-time sales metrics&quot;,
+      &quot;content&quot;: [
+        &quot;https://s3.amazonaws.com/bucket/presigned-url-1&quot;
+      ],
+      &quot;size&quot;: &quot;large&quot;,
+      &quot;interaction&quot;: {
+        &quot;https://api.example.com/sales&quot;: {
+          &quot;params&quot;: {&quot;period&quot;: &quot;weekly&quot;},
+          &quot;headers&quot;: {&quot;Authorization&quot;: &quot;Bearer token&quot;},
+          &quot;refresh_interval&quot;: 300,
+          &quot;logic&quot;: &quot;def process_data(data, req, user): return data&quot;
+        }
+      },
+      &quot;created_at&quot;: &quot;2024-01-31T12:00:00Z&quot;,
+      &quot;updated_at&quot;: &quot;2024-01-31T12:00:00Z&quot;
+    }
+  ],
+  &quot;pagination&quot;: {
+    &quot;page&quot;: 1,
+    &quot;per_page&quot;: 10,
+    &quot;total_items&quot;: 23,
+    &quot;total_pages&quot;: 3,
+    &quot;has_next&quot;: true,
+    &quot;has_previous&quot;: false
+  }
+}
+</code></pre>
+<hr />
+<h3 id="get-widget">Get Widget</h3>
+<p>Retrieve details of a specific widget.</p>
+<pre><code>GET /widgets/{widget_id}
+</code></pre>
+<h4 id="request_1">Request</h4>
+<p><strong>Headers</strong>:</p>
+<pre><code>Authorization: Bearer YOUR_ACCESS_TOKEN
+</code></pre>
+<p><strong>Path Parameters</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>widget_id</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Widget identifier</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example-request_1">Example Request</h4>
+<pre><code class="language-bash">curl -X GET &quot;https://api.lazi.app/public/widgets/widget_123abc&quot; \
+  -H &quot;Authorization: Bearer eyJhbGciOi...&quot;
+</code></pre>
+<p><strong>Python Example</strong>:</p>
+<pre><code class="language-python">from lazi_sdk import ReadWidget
+
+async def get_widget_details():
+    reader = ReadWidget(
+        username=&quot;john@example.com&quot;,
+        token=&quot;eyJhbGciOi...&quot;,
+        project_id=&quot;proj_123abc&quot;
+    )
+
+    widget = await reader.get_widget(&quot;widget_123abc&quot;)
+    print(f&quot;Widget: {widget.name}&quot;)
+    print(f&quot;Size: {widget.size}&quot;)
+    print(f&quot;Media files: {len(widget.content)}&quot;)
+</code></pre>
+<h4 id="response_1">Response</h4>
+<p><strong>Status</strong>: <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;widget_123abc&quot;,
+  &quot;name&quot;: &quot;Sales Dashboard&quot;,
+  &quot;description&quot;: &quot;Real-time sales metrics&quot;,
+  &quot;content&quot;: [
+    &quot;https://s3.amazonaws.com/bucket/presigned-url-1&quot;
+  ],
+  &quot;size&quot;: &quot;large&quot;,
+  &quot;interaction&quot;: {
+    &quot;https://api.example.com/sales&quot;: {
+      &quot;params&quot;: {&quot;period&quot;: &quot;weekly&quot;},
+      &quot;headers&quot;: {&quot;Authorization&quot;: &quot;Bearer token&quot;},
+      &quot;refresh_interval&quot;: 300,
+      &quot;logic&quot;: &quot;def process_data(data, req, user): return data&quot;
+    }
+  },
+  &quot;project_id&quot;: &quot;proj_123abc&quot;,
+  &quot;user_id&quot;: &quot;user_789xyz&quot;,
+  &quot;created_at&quot;: &quot;2024-01-31T12:00:00Z&quot;,
+  &quot;updated_at&quot;: &quot;2024-01-31T12:00:00Z&quot;
+}
+</code></pre>
+<hr />
+<h3 id="create-widget">Create Widget</h3>
+<p>Create a new widget.</p>
+<pre><code>POST /widgets
+</code></pre>
+<h4 id="request_2">Request</h4>
+<p><strong>Headers</strong>:</p>
+<pre><code>Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+</code></pre>
+<p><strong>Required Scope</strong>: <code>widgets:write</code></p>
+<p><strong>Body</strong>:</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;Sales Dashboard&quot;,
+  &quot;description&quot;: &quot;Real-time sales metrics&quot;,
+  &quot;size&quot;: &quot;large&quot;,
+  &quot;project_id&quot;: &quot;proj_123abc&quot;,
+  &quot;endpoint&quot;: &quot;https://api.example.com/sales&quot;,
+  &quot;endpoint_data&quot;: {
+    &quot;params&quot;: {
+      &quot;period&quot;: &quot;weekly&quot;,
+      &quot;metrics&quot;: &quot;revenue,users&quot;
+    },
+    &quot;headers&quot;: {
+      &quot;Authorization&quot;: &quot;Bearer external_token&quot;
+    },
+    &quot;refresh_interval&quot;: 300,
+    &quot;logic&quot;: &quot;def process_data(widget_data, request, user):\n    return {'revenue': widget_data.get('revenue', 0)}&quot;
+  }
+}
+</code></pre>
+<p><strong>Request Schema</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Widget name</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>No</td>
+<td>Widget description</td>
+</tr>
+<tr>
+<td><code>size</code></td>
+<td>string</td>
+<td>No</td>
+<td>Widget size: "small", "medium", "large", "extra_large" (default: "small")</td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Project identifier</td>
+</tr>
+<tr>
+<td><code>endpoint</code></td>
+<td>string</td>
+<td>No</td>
+<td>External API endpoint</td>
+</tr>
+<tr>
+<td><code>endpoint_data</code></td>
+<td>object</td>
+<td>No</td>
+<td>Endpoint configuration</td>
+</tr>
+<tr>
+<td><code>endpoint_data.params</code></td>
+<td>object</td>
+<td>No</td>
+<td>Query parameters for endpoint</td>
+</tr>
+<tr>
+<td><code>endpoint_data.headers</code></td>
+<td>object</td>
+<td>No</td>
+<td>HTTP headers for endpoint</td>
+</tr>
+<tr>
+<td><code>endpoint_data.refresh_interval</code></td>
+<td>integer</td>
+<td>No</td>
+<td>Refresh interval in seconds (0 = no refresh)</td>
+</tr>
+<tr>
+<td><code>endpoint_data.logic</code></td>
+<td>string</td>
+<td>No</td>
+<td>Python function to process endpoint data</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example-request_2">Example Request</h4>
+<pre><code class="language-bash">curl -X POST &quot;https://api.lazi.app/public/widgets&quot; \
+  -H &quot;Authorization: Bearer eyJhbGciOi...&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;name&quot;: &quot;Sales Dashboard&quot;,
+    &quot;description&quot;: &quot;Real-time sales metrics&quot;,
+    &quot;size&quot;: &quot;large&quot;,
+    &quot;project_id&quot;: &quot;proj_123abc&quot;,
+    &quot;endpoint&quot;: &quot;https://api.example.com/sales&quot;,
+    &quot;endpoint_data&quot;: {
+      &quot;refresh_interval&quot;: 300,
+      &quot;logic&quot;: &quot;def process_data(data, req, user): return data&quot;
+    }
+  }'
+</code></pre>
+<p><strong>Python Example</strong>:</p>
+<pre><code class="language-python">from lazi_sdk import WriteWidget
+
+async def create_sales_widget():
+    widget = WriteWidget(
+        token=&quot;eyJhbGciOi...&quot;,
+        user_id=&quot;user_789xyz&quot;
+    )
+
+    await widget.create_new(
+        name=&quot;Sales Dashboard&quot;,
+        description=&quot;Real-time sales metrics&quot;,
+        size=&quot;large&quot;,
+        project_id=&quot;proj_123abc&quot;
+    )
+
+    await widget.post(
+        endpoint=&quot;https://api.example.com/sales&quot;,
+        endpoint_data={
+            &quot;params&quot;: {&quot;period&quot;: &quot;weekly&quot;},
+            &quot;refresh_interval&quot;: 300,
+            &quot;logic&quot;: &quot;def process_data(data, req, user): return data&quot;
+        }
+    )
+
+    await widget.save()
+    print(f&quot;Widget created: {widget.current_widget.id}&quot;)
+</code></pre>
+<h4 id="response_2">Response</h4>
+<p><strong>Status</strong>: <code>201 Created</code></p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;widget_123abc&quot;,
+  &quot;name&quot;: &quot;Sales Dashboard&quot;,
+  &quot;description&quot;: &quot;Real-time sales metrics&quot;,
+  &quot;content&quot;: [],
+  &quot;size&quot;: &quot;large&quot;,
+  &quot;interaction&quot;: {
+    &quot;https://api.example.com/sales&quot;: {
+      &quot;params&quot;: {&quot;period&quot;: &quot;weekly&quot;},
+      &quot;headers&quot;: {},
+      &quot;refresh_interval&quot;: 300,
+      &quot;logic&quot;: &quot;def process_data(data, req, user): return data&quot;
+    }
+  },
+  &quot;project_id&quot;: &quot;proj_123abc&quot;,
+  &quot;user_id&quot;: &quot;user_789xyz&quot;,
+  &quot;created_at&quot;: &quot;2024-01-31T12:00:00Z&quot;,
+  &quot;updated_at&quot;: &quot;2024-01-31T12:00:00Z&quot;
+}
+</code></pre>
+<hr />
+<h3 id="update-widget">Update Widget</h3>
+<p>Update an existing widget.</p>
+<pre><code>PATCH /widgets/{widget_id}
+</code></pre>
+<h4 id="request_3">Request</h4>
+<p><strong>Headers</strong>:</p>
+<pre><code>Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+</code></pre>
+<p><strong>Required Scope</strong>: <code>widgets:write</code></p>
+<p><strong>Path Parameters</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>widget_id</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Widget identifier</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Body</strong>: (All fields optional, include only fields to update)</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;Updated Dashboard Name&quot;,
+  &quot;description&quot;: &quot;Updated description&quot;,
+  &quot;size&quot;: &quot;extra_large&quot;
+}
+</code></pre>
+<h4 id="example-request_3">Example Request</h4>
+<pre><code class="language-bash">curl -X PATCH &quot;https://api.lazi.app/public/widgets/widget_123abc&quot; \
+  -H &quot;Authorization: Bearer eyJhbGciOi...&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;name&quot;: &quot;Updated Sales Dashboard&quot;,
+    &quot;size&quot;: &quot;extra_large&quot;
+  }'
+</code></pre>
+<h4 id="response_3">Response</h4>
+<p><strong>Status</strong>: <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;widget_123abc&quot;,
+  &quot;name&quot;: &quot;Updated Sales Dashboard&quot;,
+  &quot;description&quot;: &quot;Real-time sales metrics&quot;,
+  &quot;size&quot;: &quot;extra_large&quot;,
+  &quot;updated_at&quot;: &quot;2024-01-31T13:00:00Z&quot;
+}
+</code></pre>
+<hr />
+<h3 id="delete-widget">Delete Widget</h3>
+<p>Delete a widget.</p>
+<pre><code>DELETE /widgets/{widget_id}
+</code></pre>
+<h4 id="request_4">Request</h4>
+<p><strong>Headers</strong>:</p>
+<pre><code>Authorization: Bearer YOUR_ACCESS_TOKEN
+</code></pre>
+<p><strong>Required Scope</strong>: <code>widgets:delete</code></p>
+<p><strong>Path Parameters</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>widget_id</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Widget identifier</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example-request_4">Example Request</h4>
+<pre><code class="language-bash">curl -X DELETE &quot;https://api.lazi.app/public/widgets/widget_123abc&quot; \
+  -H &quot;Authorization: Bearer eyJhbGciOi...&quot;
+</code></pre>
+<p><strong>Python Example</strong>:</p>
+<pre><code class="language-python">import httpx
+
+async def delete_widget(token: str, widget_id: str):
+    url = f&quot;https://api.lazi.app/public/widgets/{widget_id}&quot;
+
+    headers = {&quot;Authorization&quot;: f&quot;Bearer {token}&quot;}
+
+    async with httpx.AsyncClient() as client:
+        response = await client.delete(url, headers=headers)
+        return response.status_code == 204
+</code></pre>
+<h4 id="response_4">Response</h4>
+<p><strong>Status</strong>: <code>204 No Content</code></p>
+<hr />
+<h3 id="attach-media">Attach Media</h3>
+<p>Upload and attach media files to a widget.</p>
+<pre><code>POST /widgets/{widget_id}/media
+</code></pre>
+<h4 id="request_5">Request</h4>
+<p><strong>Headers</strong>:</p>
+<pre><code>Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: multipart/form-data
+</code></pre>
+<p><strong>Required Scope</strong>: <code>widgets:write</code>, <code>files:write</code></p>
+<p><strong>Path Parameters</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>widget_id</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Widget identifier</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Form Data</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>file</code></td>
+<td>file</td>
+<td>Yes</td>
+<td>Media file to upload</td>
+</tr>
+<tr>
+<td><code>object_name</code></td>
+<td>string</td>
+<td>No</td>
+<td>Custom object name (default: original filename)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Supported File Types</strong>:
+- Images: jpg, jpeg, png, gif, webp
+- Videos: mp4, webm, mov
+- Documents: pdf
+- Max file size: 10MB</p>
+<h4 id="example-request_5">Example Request</h4>
+<pre><code class="language-bash">curl -X POST &quot;https://api.lazi.app/public/widgets/widget_123abc/media&quot; \
+  -H &quot;Authorization: Bearer eyJhbGciOi...&quot; \
+  -F &quot;file=@/path/to/image.png&quot; \
+  -F &quot;object_name=dashboard_logo.png&quot;
+</code></pre>
+<p><strong>Python Example</strong>:</p>
+<pre><code class="language-python">from lazi_sdk import WriteWidget
+
+async def attach_logo():
+    widget = WriteWidget(
+        token=&quot;eyJhbGciOi...&quot;,
+        user_id=&quot;user_789xyz&quot;
+    )
+
+    # Load existing widget
+    await widget.create_new(
+        name=&quot;Existing Widget&quot;,
+        project_id=&quot;proj_123abc&quot;
+    )
+    widget.current_widget.id = &quot;widget_123abc&quot;
+
+    # Attach media
+    await widget.attach_media(
+        object_name=&quot;dashboard_logo.png&quot;,
+        filename=&quot;./assets/logo.png&quot;
+    )
+
+    await widget.save()
+</code></pre>
+<h4 id="response_5">Response</h4>
+<p><strong>Status</strong>: <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;message&quot;: &quot;Media attached successfully&quot;,
+  &quot;url&quot;: &quot;https://s3.amazonaws.com/bucket/presigned-url&quot;,
+  &quot;object_name&quot;: &quot;dashboard_logo.png&quot;,
+  &quot;expires_in&quot;: 3600
+}
+</code></pre>
+<hr />
+<h3 id="record-interaction">Record Interaction</h3>
+<p>Record a user interaction with a widget (triggers custom logic execution).</p>
+<pre><code>POST /widgets/{widget_id}/interact
+</code></pre>
+<h4 id="request_6">Request</h4>
+<p><strong>Headers</strong>:</p>
+<pre><code>Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json
+</code></pre>
+<p><strong>Path Parameters</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>widget_id</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Widget identifier</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Body</strong>:</p>
+<pre><code class="language-json">{
+  &quot;endpoint&quot;: &quot;https://api.example.com/sales&quot;,
+  &quot;params&quot;: {
+    &quot;period&quot;: &quot;monthly&quot;,
+    &quot;metric&quot;: &quot;revenue&quot;
+  }
+}
+</code></pre>
+<h4 id="example-request_6">Example Request</h4>
+<pre><code class="language-bash">curl -X POST &quot;https://api.lazi.app/public/widgets/widget_123abc/interact&quot; \
+  -H &quot;Authorization: Bearer eyJhbGciOi...&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;endpoint&quot;: &quot;https://api.example.com/sales&quot;,
+    &quot;params&quot;: {&quot;period&quot;: &quot;monthly&quot;}
+  }'
+</code></pre>
+<h4 id="response_6">Response</h4>
+<p><strong>Status</strong>: <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;processed_data&quot;: {
+    &quot;revenue&quot;: 125000.50,
+    &quot;growth&quot;: 15.3,
+    &quot;status&quot;: &quot;excellent&quot;
+  },
+  &quot;endpoint&quot;: &quot;https://api.example.com/sales&quot;,
+  &quot;executed_at&quot;: &quot;2024-01-31T12:00:00Z&quot;
+}
+</code></pre>
+<hr />
+<h2 id="widget-size-options">Widget Size Options</h2>
+<table>
+<thead>
+<tr>
+<th>Size</th>
+<th>Dimensions</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>small</code></td>
+<td>1x1 grid</td>
+<td>Quick stats, icons</td>
+</tr>
+<tr>
+<td><code>medium</code></td>
+<td>2x2 grid</td>
+<td>Charts, small tables</td>
+</tr>
+<tr>
+<td><code>large</code></td>
+<td>4x2 grid</td>
+<td>Dashboards, detailed data</td>
+</tr>
+<tr>
+<td><code>extra_large</code></td>
+<td>4x4 grid</td>
+<td>Full dashboards, galleries</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="custom-logic">Custom Logic</h2>
+<h3 id="logic-function-signature">Logic Function Signature</h3>
+<pre><code class="language-python">def process_data(widget_data: dict, request: Request, user: User) -&gt; dict:
+    &quot;&quot;&quot;
+    Process widget data from external endpoint.
+
+    Args:
+        widget_data: Data returned from the endpoint
+        request: FastAPI Request object
+        user: Current user object
+
+    Returns:
+        Processed data to display in widget
+    &quot;&quot;&quot;
+    # Your custom logic here
+    return processed_data
+</code></pre>
+<h3 id="available-modules">Available Modules</h3>
+<p>Your custom logic can import:
+- <code>datetime</code>, <code>time</code>
+- <code>json</code>, <code>re</code>
+- <code>math</code>, <code>statistics</code>
+- <code>collections</code>, <code>itertools</code></p>
+<p><strong>Forbidden modules</strong> (for security):
+- <code>os</code>, <code>sys</code>, <code>subprocess</code>
+- <code>eval</code>, <code>exec</code>, <code>compile</code>
+- <code>open</code>, <code>file</code>
+- <code>import</code>, <code>__import__</code></p>
+<h3 id="example-logic-functions">Example Logic Functions</h3>
+<p><strong>Calculate Percentage Change</strong>:</p>
+<pre><code class="language-python">def process_data(widget_data, request, user):
+    current = widget_data.get('current_value', 0)
+    previous = widget_data.get('previous_value', 1)
+
+    change = ((current - previous) / previous) * 100
+
+    return {
+        'current': current,
+        'change_percent': round(change, 2),
+        'trend': 'up' if change &gt; 0 else 'down'
+    }
+</code></pre>
+<p><strong>Filter and Sort Data</strong>:</p>
+<pre><code class="language-python">def process_data(widget_data, request, user):
+    items = widget_data.get('items', [])
+
+    # Filter active items
+    active_items = [item for item in items if item.get('status') == 'active']
+
+    # Sort by priority
+    sorted_items = sorted(active_items, key=lambda x: x.get('priority', 0), reverse=True)
+
+    return {
+        'total': len(items),
+        'active': len(active_items),
+        'top_items': sorted_items[:5]
+    }
+</code></pre>
+<hr />
+<h2 id="error-responses">Error Responses</h2>
+<h3 id="400-bad-request">400 Bad Request</h3>
+<pre><code class="language-json">{
+  &quot;detail&quot;: &quot;Invalid widget size. Must be one of: small, medium, large, extra_large&quot;,
+  &quot;error_code&quot;: &quot;INVALID_SIZE&quot;
+}
+</code></pre>
+<h3 id="403-forbidden">403 Forbidden</h3>
+<pre><code class="language-json">{
+  &quot;detail&quot;: &quot;Insufficient permissions. Required scope: widgets:write&quot;,
+  &quot;error_code&quot;: &quot;INSUFFICIENT_SCOPE&quot;
+}
+</code></pre>
+<h3 id="404-not-found">404 Not Found</h3>
+<pre><code class="language-json">{
+  &quot;detail&quot;: &quot;Widget not found&quot;,
+  &quot;error_code&quot;: &quot;WIDGET_NOT_FOUND&quot;
+}
+</code></pre>
+<h3 id="422-validation-error">422 Validation Error</h3>
+<pre><code class="language-json">{
+  &quot;detail&quot;: [
+    {
+      &quot;loc&quot;: [&quot;body&quot;, &quot;name&quot;],
+      &quot;msg&quot;: &quot;field required&quot;,
+      &quot;type&quot;: &quot;value_error.missing&quot;
+    }
+  ]
+}
+</code></pre>
+<hr />
+<h2 id="rate-limits">Rate Limits</h2>
+<ul>
+<li><strong>Widget creation</strong>: 100 per hour per user</li>
+<li><strong>Widget updates</strong>: 500 per hour per user</li>
+<li><strong>Media uploads</strong>: 50 per hour per user</li>
+<li><strong>Interactions</strong>: 1000 per hour per user</li>
+</ul>
+<hr />
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li><a href="../projects/">Projects API</a> - Manage projects</li>
+<li><a href="../../advanced/custom-endpoints/">Custom Endpoints</a> - Create dynamic widget endpoints</li>
+<li><a href="../../sdk/examples/">Examples</a> - Complete widget examples</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

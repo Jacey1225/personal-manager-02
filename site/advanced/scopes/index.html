@@ -1,0 +1,2439 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Jacey1225">
+      
+      
+        <link rel="canonical" href="https://jacey1225.github.io/personal-manager-02/advanced/scopes/">
+      
+      
+        <link rel="prev" href="../../api/projects/">
+      
+      
+        <link rel="next" href="../custom-endpoints/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>OAuth2 Scopes - Personal Manager 02</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#oauth2-scopes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Personal Manager 02" class="md-header__button md-logo" aria-label="Personal Manager 02" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Personal Manager 02
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              OAuth2 Scopes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Jacey1225/personal-manager-02" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Jacey1225/personal-manager-02
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../tutorial/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../sdk/installation/" class="md-tabs__link">
+          
+  
+  
+  SDK Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/overview/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Advanced
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Personal Manager 02" class="md-nav__button md-logo" aria-label="Personal Manager 02" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Personal Manager 02
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Jacey1225/personal-manager-02" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Jacey1225/personal-manager-02
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    SDK Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            SDK Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Authentication
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Widget Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Authentication
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Widgets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/projects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Projects
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Advanced
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    OAuth2 Scopes
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    OAuth2 Scopes
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Format
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#available-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Scopes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Available Scopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widget-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Widget Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Project Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#organization-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Organization Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      User Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#admin-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Admin Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-hierarchies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Hierarchies
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Hierarchies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widget-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Widget Hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Project Hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requesting-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Requesting Scopes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Requesting Scopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#minimum-required-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Minimum Required Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oauth2-token-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      OAuth2 Token Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Validation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#api-endpoint-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      API Endpoint Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-scope-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple Scope Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#insufficient-scope-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      Insufficient Scope Error
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-principle-of-least-privilege" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Principle of Least Privilege
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-separate-service-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Separate Service Accounts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-scope-rotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Scope Rotation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-request-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Request Validation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dynamic-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic Scopes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dynamic Scopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-specific-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      User-Specific Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resource-specific-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource-Specific Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-auditing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Auditing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Auditing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#monitoring-scope-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitoring Scope Usage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-usage-analytics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Usage Analytics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Migration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding New Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deprecating-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deprecating Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security Considerations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-never-hardcode-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Never Hardcode Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-validate-scope-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Validate Scope Format
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-scope-injection-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Scope Injection Prevention
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Complete Example
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom-endpoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Custom Endpoints
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Format
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#available-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Scopes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Available Scopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widget-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Widget Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Project Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#organization-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Organization Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      User Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#admin-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Admin Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-hierarchies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Hierarchies
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Hierarchies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#widget-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Widget Hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Project Hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Hierarchy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requesting-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Requesting Scopes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Requesting Scopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#minimum-required-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Minimum Required Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oauth2-token-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      OAuth2 Token Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Validation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#api-endpoint-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      API Endpoint Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-scope-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple Scope Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#insufficient-scope-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      Insufficient Scope Error
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-principle-of-least-privilege" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Principle of Least Privilege
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-separate-service-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Separate Service Accounts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-scope-rotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Scope Rotation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-request-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Request Validation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dynamic-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic Scopes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dynamic Scopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-specific-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      User-Specific Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resource-specific-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource-Specific Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-auditing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Auditing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Auditing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#monitoring-scope-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitoring Scope Usage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-usage-analytics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Usage Analytics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Migration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding New Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deprecating-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deprecating Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security Considerations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-never-hardcode-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Never Hardcode Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-validate-scope-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Validate Scope Format
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-scope-injection-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Scope Injection Prevention
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Complete Example
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="oauth2-scopes">OAuth2 Scopes</h1>
+<p>Comprehensive guide to OAuth2 scopes in the Lazi API.</p>
+<h2 id="overview">Overview</h2>
+<p>OAuth2 scopes provide granular permission control for API access. Each scope represents a specific permission level for a resource type.</p>
+<h2 id="scope-format">Scope Format</h2>
+<p>Scopes follow the pattern: <code>resource:permission</code></p>
+<pre><code>widgets:read      # Read widgets
+projects:write    # Create/update projects
+files:delete      # Delete files
+</code></pre>
+<h2 id="available-scopes">Available Scopes</h2>
+<h3 id="widget-scopes">Widget Scopes</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Permission</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>widgets:read</code></td>
+<td>Read</td>
+<td>View widget data and metadata</td>
+</tr>
+<tr>
+<td><code>widgets:write</code></td>
+<td>Create/Update</td>
+<td>Create new widgets and modify existing ones</td>
+</tr>
+<tr>
+<td><code>widgets:delete</code></td>
+<td>Delete</td>
+<td>Delete widgets</td>
+</tr>
+<tr>
+<td><code>widgets:admin</code></td>
+<td>Full Control</td>
+<td>All widget operations + manage permissions</td>
+</tr>
+</tbody>
+</table>
+<h3 id="project-scopes">Project Scopes</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Permission</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>projects:read</code></td>
+<td>Read</td>
+<td>View project details and members</td>
+</tr>
+<tr>
+<td><code>projects:write</code></td>
+<td>Create/Update</td>
+<td>Create projects and modify settings</td>
+</tr>
+<tr>
+<td><code>projects:delete</code></td>
+<td>Delete</td>
+<td>Delete projects</td>
+</tr>
+<tr>
+<td><code>projects:admin</code></td>
+<td>Full Control</td>
+<td>All project operations + manage members</td>
+</tr>
+</tbody>
+</table>
+<h3 id="file-scopes">File Scopes</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Permission</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files:read</code></td>
+<td>Read</td>
+<td>View file metadata and download files</td>
+</tr>
+<tr>
+<td><code>files:write</code></td>
+<td>Upload</td>
+<td>Upload and attach media files</td>
+</tr>
+<tr>
+<td><code>files:delete</code></td>
+<td>Delete</td>
+<td>Delete files</td>
+</tr>
+<tr>
+<td><code>files:admin</code></td>
+<td>Full Control</td>
+<td>All file operations + manage storage</td>
+</tr>
+</tbody>
+</table>
+<h3 id="organization-scopes">Organization Scopes</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Permission</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>organizations:read</code></td>
+<td>Read</td>
+<td>View organization details</td>
+</tr>
+<tr>
+<td><code>organizations:write</code></td>
+<td>Create/Update</td>
+<td>Manage organization settings</td>
+</tr>
+<tr>
+<td><code>organizations:delete</code></td>
+<td>Delete</td>
+<td>Delete organizations</td>
+</tr>
+<tr>
+<td><code>organizations:admin</code></td>
+<td>Full Control</td>
+<td>All organization operations</td>
+</tr>
+</tbody>
+</table>
+<h3 id="user-scopes">User Scopes</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Permission</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>user:read</code></td>
+<td>Read</td>
+<td>View user profile</td>
+</tr>
+<tr>
+<td><code>user:write</code></td>
+<td>Update</td>
+<td>Update user settings</td>
+</tr>
+<tr>
+<td><code>user:email</code></td>
+<td>Email Access</td>
+<td>Access user email address</td>
+</tr>
+</tbody>
+</table>
+<h3 id="admin-scopes">Admin Scopes</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Permission</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin:users</code></td>
+<td>User Management</td>
+<td>Manage all users</td>
+</tr>
+<tr>
+<td><code>admin:system</code></td>
+<td>System Control</td>
+<td>System-level operations</td>
+</tr>
+</tbody>
+</table>
+<h2 id="scope-hierarchies">Scope Hierarchies</h2>
+<p>Admin scopes include all lower-level permissions:</p>
+<h3 id="widget-hierarchy">Widget Hierarchy</h3>
+<pre><code>widgets:admin
+    ├── widgets:delete
+    │   ├── widgets:write
+    │   │   └── widgets:read
+    │   └── widgets:read
+    └── widgets:read
+</code></pre>
+<p><strong>Example</strong>: A token with <code>widgets:admin</code> automatically has <code>widgets:delete</code>, <code>widgets:write</code>, and <code>widgets:read</code> permissions.</p>
+<h3 id="project-hierarchy">Project Hierarchy</h3>
+<pre><code>projects:admin
+    ├── projects:delete
+    │   ├── projects:write
+    │   │   └── projects:read
+    │   └── projects:read
+    └── projects:read
+</code></pre>
+<h3 id="file-hierarchy">File Hierarchy</h3>
+<pre><code>files:admin
+    ├── files:delete
+    │   ├── files:write
+    │   │   └── files:read
+    │   └── files:read
+    └── files:read
+</code></pre>
+<h2 id="requesting-scopes">Requesting Scopes</h2>
+<h3 id="minimum-required-scopes">Minimum Required Scopes</h3>
+<p>Always request the <strong>minimum scopes</strong> needed for your application:</p>
+<pre><code class="language-python"># ✅ Good - minimal scopes
+scopes = &quot;widgets:read projects:read&quot;
+
+# ❌ Bad - excessive permissions
+scopes = &quot;widgets:admin projects:admin files:admin&quot;
+</code></pre>
+<h3 id="oauth2-token-request">OAuth2 Token Request</h3>
+<pre><code class="language-python">import httpx
+
+async def request_token_with_scopes():
+    url = &quot;https://api.lazi.app/public/oauth/token&quot;
+
+    data = {
+        &quot;username&quot;: &quot;user@example.com&quot;,
+        &quot;password&quot;: &quot;password&quot;,
+        &quot;grant_type&quot;: &quot;password&quot;,
+        &quot;scope&quot;: &quot;widgets:read widgets:write projects:read&quot;
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, data=data)
+        token_data = response.json()
+
+        # Verify granted scopes
+        granted_scopes = token_data[&quot;scope&quot;].split()
+        print(f&quot;Granted scopes: {granted_scopes}&quot;)
+</code></pre>
+<h3 id="multiple-scopes">Multiple Scopes</h3>
+<p>Request multiple scopes as a <strong>space-separated</strong> string:</p>
+<pre><code class="language-python"># Correct format
+scope = &quot;widgets:read widgets:write projects:read files:write&quot;
+
+# ❌ Wrong - comma-separated
+scope = &quot;widgets:read,widgets:write,projects:read&quot;  # This will fail
+</code></pre>
+<h2 id="scope-validation">Scope Validation</h2>
+<h3 id="api-endpoint-requirements">API Endpoint Requirements</h3>
+<p>Each endpoint specifies required scopes:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>HTTP Method</th>
+<th>Required Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /widgets</code></td>
+<td>GET</td>
+<td><code>widgets:read</code></td>
+</tr>
+<tr>
+<td><code>POST /widgets</code></td>
+<td>POST</td>
+<td><code>widgets:write</code></td>
+</tr>
+<tr>
+<td><code>PATCH /widgets/{id}</code></td>
+<td>PATCH</td>
+<td><code>widgets:write</code></td>
+</tr>
+<tr>
+<td><code>DELETE /widgets/{id}</code></td>
+<td>DELETE</td>
+<td><code>widgets:delete</code></td>
+</tr>
+<tr>
+<td><code>GET /projects</code></td>
+<td>GET</td>
+<td><code>projects:read</code></td>
+</tr>
+<tr>
+<td><code>POST /projects</code></td>
+<td>POST</td>
+<td><code>projects:write</code></td>
+</tr>
+<tr>
+<td><code>POST /widgets/{id}/media</code></td>
+<td>POST</td>
+<td><code>widgets:write</code> + <code>files:write</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="multiple-scope-requirements">Multiple Scope Requirements</h3>
+<p>Some endpoints require <strong>multiple scopes</strong>:</p>
+<pre><code class="language-python"># Attach media to widget requires both scopes
+required_scopes = [&quot;widgets:write&quot;, &quot;files:write&quot;]
+
+# Your token must have both
+token_scopes = &quot;widgets:write files:write&quot;
+</code></pre>
+<h3 id="insufficient-scope-error">Insufficient Scope Error</h3>
+<pre><code class="language-json">{
+  &quot;detail&quot;: &quot;Insufficient permissions. Required scope: widgets:write&quot;,
+  &quot;error_code&quot;: &quot;INSUFFICIENT_SCOPE&quot;,
+  &quot;required_scopes&quot;: [&quot;widgets:write&quot;],
+  &quot;provided_scopes&quot;: [&quot;widgets:read&quot;]
+}
+</code></pre>
+<h2 id="scope-best-practices">Scope Best Practices</h2>
+<h3 id="1-principle-of-least-privilege">1. Principle of Least Privilege</h3>
+<p>Grant only necessary permissions:</p>
+<pre><code class="language-python"># ✅ Good - read-only dashboard
+scopes = &quot;widgets:read projects:read&quot;
+
+# ✅ Good - widget creator app
+scopes = &quot;widgets:write files:write projects:read&quot;
+
+# ❌ Bad - requesting admin unnecessarily
+scopes = &quot;widgets:admin projects:admin&quot;
+</code></pre>
+<h3 id="2-separate-service-accounts">2. Separate Service Accounts</h3>
+<p>Use different tokens for different purposes:</p>
+<pre><code class="language-python"># Analytics service (read-only)
+analytics_scopes = &quot;widgets:read projects:read&quot;
+
+# Widget creator service
+creator_scopes = &quot;widgets:write files:write&quot;
+
+# Admin dashboard
+admin_scopes = &quot;widgets:admin projects:admin&quot;
+</code></pre>
+<h3 id="3-scope-rotation">3. Scope Rotation</h3>
+<p>Rotate scopes when requirements change:</p>
+<pre><code class="language-python">class APIClient:
+    def __init__(self, token: str):
+        self.token = token
+        self.scopes = self._parse_token_scopes()
+
+    def _parse_token_scopes(self) -&gt; list[str]:
+        &quot;&quot;&quot;Extract scopes from JWT token&quot;&quot;&quot;
+        import jwt
+        payload = jwt.decode(self.token, options={&quot;verify_signature&quot;: False})
+        return payload.get(&quot;scopes&quot;, [])
+
+    def can_perform(self, required_scope: str) -&gt; bool:
+        &quot;&quot;&quot;Check if token has required scope&quot;&quot;&quot;
+        return required_scope in self.scopes or \
+               self._has_admin_scope(required_scope)
+
+    def _has_admin_scope(self, required_scope: str) -&gt; bool:
+        &quot;&quot;&quot;Check if admin scope covers required scope&quot;&quot;&quot;
+        resource = required_scope.split(&quot;:&quot;)[0]
+        return f&quot;{resource}:admin&quot; in self.scopes
+</code></pre>
+<h3 id="4-request-validation">4. Request Validation</h3>
+<p>Validate scopes before making requests:</p>
+<pre><code class="language-python">async def create_widget_safely(client: APIClient, widget_data: dict):
+    if not client.can_perform(&quot;widgets:write&quot;):
+        raise PermissionError(
+            &quot;Token lacks widgets:write scope. &quot;
+            &quot;Please request a new token with appropriate scopes.&quot;
+        )
+
+    # Proceed with widget creation
+    return await client.create_widget(widget_data)
+</code></pre>
+<h2 id="dynamic-scopes">Dynamic Scopes</h2>
+<h3 id="user-specific-scopes">User-Specific Scopes</h3>
+<p>Scopes can be limited by user roles:</p>
+<pre><code class="language-python"># Regular user - limited scopes
+user_scopes = &quot;widgets:read widgets:write projects:read&quot;
+
+# Team admin - extended scopes
+admin_scopes = &quot;widgets:admin projects:write organizations:read&quot;
+
+# System admin - full access
+system_scopes = &quot;admin:users admin:system&quot;
+</code></pre>
+<h3 id="resource-specific-scopes">Resource-Specific Scopes</h3>
+<p>Future enhancement: Scope to specific resources:</p>
+<pre><code class="language-python"># Access only specific project (planned feature)
+scopes = &quot;projects:proj_123abc:read widgets:proj_123abc:write&quot;
+</code></pre>
+<h2 id="scope-auditing">Scope Auditing</h2>
+<h3 id="monitoring-scope-usage">Monitoring Scope Usage</h3>
+<p>Track which scopes are being used:</p>
+<pre><code class="language-python">import logging
+from functools import wraps
+
+def audit_scope_usage(required_scope: str):
+    &quot;&quot;&quot;Decorator to audit scope usage&quot;&quot;&quot;
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            logger = logging.getLogger(&quot;scope_audit&quot;)
+            logger.info(f&quot;Function {func.__name__} requires scope: {required_scope}&quot;)
+
+            # Execute function
+            result = await func(*args, **kwargs)
+
+            logger.info(f&quot;Scope {required_scope} used successfully&quot;)
+            return result
+
+        return wrapper
+    return decorator
+
+# Usage
+@audit_scope_usage(&quot;widgets:write&quot;)
+async def create_widget(data: dict):
+    # Widget creation logic
+    pass
+</code></pre>
+<h3 id="scope-usage-analytics">Scope Usage Analytics</h3>
+<pre><code class="language-python">from collections import Counter
+from datetime import datetime
+
+class ScopeAnalytics:
+    def __init__(self):
+        self.usage_counter = Counter()
+        self.last_used = {}
+
+    def record_usage(self, scope: str):
+        &quot;&quot;&quot;Record scope usage&quot;&quot;&quot;
+        self.usage_counter[scope] += 1
+        self.last_used[scope] = datetime.utcnow()
+
+    def get_most_used_scopes(self, top_n: int = 5):
+        &quot;&quot;&quot;Get most frequently used scopes&quot;&quot;&quot;
+        return self.usage_counter.most_common(top_n)
+
+    def get_unused_scopes(self, all_scopes: list[str]):
+        &quot;&quot;&quot;Find granted but unused scopes&quot;&quot;&quot;
+        used_scopes = set(self.usage_counter.keys())
+        return set(all_scopes) - used_scopes
+</code></pre>
+<h2 id="scope-migration">Scope Migration</h2>
+<h3 id="adding-new-scopes">Adding New Scopes</h3>
+<p>When adding functionality, request additional scopes:</p>
+<pre><code class="language-python">async def upgrade_token_scopes(current_token: str, additional_scopes: str):
+    &quot;&quot;&quot;Request new token with additional scopes&quot;&quot;&quot;
+    # Get current scopes from token
+    import jwt
+    payload = jwt.decode(current_token, options={&quot;verify_signature&quot;: False})
+    current_scopes = payload.get(&quot;scopes&quot;, [])
+
+    # Combine with new scopes
+    all_scopes = &quot; &quot;.join(current_scopes + additional_scopes.split())
+
+    # Request new token
+    # ... (token request logic)
+</code></pre>
+<h3 id="deprecating-scopes">Deprecating Scopes</h3>
+<p>Handle deprecated scopes gracefully:</p>
+<pre><code class="language-python">DEPRECATED_SCOPES = {
+    &quot;widgets:full&quot;: &quot;widgets:admin&quot;,  # Old -&gt; New
+    &quot;projects:manage&quot;: &quot;projects:write&quot;
+}
+
+def normalize_scopes(scopes: list[str]) -&gt; list[str]:
+    &quot;&quot;&quot;Convert deprecated scopes to new equivalents&quot;&quot;&quot;
+    normalized = []
+
+    for scope in scopes:
+        if scope in DEPRECATED_SCOPES:
+            new_scope = DEPRECATED_SCOPES[scope]
+            print(f&quot;Warning: Scope '{scope}' is deprecated. Use '{new_scope}' instead.&quot;)
+            normalized.append(new_scope)
+        else:
+            normalized.append(scope)
+
+    return list(set(normalized))  # Remove duplicates
+</code></pre>
+<h2 id="security-considerations">Security Considerations</h2>
+<h3 id="1-never-hardcode-scopes">1. Never Hardcode Scopes</h3>
+<pre><code class="language-python"># ❌ Bad - hardcoded in source code
+SCOPES = &quot;widgets:admin projects:admin files:admin&quot;
+
+# ✅ Good - environment variable
+SCOPES = os.getenv(&quot;API_SCOPES&quot;, &quot;widgets:read projects:read&quot;)
+</code></pre>
+<h3 id="2-validate-scope-format">2. Validate Scope Format</h3>
+<pre><code class="language-python">import re
+
+def validate_scope(scope: str) -&gt; bool:
+    &quot;&quot;&quot;Validate scope format&quot;&quot;&quot;
+    pattern = r'^[a-z]+:[a-z]+$'
+    return bool(re.match(pattern, scope))
+
+def validate_scopes(scopes: str) -&gt; bool:
+    &quot;&quot;&quot;Validate multiple scopes&quot;&quot;&quot;
+    for scope in scopes.split():
+        if not validate_scope(scope):
+            raise ValueError(f&quot;Invalid scope format: {scope}&quot;)
+    return True
+</code></pre>
+<h3 id="3-scope-injection-prevention">3. Scope Injection Prevention</h3>
+<pre><code class="language-python">def sanitize_scope_request(user_input: str) -&gt; str:
+    &quot;&quot;&quot;Prevent scope injection attacks&quot;&quot;&quot;
+    # Define allowed scopes
+    ALLOWED_SCOPES = {
+        &quot;widgets:read&quot;, &quot;widgets:write&quot;, &quot;widgets:delete&quot;,
+        &quot;projects:read&quot;, &quot;projects:write&quot;, &quot;projects:delete&quot;,
+        &quot;files:read&quot;, &quot;files:write&quot;, &quot;files:delete&quot;
+    }
+
+    # Parse and validate
+    requested = set(user_input.split())
+    valid = requested &amp; ALLOWED_SCOPES
+
+    if requested - valid:
+        invalid = requested - valid
+        raise ValueError(f&quot;Invalid scopes requested: {invalid}&quot;)
+
+    return &quot; &quot;.join(valid)
+</code></pre>
+<h2 id="complete-example">Complete Example</h2>
+<pre><code class="language-python">import os
+import httpx
+from typing import List
+
+class ScopedAPIClient:
+    &quot;&quot;&quot;API client with scope management&quot;&quot;&quot;
+
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+        self.token = None
+        self.scopes = []
+
+    async def authenticate(self, requested_scopes: str):
+        &quot;&quot;&quot;Authenticate with specific scopes&quot;&quot;&quot;
+        url = &quot;https://api.lazi.app/public/oauth/token&quot;
+
+        data = {
+            &quot;username&quot;: self.username,
+            &quot;password&quot;: self.password,
+            &quot;grant_type&quot;: &quot;password&quot;,
+            &quot;scope&quot;: requested_scopes
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, data=data)
+
+            if response.status_code == 200:
+                token_data = response.json()
+                self.token = token_data[&quot;access_token&quot;]
+                self.scopes = token_data[&quot;scope&quot;].split()
+                return True
+
+            return False
+
+    def requires_scope(self, scope: str):
+        &quot;&quot;&quot;Decorator to check scope before API call&quot;&quot;&quot;
+        def decorator(func):
+            async def wrapper(*args, **kwargs):
+                if not self.has_scope(scope):
+                    raise PermissionError(
+                        f&quot;Operation requires scope: {scope}. &quot;
+                        f&quot;Available scopes: {', '.join(self.scopes)}&quot;
+                    )
+                return await func(*args, **kwargs)
+            return wrapper
+        return decorator
+
+    def has_scope(self, required_scope: str) -&gt; bool:
+        &quot;&quot;&quot;Check if client has required scope&quot;&quot;&quot;
+        if required_scope in self.scopes:
+            return True
+
+        # Check for admin scope
+        resource = required_scope.split(&quot;:&quot;)[0]
+        return f&quot;{resource}:admin&quot; in self.scopes
+
+    @requires_scope(&quot;widgets:read&quot;)
+    async def list_widgets(self, project_id: str):
+        &quot;&quot;&quot;List widgets (requires widgets:read)&quot;&quot;&quot;
+        # Implementation
+        pass
+
+    @requires_scope(&quot;widgets:write&quot;)
+    async def create_widget(self, widget_data: dict):
+        &quot;&quot;&quot;Create widget (requires widgets:write)&quot;&quot;&quot;
+        # Implementation
+        pass
+
+# Usage
+async def main():
+    client = ScopedAPIClient(
+        username=&quot;user@example.com&quot;,
+        password=&quot;password&quot;
+    )
+
+    # Authenticate with minimal scopes
+    await client.authenticate(&quot;widgets:read projects:read&quot;)
+
+    # This works
+    await client.list_widgets(&quot;proj_123&quot;)
+
+    # This raises PermissionError
+    try:
+        await client.create_widget({&quot;name&quot;: &quot;New Widget&quot;})
+    except PermissionError as e:
+        print(f&quot;Error: {e}&quot;)
+
+        # Re-authenticate with additional scopes
+        await client.authenticate(&quot;widgets:write projects:read&quot;)
+
+        # Now it works
+        await client.create_widget({&quot;name&quot;: &quot;New Widget&quot;})
+</code></pre>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li><a href="../../api/authentication/">Authentication API</a> - OAuth2 endpoints</li>
+<li><a href="../security/">Security Best Practices</a> - Security guidelines</li>
+<li><a href="../custom-endpoints/">Custom Endpoints</a> - Dynamic endpoints</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

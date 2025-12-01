@@ -1,11 +1,11 @@
-from pymongo import AsyncMongoClient
 from api.validation.handleProjects import ValidateProjectHandler
 from api.services.calendar.eventSetup import RequestSetup
 from api.services.calendar.handleDateTimes import DateTimeHandler
 from api.config.fetchMongo import MongoHandler
-from api.schemas.projects import ProjectDetails
+from api.schemas.projects import ProjectDetails, PageSchema
 from api.schemas.model import EventOutput
 from api.schemas.calendar import CalendarEvent
+from api.schemas.widgets import WidgetConfig, WidgetConfig
 from typing import Optional
 import uuid
 import logging
@@ -14,6 +14,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 validator = ValidateProjectHandler()
+user_config = MongoHandler("userAuthDatabase", "userCredentials")
+project_config = MongoHandler("userAuthDatabase", "openProjects")
+widget_config = MongoHandler("userAuthDatabase", "openWidgets")
 
 #MARK: Host Actions
 class HostActions(RequestSetup):
@@ -21,11 +24,7 @@ class HostActions(RequestSetup):
                  calendar_event: CalendarEvent,
                  event_output: EventOutput,
                  user_id: str, 
-                 calendar_service, 
-                 user_handler: MongoHandler, 
-                 project_handler: MongoHandler):
-        self.user_handler = user_handler
-        self.project_handler = project_handler
+                 calendar_service):
         self.user_data = None
 
         super().__init__(
@@ -39,10 +38,8 @@ class HostActions(RequestSetup):
                     calendar_event: CalendarEvent,
                     event_output: EventOutput,
                     user_id: str, 
-                    calendar_service,
-                    user_handler,
-                    project_handler):
-        """Fetches the necessary data for the host actions.
+                    calendar_service):
+        """Fetches the necessary user data for the host actions.
 
         Args:
             user_id (str): The ID of the user.
@@ -58,9 +55,8 @@ class HostActions(RequestSetup):
             calendar_event=calendar_event,
             user_id=user_id,
             calendar_service=calendar_service,
-            user_handler=user_handler,
-            project_handler=project_handler)
-        self.user_data = await self.user_handler.get_single_doc({"user_id": self.user_id})
+            )
+        self.user_data = await user_config.get_single_doc({"user_id": self.user_id})
         return self
 
     async def global_delete(self):
@@ -69,14 +65,12 @@ class HostActions(RequestSetup):
         Raises:
             ValueError: If the user is not found.
         """
-        user = await self.user_handler.get_single_doc({"user_id": self.user_id})
-        if not user:
-            raise ValueError("User not found")
-        username = user["username"]
-        email = user["email"]
-        password = user["password"]
-        if email == "jaceysimps@gmail.com" and username == "jaceysimpson" and password == "WeLoveDoggies16!":
-            await self.project_handler.delete_all()
+        if self.user_data:
+            username = self.user_data["username"]
+            email = self.user_data["email"]
+            password = self.user_data["password"]
+            if email == "jaceysimps@gmail.com" and username == "jaceysimpson" and password == "WeLoveDoggies16!":
+                await project_config.delete_all()
 
     async def fetch_user_id(self, email: str, username: str):
         """Fetches the user ID associated with the given email and username.
@@ -89,7 +83,7 @@ class HostActions(RequestSetup):
             str: The user ID if found, otherwise None.
         """
         try:
-            user = await self.user_handler.get_single_doc({"email": email, "username": username})
+            user = await user_config.get_single_doc({"email": email, "username": username})
             return user["user_id"] if user else None
         except Exception as e:
             logger.info(f"Error fetching user ID: {e}")
@@ -106,7 +100,7 @@ class HostActions(RequestSetup):
             tuple: A tuple containing the name and email if found, otherwise (None, None).
         """
         try:
-            user = await self.user_handler.get_single_doc({"user_id": user_id})
+            user = await user_config.get_single_doc({"user_id": user_id})
             if user:
                 return user["username"], user["email"]
         except Exception as e:
@@ -144,7 +138,7 @@ class HostActions(RequestSetup):
             if self.user_data is None:
                 raise ValueError("User data not found")
             for project_id, _ in self.user_data["projects"].items():
-                project = await self.project_handler.get_single_doc({"project_id": project_id})
+                project = await project_config.get_single_doc({"project_id": project_id})
                 if project:
                     for i, member in enumerate(project.get("project_members", [])):
                         user_id = member
@@ -174,12 +168,12 @@ class HostActions(RequestSetup):
             project_transparency (bool): The transparency status of the project.
             project_members (list[tuple[str]]): A list of user IDs associated with the project.
         """
-        self.user_data = await self.user_handler.get_single_doc({"user_id": self.user_id})
+        self.user_data = await user_config.get_single_doc({"user_id": self.user_id})
         self.project_id = str(uuid.uuid4())
-        project = await self.project_handler.get_single_doc({"project_id": self.project_id})
+        project = await project_config.get_single_doc({"project_id": self.project_id})
         while project:
             self.project_id = str(uuid.uuid4())
-            project = await self.project_handler.get_single_doc({"project_id": self.project_id})
+            project = await project_config.get_single_doc({"project_id": self.project_id})
             
         member_ids = []
         if project_members:
@@ -201,8 +195,8 @@ class HostActions(RequestSetup):
             query_item = {"user_id": self.user_data["user_id"]}
             new_data = self.project_details.model_dump()
             self.user_data["projects"][self.project_id] = (project_name, "admin")
-            await self.user_handler.post_update(query_item, self.user_data)
-            await self.project_handler.post_insert(new_data)
+            await user_config.post_update(query_item, self.user_data)
+            await project_config.post_insert(new_data)
             logger.info(f"Project created successfully: {project_name} for user: {self.user_id}")
         except Exception as e:
             logger.info(f"Error creating project: {e}")
@@ -234,10 +228,10 @@ class HostActions(RequestSetup):
         try:
             logger.info(f"Deleting project: {project_id} for user: {self.user_id}")
             query_item = {"user_id": self.user_data["user_id"]}
-            await self.user_handler.post_update(query_item, self.user_data)
+            await user_config.post_update(query_item, self.user_data)
 
-            if await self.project_handler.get_single_doc({"project_id": project_id}):
-                await self.project_handler.post_delete({"project_id": project_id})
+            if await project_config.get_single_doc({"project_id": project_id}):
+                await project_config.post_delete({"project_id": project_id})
         except Exception as e:
             logger.info(f"Error deleting project: {e}")
             logger.info(f"Function: {self.delete_project.__name__}")
@@ -250,8 +244,8 @@ class HostActions(RequestSetup):
             raise ValueError("User does not have permission to rename this project")
         
         try:
-            if await self.project_handler.get_single_doc({"project_id": project_id}):
-                await self.project_handler.post_update({"project_id": project_id}, {"project_name": new_name})
+            if await project_config.get_single_doc({"project_id": project_id}):
+                await project_config.post_update({"project_id": project_id}, {"project_name": new_name})
         except Exception as e:
             logger.info(f"Error renaming project: {e}")
             logger.info(f"Function: {self.rename_project.__name__}")
@@ -270,10 +264,10 @@ class HostActions(RequestSetup):
         """
         try:
             all_events = []
-            project = await self.project_handler.get_single_doc({"project_id": project_id})
+            project = await project_config.get_single_doc({"project_id": project_id})
             if project:
                 for user_id in project["project_members"]:
-                    user = await self.user_handler.get_single_doc({"user_id": user_id})
+                    user = await user_config.get_single_doc({"user_id": user_id})
                     if user:
                         request_setup = RequestSetup(
                             CalendarEvent(description=f"Lazi: {project_id}"), 
@@ -305,11 +299,11 @@ class HostActions(RequestSetup):
             raise ValueError("User does not have permission to edit project transparency")
 
         try:
-            project = await self.project_handler.get_single_doc({"project_id": project_id})
+            project = await project_config.get_single_doc({"project_id": project_id})
             if project:
                 project["project_transparency"] = transparency
                 query_item = {"project_id": project_id}
-                await self.project_handler.post_update(query_item, project)
+                await project_config.post_update(query_item, project)
         except Exception as e:
             logger.info(f"Error editing project transparency: {e}")
             logger.info(f"Function: {self.edit_transparency.__name__}")
@@ -332,7 +326,7 @@ class HostActions(RequestSetup):
             bool: True if the permissions were successfully edited, False otherwise.
         """
         try:
-            user_data = await self.user_handler.get_single_doc({"email": email, "username": username})
+            user_data = await user_config.get_single_doc({"email": email, "username": username})
             if not user_data:
                 raise ValueError("User not found")
             if permission not in ["view", "edit", "admin"]:
@@ -342,7 +336,7 @@ class HostActions(RequestSetup):
                 raise ValueError("User does not have permission to edit")
             else:
                 user_data["projects"][project_id][1] = permission
-                await self.user_handler.post_update({"user_id": user_data["user_id"]}, user_data)
+                await user_config.post_update({"user_id": user_data["user_id"]}, user_data)
                 return True
 
         except Exception as e:
@@ -357,18 +351,37 @@ class GuestActions(HostActions):
                  calendar_event: CalendarEvent,
                  event_output: EventOutput,
                  calendar_service,
-                 user_id: str, 
-                 user_handler,
-                 project_handler):
+                 user_id: str):
         super().__init__(
             calendar_event,
             event_output,
             user_id,
-            calendar_service,
-            user_handler, 
-            project_handler)
+            calendar_service
+        )
 
-    
+    async def get_widget_content(self, 
+                           widget_ids: list[str]) -> list[dict]:
+        """Fetches the content of a specific widget.
+
+        Args:
+            widget_id (str): The ID of the widget to fetch.
+
+        Returns:
+            dict: The widget content.
+        """
+        try:
+            widget_contents = []
+            for widget_id in widget_ids:
+                widget = await widget_config.get_single_doc({"widget_id": widget_id})
+                if not widget:
+                    raise ValueError("Widget not found")
+                widget_contents.append(widget)
+            return widget_contents
+        except Exception as e:
+            logger.info(f"Error fetching widget content: {e}")
+            logger.info(f"Function: {self.get_widget_content.__name__}")
+            return []
+
     @validator.validate_project
     @validator.validate_project_args
     async def view_project(self, project_id: str) -> tuple[dict, dict]:
@@ -381,16 +394,23 @@ class GuestActions(HostActions):
             tuple: The project details and user data with permissions.
         """
         try:
-            project = await self.project_handler.get_single_doc({"project_id": project_id})
             logger.info(f"Fetching project details for project: {project_id} and user: {self.user_id}")
-            if not project:
-                logger.info(f"Project not found: {project_id} for user: {self.user_id}")
-                raise ValueError("Project not found")
-            for i, user_id in enumerate(project.get("project_members", [])):
+            project = await project_config.get_single_doc({"project_id": project_id})
+            project = ProjectDetails(**project)
+            widgets = await self.get_widget_content(project.widgets)
+            page = PageSchema(
+                project_name=project.project_name,
+                widget_contents=widgets,
+                project_likes=project.project_likes,
+                project_transparency=project.project_transparency,
+                organizations=project.organizations
+            )
+            
+            for user_id in project.project_members:
                 username, email = await self.fetch_name_email(user_id)
                 if username and email:
                     logger.info(f"Found user for project member: {username} ({email})")
-                    project["project_members"][i] = (email, username)
+                    page.project_members.append((email, username))
         except Exception as e:
             logger.info(f"Error fetching project details: {e}")
             logger.info(f"Function: {self.view_project.__name__}")
@@ -412,11 +432,11 @@ class GuestActions(HostActions):
                 "permission": permission
             }
             
-            return project, user_info
+            return page.model_dump(), user_info
         except Exception as e:
             logger.info(f"Error fetching user data: {e}")
             logger.info(f"Function: {self.view_project.__name__}")
-            return project, {}
+            return page.model_dump(), {}
 
     @validator.validate_user_data
     async def like_project(self, project_id: str) -> None:
@@ -426,17 +446,17 @@ class GuestActions(HostActions):
             project_id (str): The ID of the project to like.
         """
         try:
-            project = await self.project_handler.get_single_doc({"project_id": project_id})
+            project = await project_config.get_single_doc({"project_id": project_id})
             if not self.user_data:
                 raise ValueError("User data not found")
             if project:
                 if project_id not in self.user_data.get("projects_liked", []):
                     self.user_data["projects_liked"].append(project_id)
                     query_item = {"user_id": self.user_data["user_id"]}
-                    await self.user_handler.post_update(query_item, self.user_data)
+                    await user_config.post_update(query_item, self.user_data)
 
                     project["project_likes"] = project.get("project_likes", 0) + 1
-                    await self.project_handler.post_update({"project_id": project_id}, project)
+                    await project_config.post_update({"project_id": project_id}, project)
         except Exception as e:
             logger.info(f"Error liking project: {e}")
             logger.info(f"Function: {self.like_project.__name__}")
@@ -455,11 +475,11 @@ class GuestActions(HostActions):
             if project_id in self.user_data.get("projects_liked", []):
                 self.user_data["projects_liked"].remove(project_id)
                 query_item = {"user_id": self.user_data["user_id"]}
-                await self.user_handler.post_update(query_item, self.user_data)
-                project = await self.project_handler.get_single_doc({"project_id": project_id})
+                await user_config.post_update(query_item, self.user_data)
+                project = await project_config.get_single_doc({"project_id": project_id})
                 if project:
                     project["project_likes"] = max(0, project.get("project_likes", 0) - 1)
-                    await self.project_handler.post_update({"project_id": project_id}, project)
+                    await project_config.post_update({"project_id": project_id}, project)
         except Exception as e:
             logger.info(f"Error removing like: {e}")
             logger.info(f"Function: {self.remove_like.__name__}")
@@ -480,16 +500,16 @@ class GuestActions(HostActions):
             raise ValueError("User does not have permission to add members to this project")
             
         try:
-            project = await self.project_handler.get_single_doc({"project_id": project_id})
+            project = await project_config.get_single_doc({"project_id": project_id})
             if project:
                 if (new_email, username) not in project["project_members"] and code == project.get("project_id"):
-                    new_user = await self.user_handler.get_single_doc({"email": new_email, "username": username})
+                    new_user = await user_config.get_single_doc({"email": new_email, "username": username})
                     if new_user:
                         project["project_members"].append(new_user["user_id"])
                         new_user["projects"][project_id] = (project["project_name"], "view")
-                        await self.user_handler.post_update({"user_id": new_user["user_id"]}, new_user)
+                        await user_config.post_update({"user_id": new_user["user_id"]}, new_user)
                     query_item = {"project_id": project_id}
-                    await self.project_handler.post_update(query_item, project)
+                    await project_config.post_update(query_item, project)
         except Exception as e:
             logger.info(f"Error adding project member: {e}")
             logger.info(f"Function: {self.add_project_member.__name__}")
@@ -507,13 +527,13 @@ class GuestActions(HostActions):
             raise ValueError("User does not have permission to delete members from this project")
         
         try:
-            project = await self.project_handler.get_single_doc({"project_id": project_id})
-            user = await self.user_handler.get_single_doc({"user_id": user_id})
+            project = await project_config.get_single_doc({"project_id": project_id})
+            user = await user_config.get_single_doc({"user_id": user_id})
             if user and project:
                 project["project_members"].remove(user["user_id"])
                 user["projects"].remove(project_id)
-                await self.project_handler.post_update({"project_id": project_id}, project)
-                await self.user_handler.post_update({"user_id": user_id}, user)
+                await project_config.post_update({"project_id": project_id}, project)
+                await user_config.post_update({"user_id": user_id}, user)
         except Exception as e:
             logger.info(f"Error deleting project member: {e}")
             logger.info(f"Function: {self.delete_project_member.__name__}")

@@ -1,0 +1,2068 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Jacey1225">
+      
+      
+        <link rel="canonical" href="https://jacey1225.github.io/personal-manager-02/api/authentication/">
+      
+      
+        <link rel="prev" href="../overview/">
+      
+      
+        <link rel="next" href="../widgets/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Authentication - Personal Manager 02</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#authentication-api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Personal Manager 02" class="md-header__button md-logo" aria-label="Personal Manager 02" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Personal Manager 02
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Authentication
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Jacey1225/personal-manager-02" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Jacey1225/personal-manager-02
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../tutorial/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../sdk/installation/" class="md-tabs__link">
+          
+  
+  
+  SDK Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../overview/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../advanced/scopes/" class="md-tabs__link">
+          
+  
+  
+  Advanced
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Personal Manager 02" class="md-nav__button md-logo" aria-label="Personal Manager 02" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Personal Manager 02
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Jacey1225/personal-manager-02" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Jacey1225/personal-manager-02
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    SDK Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            SDK Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Authentication
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Widget Management
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdk/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Authentication
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Authentication
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Endpoints
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-access-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request Access Token
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Request Access Token">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error Responses
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refresh-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      Refresh Token
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Refresh Token">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error Responses
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#revoke-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      Revoke Token
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Revoke Token">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error Responses
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#token-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Token Storage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Token Storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-token-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: Token Manager
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oauth2-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      OAuth2 Scopes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OAuth2 Scopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-hierarchies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Hierarchies
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requesting-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Requesting Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security Considerations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-expiration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Token Expiration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rate-limiting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rate Limiting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ip-whitelisting" class="md-nav__link">
+    <span class="md-ellipsis">
+      IP Whitelisting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitoring
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Widgets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../projects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Projects
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Advanced
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/scopes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    OAuth2 Scopes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/custom-endpoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Custom Endpoints
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Endpoints
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-access-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request Access Token
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Request Access Token">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error Responses
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refresh-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      Refresh Token
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Refresh Token">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error Responses
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#revoke-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      Revoke Token
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Revoke Token">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-request_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Request
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#response_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-responses_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error Responses
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#token-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Token Storage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Token Storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-token-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: Token Manager
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oauth2-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      OAuth2 Scopes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OAuth2 Scopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Scopes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-hierarchies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope Hierarchies
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requesting-scopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Requesting Scopes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security Considerations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#token-expiration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Token Expiration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rate-limiting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rate Limiting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ip-whitelisting" class="md-nav__link">
+    <span class="md-ellipsis">
+      IP Whitelisting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Monitoring
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="authentication-api-reference">Authentication API Reference</h1>
+<p>OAuth2 authentication endpoints for the Lazi Public API.</p>
+<h2 id="overview">Overview</h2>
+<p>The Lazi API uses OAuth2 with JWT tokens for authentication. All API requests require a valid access token.</p>
+<p><strong>Base Path</strong>: <code>/public/oauth</code></p>
+<h2 id="endpoints">Endpoints</h2>
+<h3 id="request-access-token">Request Access Token</h3>
+<p>Obtain an access token using username and password.</p>
+<pre><code>POST /oauth/token
+</code></pre>
+<h4 id="request">Request</h4>
+<p><strong>Content-Type</strong>: <code>application/x-www-form-urlencoded</code></p>
+<p><strong>Parameters</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>username</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>User's username</td>
+</tr>
+<tr>
+<td><code>password</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>User's password</td>
+</tr>
+<tr>
+<td><code>grant_type</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Must be "password"</td>
+</tr>
+<tr>
+<td><code>scope</code></td>
+<td>string</td>
+<td>No</td>
+<td>Space-separated list of scopes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Scopes</strong>: See <a href="../../advanced/scopes/">OAuth2 Scopes</a> for complete list.</p>
+<h4 id="example-request">Example Request</h4>
+<pre><code class="language-bash">curl -X POST https://api.lazi.app/public/oauth/token \
+  -H &quot;Content-Type: application/x-www-form-urlencoded&quot; \
+  -d &quot;username=john@example.com&quot; \
+  -d &quot;password=secure_password_123&quot; \
+  -d &quot;grant_type=password&quot; \
+  -d &quot;scope=widgets:read widgets:write projects:read&quot;
+</code></pre>
+<p><strong>Python Example</strong>:</p>
+<pre><code class="language-python">import httpx
+
+async def get_access_token():
+    url = &quot;https://api.lazi.app/public/oauth/token&quot;
+
+    data = {
+        &quot;username&quot;: &quot;john@example.com&quot;,
+        &quot;password&quot;: &quot;secure_password_123&quot;,
+        &quot;grant_type&quot;: &quot;password&quot;,
+        &quot;scope&quot;: &quot;widgets:read widgets:write projects:read&quot;
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, data=data)
+        return response.json()
+</code></pre>
+<h4 id="response">Response</h4>
+<p><strong>Status</strong>: <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;access_token&quot;: &quot;eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyM2FiYyIsInNjb3BlcyI6WyJ3aWRnZXRzOnJlYWQiLCJ3aWRnZXRzOndyaXRlIiwicHJvamVjdHM6cmVhZCJdLCJleHAiOjE3MDY3MDYwMDB9.signature&quot;,
+  &quot;refresh_token&quot;: &quot;rt_abc123def456ghi789jkl012mno345pqr678&quot;,
+  &quot;token_type&quot;: &quot;bearer&quot;,
+  &quot;expires_in&quot;: 3600,
+  &quot;scope&quot;: &quot;widgets:read widgets:write projects:read&quot;,
+  &quot;user_id&quot;: &quot;user_123abc&quot;
+}
+</code></pre>
+<p><strong>Response Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>access_token</code></td>
+<td>string</td>
+<td>JWT access token (valid for 1 hour)</td>
+</tr>
+<tr>
+<td><code>refresh_token</code></td>
+<td>string</td>
+<td>Refresh token (valid for 30 days)</td>
+</tr>
+<tr>
+<td><code>token_type</code></td>
+<td>string</td>
+<td>Always "bearer"</td>
+</tr>
+<tr>
+<td><code>expires_in</code></td>
+<td>integer</td>
+<td>Token expiration in seconds (3600)</td>
+</tr>
+<tr>
+<td><code>scope</code></td>
+<td>string</td>
+<td>Granted scopes</td>
+</tr>
+<tr>
+<td><code>user_id</code></td>
+<td>string</td>
+<td>User's unique identifier</td>
+</tr>
+</tbody>
+</table>
+<h4 id="error-responses">Error Responses</h4>
+<p><strong>401 Unauthorized</strong> - Invalid credentials</p>
+<pre><code class="language-json">{
+  &quot;detail&quot;: &quot;Invalid username or password&quot;,
+  &quot;error_code&quot;: &quot;INVALID_CREDENTIALS&quot;
+}
+</code></pre>
+<p><strong>422 Unprocessable Entity</strong> - Missing required fields</p>
+<pre><code class="language-json">{
+  &quot;detail&quot;: [
+    {
+      &quot;loc&quot;: [&quot;body&quot;, &quot;username&quot;],
+      &quot;msg&quot;: &quot;field required&quot;,
+      &quot;type&quot;: &quot;value_error.missing&quot;
+    }
+  ]
+}
+</code></pre>
+<hr />
+<h3 id="refresh-token">Refresh Token</h3>
+<p>Exchange a refresh token for a new access token.</p>
+<pre><code>POST /oauth/token/refresh
+</code></pre>
+<h4 id="request_1">Request</h4>
+<p><strong>Content-Type</strong>: <code>application/json</code></p>
+<p><strong>Body</strong>:</p>
+<pre><code class="language-json">{
+  &quot;refresh_token&quot;: &quot;rt_abc123def456ghi789jkl012mno345pqr678&quot;
+}
+</code></pre>
+<h4 id="example-request_1">Example Request</h4>
+<pre><code class="language-bash">curl -X POST https://api.lazi.app/public/oauth/token/refresh \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;refresh_token&quot;: &quot;rt_abc123def456ghi789jkl012mno345pqr678&quot;
+  }'
+</code></pre>
+<p><strong>Python Example</strong>:</p>
+<pre><code class="language-python">import httpx
+
+async def refresh_access_token(refresh_token: str):
+    url = &quot;https://api.lazi.app/public/oauth/token/refresh&quot;
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            url,
+            json={&quot;refresh_token&quot;: refresh_token}
+        )
+        return response.json()
+</code></pre>
+<h4 id="response_1">Response</h4>
+<p><strong>Status</strong>: <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;access_token&quot;: &quot;eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.new_token_payload.signature&quot;,
+  &quot;refresh_token&quot;: &quot;rt_new123xyz456abc789def012ghi345jkl678&quot;,
+  &quot;token_type&quot;: &quot;bearer&quot;,
+  &quot;expires_in&quot;: 3600,
+  &quot;scope&quot;: &quot;widgets:read widgets:write projects:read&quot;,
+  &quot;user_id&quot;: &quot;user_123abc&quot;
+}
+</code></pre>
+<h4 id="error-responses_1">Error Responses</h4>
+<p><strong>401 Unauthorized</strong> - Invalid or expired refresh token</p>
+<pre><code class="language-json">{
+  &quot;detail&quot;: &quot;Invalid or expired refresh token&quot;,
+  &quot;error_code&quot;: &quot;INVALID_REFRESH_TOKEN&quot;
+}
+</code></pre>
+<hr />
+<h3 id="revoke-token">Revoke Token</h3>
+<p>Revoke an access or refresh token.</p>
+<pre><code>POST /oauth/revoke
+</code></pre>
+<h4 id="request_2">Request</h4>
+<p><strong>Content-Type</strong>: <code>application/json</code></p>
+<p><strong>Headers</strong>:</p>
+<pre><code>Authorization: Bearer YOUR_ACCESS_TOKEN
+</code></pre>
+<p><strong>Body</strong>:</p>
+<pre><code class="language-json">{
+  &quot;token&quot;: &quot;rt_abc123def456ghi789jkl012mno345pqr678&quot;,
+  &quot;token_type_hint&quot;: &quot;refresh_token&quot;
+}
+</code></pre>
+<p><strong>Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>token</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Token to revoke</td>
+</tr>
+<tr>
+<td><code>token_type_hint</code></td>
+<td>string</td>
+<td>No</td>
+<td>"access_token" or "refresh_token"</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example-request_2">Example Request</h4>
+<pre><code class="language-bash">curl -X POST https://api.lazi.app/public/oauth/revoke \
+  -H &quot;Authorization: Bearer eyJhbGci...&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;token&quot;: &quot;rt_abc123...&quot;,
+    &quot;token_type_hint&quot;: &quot;refresh_token&quot;
+  }'
+</code></pre>
+<p><strong>Python Example</strong>:</p>
+<pre><code class="language-python">import httpx
+
+async def revoke_token(access_token: str, refresh_token: str):
+    url = &quot;https://api.lazi.app/public/oauth/revoke&quot;
+
+    headers = {&quot;Authorization&quot;: f&quot;Bearer {access_token}&quot;}
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            url,
+            headers=headers,
+            json={
+                &quot;token&quot;: refresh_token,
+                &quot;token_type_hint&quot;: &quot;refresh_token&quot;
+            }
+        )
+        return response.status_code == 200
+</code></pre>
+<h4 id="response_2">Response</h4>
+<p><strong>Status</strong>: <code>200 OK</code></p>
+<pre><code class="language-json">{
+  &quot;message&quot;: &quot;Token revoked successfully&quot;
+}
+</code></pre>
+<h4 id="error-responses_2">Error Responses</h4>
+<p><strong>401 Unauthorized</strong> - Missing or invalid authorization</p>
+<pre><code class="language-json">{
+  &quot;detail&quot;: &quot;Not authenticated&quot;
+}
+</code></pre>
+<hr />
+<h2 id="token-storage">Token Storage</h2>
+<h3 id="best-practices">Best Practices</h3>
+<ol>
+<li><strong>Store Securely</strong>: Never store tokens in:</li>
+<li>Local storage (vulnerable to XSS)</li>
+<li>URL parameters</li>
+<li>Unencrypted files</li>
+<li>
+<p>Version control</p>
+</li>
+<li>
+<p><strong>Use Secure Storage</strong>:</p>
+</li>
+<li>Environment variables</li>
+<li>Encrypted key stores</li>
+<li>Secure credential managers</li>
+<li>
+<p>HTTP-only cookies (for web apps)</p>
+</li>
+<li>
+<p><strong>Token Rotation</strong>:</p>
+</li>
+<li>Refresh tokens before they expire</li>
+<li>Implement automatic token refresh</li>
+<li>Handle token refresh failures gracefully</li>
+</ol>
+<h3 id="example-token-manager">Example: Token Manager</h3>
+<pre><code class="language-python">import os
+import json
+from datetime import datetime, timedelta
+from pathlib import Path
+
+class TokenManager:
+    &quot;&quot;&quot;Secure token storage and management&quot;&quot;&quot;
+
+    def __init__(self, token_file: str = &quot;.lazi_tokens&quot;):
+        self.token_file = Path.home() / token_file
+        self.tokens = self._load_tokens()
+
+    def _load_tokens(self) -&gt; dict:
+        &quot;&quot;&quot;Load tokens from encrypted file&quot;&quot;&quot;
+        if not self.token_file.exists():
+            return {}
+
+        # In production, use encryption
+        with open(self.token_file, 'r') as f:
+            return json.load(f)
+
+    def _save_tokens(self):
+        &quot;&quot;&quot;Save tokens to encrypted file&quot;&quot;&quot;
+        # Set restrictive permissions
+        self.token_file.touch(mode=0o600)
+
+        with open(self.token_file, 'w') as f:
+            json.dump(self.tokens, f)
+
+    def store_tokens(self, access_token: str, refresh_token: str, 
+                    expires_in: int):
+        &quot;&quot;&quot;Store tokens with expiration&quot;&quot;&quot;
+        self.tokens = {
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'expires_at': (
+                datetime.utcnow() + timedelta(seconds=expires_in)
+            ).isoformat()
+        }
+        self._save_tokens()
+
+    def get_access_token(self) -&gt; str | None:
+        &quot;&quot;&quot;Get valid access token&quot;&quot;&quot;
+        if not self.tokens:
+            return None
+
+        expires_at = datetime.fromisoformat(
+            self.tokens['expires_at']
+        )
+
+        if datetime.utcnow() &gt;= expires_at:
+            return None  # Token expired
+
+        return self.tokens['access_token']
+
+    def get_refresh_token(self) -&gt; str | None:
+        &quot;&quot;&quot;Get refresh token&quot;&quot;&quot;
+        return self.tokens.get('refresh_token')
+
+    def clear_tokens(self):
+        &quot;&quot;&quot;Clear stored tokens&quot;&quot;&quot;
+        self.tokens = {}
+        if self.token_file.exists():
+            self.token_file.unlink()
+</code></pre>
+<hr />
+<h2 id="oauth2-scopes">OAuth2 Scopes</h2>
+<h3 id="available-scopes">Available Scopes</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>widgets:read</code></td>
+<td>Read widget data</td>
+</tr>
+<tr>
+<td><code>widgets:write</code></td>
+<td>Create and update widgets</td>
+</tr>
+<tr>
+<td><code>widgets:delete</code></td>
+<td>Delete widgets</td>
+</tr>
+<tr>
+<td><code>widgets:admin</code></td>
+<td>Full widget management</td>
+</tr>
+<tr>
+<td><code>projects:read</code></td>
+<td>Read project data</td>
+</tr>
+<tr>
+<td><code>projects:write</code></td>
+<td>Create and update projects</td>
+</tr>
+<tr>
+<td><code>projects:delete</code></td>
+<td>Delete projects</td>
+</tr>
+<tr>
+<td><code>projects:admin</code></td>
+<td>Full project management</td>
+</tr>
+<tr>
+<td><code>files:read</code></td>
+<td>Read file metadata</td>
+</tr>
+<tr>
+<td><code>files:write</code></td>
+<td>Upload files</td>
+</tr>
+<tr>
+<td><code>files:delete</code></td>
+<td>Delete files</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scope-hierarchies">Scope Hierarchies</h3>
+<p>Admin scopes include all lower permissions:</p>
+<ul>
+<li><code>widgets:admin</code> → <code>widgets:delete</code> → <code>widgets:write</code> → <code>widgets:read</code></li>
+<li><code>projects:admin</code> → <code>projects:delete</code> → <code>projects:write</code> → <code>projects:read</code></li>
+<li><code>files:admin</code> → <code>files:delete</code> → <code>files:write</code> → <code>files:read</code></li>
+</ul>
+<h3 id="requesting-scopes">Requesting Scopes</h3>
+<p>Request minimum required scopes:</p>
+<pre><code class="language-python"># ✅ Good - minimal scopes
+scopes = &quot;widgets:read projects:read&quot;
+
+# ❌ Bad - excessive permissions
+scopes = &quot;widgets:admin projects:admin files:admin&quot;
+</code></pre>
+<hr />
+<h2 id="security-considerations">Security Considerations</h2>
+<h3 id="token-expiration">Token Expiration</h3>
+<ul>
+<li><strong>Access tokens</strong>: 1 hour</li>
+<li><strong>Refresh tokens</strong>: 30 days</li>
+<li><strong>Revoked tokens</strong>: Immediately invalid</li>
+</ul>
+<h3 id="rate-limiting">Rate Limiting</h3>
+<p>Token endpoints have strict rate limits:</p>
+<ul>
+<li><strong>Token requests</strong>: 10 per hour per IP</li>
+<li><strong>Token refresh</strong>: 100 per hour per user</li>
+<li><strong>Token revoke</strong>: 50 per hour per user</li>
+</ul>
+<h3 id="ip-whitelisting">IP Whitelisting</h3>
+<p>Configure IP whitelisting for enhanced security:</p>
+<pre><code class="language-python"># In your environment
+ALLOWED_IPS = &quot;192.168.1.0/24,10.0.0.0/8&quot;
+</code></pre>
+<h3 id="monitoring">Monitoring</h3>
+<p>Monitor token usage:</p>
+<ul>
+<li>Failed authentication attempts</li>
+<li>Token refresh patterns</li>
+<li>Unusual access patterns</li>
+<li>Token revocations</li>
+</ul>
+<hr />
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li><a href="../widgets/">Widget API</a> - Manage widgets</li>
+<li><a href="../../advanced/scopes/">OAuth2 Scopes</a> - Complete scope reference</li>
+<li><a href="../../advanced/security/">Security Best Practices</a> - Security guidelines</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

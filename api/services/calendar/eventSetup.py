@@ -11,7 +11,7 @@ from api.validation.handleEventSetup import ValidateEventHandling
 import pytz
 
 validator = ValidateEventHandling()
-user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+user_config = MongoHandler("userAuthDatabase", "userCredentials")
 class RequestSetup:
     """Handles event setup for Google Calendar and Google Tasks.
     """

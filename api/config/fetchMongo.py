@@ -1,5 +1,4 @@
 import logging
-from pymongo import MongoClient
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from dotenv import load_dotenv
@@ -13,10 +12,9 @@ load_dotenv()
 
 class MongoHandler:
     def __init__(self, 
-                 client: AsyncIOMotorClient | None, 
                  database: str, 
                  collection: str):
-            self.client = client
+            self.client: Optional[AsyncIOMotorClient] = None
             self.database = database
             self.collection_name = collection
             self.db = None
@@ -64,10 +62,12 @@ class MongoHandler:
             insertion (dict): The document to be inserted.
         """
         try:
+            await self.get_client()
             if not insertion or self.collection is None:
                 raise ValueError("Insertion document cannot be empty.")
             result = await self.collection.insert_one(insertion)
             logger.info(f"Document inserted with ID: {result.inserted_id}")
+            await self.close_client()
             return result
         except Exception as e:
             logger.error(f"Error inserting document: {str(e)}")
@@ -83,11 +83,14 @@ class MongoHandler:
         try:
             if self.collection is None:
                 raise ValueError("Collection is not initialized.")
+            await self.get_client()
             if column:
                 document = await self.collection.find_one(query, {"_id": 0, column: 1})
+                await self.close_client()
                 return document if document else {}
             else:
                 document = await self.collection.find_one(query, {"_id": 0})
+                await self.close_client()
                 return document if document else {}
         except Exception as e:
             logger.error(f"Error fetching document: {str(e)}")
@@ -101,6 +104,7 @@ class MongoHandler:
             column (Optional[str]): The specific column to retrieve. If None, retrieves the entire document.
         """
         try:
+            await self.get_client()
             if self.collection is None:
                 raise ValueError("Collection is not initialized.")
             if column:
@@ -110,8 +114,10 @@ class MongoHandler:
             documents = []
             async for doc in cursor:
                 documents.append(doc)
+            await self.close_client()
             return documents
         except Exception as e:
+            await self.close_client()
             logger.error(f"Error fetching documents: {str(e)}")
             return {"error": str(e)}
 
@@ -123,9 +129,11 @@ class MongoHandler:
             update (dict): The update operations to apply.
         """
         try:
+            await self.get_client()
             if self.collection is None:
                 raise ValueError("Collection is not initialized.")
             result = await self.collection.update_one(query, {"$set": update})
+            await self.close_client()
             if result.modified_count > 0:
                 logger.info(f"Document updated successfully.")
             else:
@@ -140,9 +148,11 @@ class MongoHandler:
             query (dict): The query to find the document to delete.
         """
         try:
+            await self.get_client()
             if self.collection is None:
                 raise ValueError("Collection is not initialized.")
             result = await self.collection.delete_one(query)
+            await self.close_client()
             if result.deleted_count > 0:
                 logger.info(f"Document deleted successfully.")
             else:
@@ -152,12 +162,14 @@ class MongoHandler:
 
     async def get_all(self):
         try:
+            await self.get_client()
             if self.collection is None:
                 raise ValueError("Collection is not initialized.")
             cursor = self.collection.find()
             documents = []
             async for doc in cursor:
                 documents.append(doc)
+            await self.close_client()
             return documents
         except Exception as e:
             logger.error(f"Error fetching documents: {str(e)}")
@@ -167,9 +179,11 @@ class MongoHandler:
         """Deletes all documents in the collection.
         """
         try:
+            await self.get_client()
             if self.collection is None:
                 raise ValueError("Collection is not initialized.")
             result = await self.collection.delete_many({})
+            await self.close_client()
             logger.info(f"Documents deleted: {result.deleted_count}")
         except Exception as e:
             logger.error(f"Error deleting documents: {str(e)}")

@@ -21,8 +21,8 @@ responseRequest = {
     "calendar_insights": Optional[dict]
 }
 
-user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
+user_config = MongoHandler("userAuthDatabase", "userCredentials")
+project_config = MongoHandler("userAuthDatabase", "openProjects")
 
 class MainModel:
     @staticmethod
@@ -111,8 +111,6 @@ class MainModel:
         """
         try:
             service = await UniformInterface(user_id).fetch_service()
-            await user_config.get_client()
-            await project_config.get_client()
             user_data = await user_config.get_single_doc({"user_id": user_id})
             requests = []
             for event in events:

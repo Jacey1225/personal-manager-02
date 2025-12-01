@@ -3,11 +3,14 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build 
-from googleapiclient.errors import HttpError
 from api.schemas.calendar import CalendarEvent
 from typing import Optional, Any, Dict, List
-from datetime import datetime
 from api.schemas.calendar import CalendarEvent
+from api.config.fetchMongo import MongoHandler
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Updated scopes - removed conflicting readonly scopes
 SCOPES = [
@@ -26,13 +29,15 @@ class ConfigureGoogleAPI:
         if not os.path.exists('data/tokens'):
             os.makedirs('data/tokens')
 
-    def write_token(self):
+    async def write_token(self):
+        user_config = MongoHandler("userAuthDatabase", "userCredentials")
         if self.creds:
-            with open(f'data/tokens/token_{self.user_id}.json', 'w') as token:
-                token.write(self.creds.to_json())
-            print(f"Token written to data/tokens/token_{self.user_id}.json")
+            await user_config.post_update({"user_id": self.user_id}, {"google_auth": self.creds.to_json()})
+            logger.info(f"Token written to database for user {self.user_id}")
+            return True
         else:
-            print("No credentials available to write.")
+            logger.warning(f"No credentials available to write for user {self.user_id}")
+            return False
 
     def get_auth_url(self):
         """Generate and return the Google OAuth authorization URL"""
@@ -45,35 +50,35 @@ class ConfigureGoogleAPI:
         self.auth_url = auth_url
         return self.auth_url
 
-    def complete_auth_flow(self, authorization_code: str):
+    async def complete_auth_flow(self, authorization_code: str):
         """Complete OAuth flow with authorization code"""
-        print(f"Starting complete_auth_flow for user {self.user_id}")
-        print(f"Authorization code provided: {len(authorization_code)} characters")
-        
+        logger.info(f"Starting complete_auth_flow for user {self.user_id}")
+        logger.info(f"Authorization code provided: {len(authorization_code)} characters")
         try:
             if not os.path.exists('data/credentials.json'):
                 raise FileNotFoundError("credentials.json file not found in the 'data' directory.")
-            
-            print("Creating fresh OAuth flow for token exchange...")
+
+            logger.info("Creating fresh OAuth flow for token exchange...")
             self.flow = InstalledAppFlow.from_client_secrets_file('data/credentials.json', SCOPES)
             self.flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
 
-            print("Exchanging authorization code for token...")
+            logger.info("Exchanging authorization code for token...")
+
             self.flow.fetch_token(code=authorization_code)
             self.creds = self.flow.credentials
-            
-            print(f"Credentials obtained successfully")
-            print(f"Credentials valid: {self.creds.valid}")
-            print(f"Has refresh token: {self.creds.refresh_token is not None}")
-            
-            print("Writing token to file...")
-            token_written = self.write_token()
-            
+
+            logger.info("Credentials obtained successfully")
+            logger.info(f"Credentials valid: {self.creds.valid}")
+            logger.info(f"Has refresh token: {self.creds.refresh_token is not None}")
+
+            logger.info("Writing token to database...")
+            token_written = await self.write_token()
+
             if not token_written:
-                print("ERROR: Failed to write token to file!")
+                logger.error(f"Failed to write token to database for user {self.user_id}")
                 return None, None
-            
-            print("Testing credentials by building Google services...")
+
+            logger.info("Testing credentials by building Google services...")
             event_service = build('calendar', 'v3', credentials=self.creds)
             task_service = build('tasks', 'v1', credentials=self.creds)
             
@@ -87,14 +92,16 @@ class ConfigureGoogleAPI:
             traceback.print_exc()
             return None, None
 
-    def enable(self) -> tuple | str | None:
+    async def enable(self) -> tuple | str | None:
         """Enable Google Calendar API - returns services if authenticated, auth URL if not"""
-        token_path = f'data/tokens/token_{self.user_id}.json'
         
-        if os.path.exists(token_path):
+        user_config = MongoHandler("userAuthDatabase", "userCredentials")
+        user_info = await user_config.get_single_doc({"user_id": self.user_id})
+
+        if user_info:
+            self.creds = Credentials.from_authorized_user_info(user_info, SCOPES)
+
             try:
-                self.creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-                
                 if self.creds and self.creds.valid:
                     event_service = build('calendar', 'v3', credentials=self.creds)
                     task_service = build('tasks', 'v1', credentials=self.creds)
@@ -103,22 +110,18 @@ class ConfigureGoogleAPI:
                 elif self.creds and self.creds.expired and self.creds.refresh_token:
                     try:
                         self.creds.refresh(Request())
-                        self.write_token()
+                        await self.write_token()
                         event_service = build('calendar', 'v3', credentials=self.creds)
                         task_service = build('tasks', 'v1', credentials=self.creds)
                         return event_service, task_service
                     except Exception as e:
-                        print(f"Token refresh failed: {e}")
-                        os.remove(token_path)
+                        logger.error(f"Token refresh failed: {e}")
                         return self.get_auth_url()
                 else:
-                    os.remove(token_path)
                     return self.get_auth_url()
                     
             except Exception as e:
-                print(f"Error loading token: {e}")
-                if os.path.exists(token_path):
-                    os.remove(token_path)
+                logger.error(f"Error loading token: {e}")
                 return self.get_auth_url()
         else:
             return self.get_auth_url()

@@ -1,8 +1,8 @@
 from typing import Optional
 from api.schemas.calendar import CalendarEvent
-from api.config.fetchMongo import MongoHandler, MongoClient
+from api.config.fetchMongo import MongoHandler
 
-user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
+user_config = MongoHandler("userAuthDatabase", "userCredentials")
 
 """Accepted Kwargs:
     maxResults: int
@@ -31,7 +31,6 @@ class UniformInterface:
         Yields:
             service instances for each enabled calendar service.
         """
-        await user_config.get_client()
         if not user_config.client:
             raise ConnectionError("Unable to connect to user configuration database.")
         

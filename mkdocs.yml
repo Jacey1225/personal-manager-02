@@ -29,5 +29,20 @@ theme:
 
 nav:
   - Home: index.md
-  - API Reference: api.md
-  - Tutorial: tutorial.md
+  - Getting Started: tutorial.md
+  - Tutorials:
+      - OAuth2 & Widget Creation: tutorials/oauth-widget-creation.md
+  - SDK Guide:
+      - Installation: sdk/installation.md
+      - Authentication: sdk/authentication.md
+      - Widget Management: sdk/widgets.md
+      - Examples: sdk/examples.md
+  - API Reference:
+      - Overview: api/overview.md
+      - Authentication: api/authentication.md
+      - Widgets: api/widgets.md
+      - Projects: api/projects.md
+  - Advanced:
+      - OAuth2 Scopes: advanced/scopes.md
+      - Custom Endpoints: advanced/custom-endpoints.md
+      - Security: advanced/security.md

@@ -2,10 +2,8 @@ from api.services.track_projects.handleProjects import HostActions, GuestActions
 from api.schemas.projects import CreateProjectRequest, ModifyProjectRequest
 from api.schemas.calendar import CalendarEvent
 from api.schemas.model import EventOutput
-from api.config.fetchMongo import MongoHandler
 from api.config.uniformInterface import UniformInterface
 from api.config.cache import project_cache, async_cached
-from typing import List
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -22,24 +20,14 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
-        # Create new instances for each request to avoid event loop issues
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
-        
         user_id = request.user_id
         service = await UniformInterface(user_id).fetch_service()
-        await user_config.get_client()
-        await project_config.get_client()
         handler = await HostActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         await handler.global_delete()
-        await user_config.close_client()
-        await project_config.close_client()
         return {"message": "All projects deleted successfully."}
 
     @staticmethod
@@ -52,22 +40,16 @@ class ProjectModel:
         Returns:
             dict: A success message with the created project details.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
         project_likes = request.project_likes
         transparency = request.project_transparency
         members = request.project_members
         user_id = request.user_id
         service = await UniformInterface(user_id).fetch_service()
-        await user_config.get_client()
-        await project_config.get_client()
         handler = await HostActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         await handler.create_project(request.project_name, project_likes, transparency, members)
         return {"message": "Project created successfully", "project_name": request.project_name}
 
@@ -82,21 +64,14 @@ class ProjectModel:
         Returns:
             dict: The details of the requested project.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
-
         user_id = request.user_id
         project_id = request.project_id
         service = await UniformInterface(user_id).fetch_service()
-        await user_config.get_client()
-        await project_config.get_client()
         handler = await GuestActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         project, user_data = await handler.view_project(project_id)
         return {"project": project, "user_data": user_data}
 
@@ -113,19 +88,13 @@ class ProjectModel:
         """
         logger.info(f"Deleting project: {request.project_id} for user: {request.user_id}")
         user_id = request.user_id
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
 
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await HostActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         await handler.delete_project(request.project_id)
         return {"message": "Project deleted successfully."}
 
@@ -142,22 +111,16 @@ class ProjectModel:
             dict: A message indicating the result of the operation.
         """
         logger.info(f"Renaming project: {request.project_id} to {request.project_name} for user: {request.user_id}")
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
 
         user_id = request.user_id
         project_id = request.project_id
         project_name = request.project_name
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await HostActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         await handler.rename_project(project_id, project_name)
         return {"message": "Project renamed successfully."}
 
@@ -171,21 +134,15 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
 
         user_id = request.user_id
         project_id = request.project_id
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await GuestActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         await handler.like_project(project_id)
         return {"message": "Project liked successfully."}
 
@@ -199,21 +156,14 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
-
         user_id = request.user_id
         project_id = request.project_id
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await GuestActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         
         await handler.remove_like(project_id)
         return {"message": "Project like removed successfully."}
@@ -230,21 +180,14 @@ class ProjectModel:
         Returns:
             list[dict]: A list of events associated with the project.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
-
         user_id = request.user_id
         project_id = request.project_id
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await HostActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         
         return await handler.fetch_project_events(project_id)
 
@@ -262,22 +205,15 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
-
         user_id = request.user_id
         project_id = request.project_id
 
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await GuestActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         
         await handler.add_project_member(project_id, new_email, new_username, code)
         return {"message": "Member added successfully."}
@@ -295,24 +231,17 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
-
         user_id = request.user_id
         project_id = request.project_id
         
         # We need to find the user_id for the member being deleted
         # This requires a method to fetch user_id from email and username
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await GuestActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         
         target_user_id = await handler.fetch_user_id(email, username)
 
@@ -332,19 +261,12 @@ class ProjectModel:
         Returns:
             list[dict]: A list of projects associated with the user.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
-
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await HostActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         
         return await handler.list_projects()
 
@@ -359,21 +281,14 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
-
         user_id = request.user_id
         project_id = request.project_id
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await HostActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         
         await handler.edit_transparency(project_id, new_transparency)
         return {"message": "Project transparency updated successfully."}
@@ -391,21 +306,14 @@ class ProjectModel:
         Returns:
             dict: A message indicating the result of the operation.
         """
-        user_config = MongoHandler(None, "userAuthDatabase", "userCredentials")
-        project_config = MongoHandler(None, "userAuthDatabase", "openProjects")
-
         user_id = request.user_id
         project_id = request.project_id
-        await user_config.get_client()
-        await project_config.get_client()
         service = await UniformInterface(user_id).fetch_service()
         handler = await HostActions.fetch(
             CalendarEvent(),
             EventOutput(),
             user_id, 
-            service,
-            user_config, 
-            project_config)
+            service)
         
         await handler.edit_permissions(project_id, email, username, new_permission)
         return {"message": "User permission updated successfully."}
