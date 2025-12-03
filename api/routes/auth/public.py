@@ -3,7 +3,7 @@ from fastapi.security import (OAuth2PasswordRequestForm,
 from fastapi import Depends, APIRouter, HTTPException, status
 from api.schemas.auth import User, UserInDB
 from api.config.fetchMongo import MongoHandler
-from typing import Annotated, Optional, Any
+from typing import Annotated, Optional, Any, Union
 import logging
 import os
 from passlib.context import CryptContext 
@@ -37,6 +37,14 @@ class OAuthUser:
         """
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         logger.info(f"Hashing password for user: {password[:3]}")
+        
+        # Ensure password is within bcrypt's 72 byte limit
+        if isinstance(password, str):
+            password_bytes = password.encode('utf-8')
+            if len(password_bytes) > 72:
+                logger.warning(f"Password is {len(password_bytes)} bytes, truncating to 72 bytes")
+                password = password_bytes[:72].decode('utf-8', errors='ignore')
+        
         return pwd_context.hash(password)
 
     def verify_hash(self, password: str, hashed: str) -> bool:
@@ -71,11 +79,14 @@ class OAuthUser:
     async def authenticate_user(self, 
         username: str, 
         password: str
-    ) -> Any[UserInDB, bool]:
+    ) -> Union[UserInDB, bool]:
+        logger.info(f"Authenticating user: {username}")
         user = await self.get_user(username)
         if not user:
+            logger.info(f"Authentication failed: user {username} not found")
             return False
         if not self.verify_hash(password, user.hashed_password):
+            logger.info(f"Authentication failed: incorrect password for user {username}")
             return False
         return user
 
@@ -102,35 +113,19 @@ class OAuthUser:
                     self.token, 
                     self.secret_key, 
                     algorithms=[self.algorithm])
-                username = payload.get("sub")
-                logger.info(f"Extracted username from token: {username}")
-                if username is None or payload.get("exp") < datetime.now():
+                logger.info(f"Payload decoded successfully for token: {payload}")
+                user_id = payload.get("sub")
+                expiration = datetime.fromtimestamp(payload.get("exp"))
+                logger.info(f"Token expiration time: {expiration}")
+                if user_id is None or expiration < datetime.now():
+                    logger.info(f"Token expired or invalid for user: {user_id}")
                     raise credentials_exception
-                user = username
             else:
                 raise Exception("No secret key found")
         except jwt.PyJWTError:
             raise credentials_exception
-        user = await self.get_user(user)
-        if not user:
-            raise credentials_exception
-        return {"user": user, "payload": payload}
+        return payload
 
-    async def get_active_user(self) -> dict:
-        """Validates whether or not the current user is active as a developer or not
-
-        Raises:
-            HTTPException: Raises if the user is not a developer
-
-        Returns:
-            User: The user object if found, None otherwise
-        """
-        user, payload = await self.get_current_user()
-        if not user or not user.developer:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail="User is not authorized as a developer")
-        return {"user": user, "payload": payload}
-    
     def create_token(self, 
         data: dict, 
         expiration: Optional[timedelta]=None, 
@@ -163,9 +158,10 @@ class OAuthUser:
             self.token = jwt.encode(raw_token, 
                                      self.secret_key,
                                      algorithm=self.algorithm)
+        logger.info(f"Token created for user: {data.get('sub')}")
         return self.token
 
-oauth_router.post("/oauth/token")
+@oauth_router.post("/oauth/token")
 async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     """The login endpoint that handles developers accessing their token to create 
     new widgets
@@ -182,17 +178,22 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
         dict: The access token and token type
     """
     oauth_handler = OAuthUser(form_data.username)
-    user: UserInDB = await oauth_handler.authenticate_user(
+    user: Union[UserInDB, bool] = await oauth_handler.authenticate_user(
         form_data.username, 
         form_data.password)
-    if not user:
+    if not user or isinstance(user, bool):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Invalid authentication credentials")
 
     token_expires = timedelta(hours=24)
+    
+    # Get scopes from form_data (already a list)
+    scopes = form_data.scopes if form_data.scopes else []
+    
     access_token = oauth_handler.create_token(
         data={"sub": user.user_id}, 
-        expiration=token_expires)
+        expiration=token_expires,
+        scopes=scopes)
 
     if not oauth_handler.verify_hash(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
@@ -218,8 +219,9 @@ async def read_user(
         dict: The user data and payload
     """
     oauth = OAuthUser(username, token)
-    user, payload = await oauth.get_active_user()
-    if user:
+    user = oauth.authenticate_user(username, token)
+    payload = await oauth.get_current_user()
+    if payload and user:
         return {"user": user, "payload": payload}
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                         detail="User not found")

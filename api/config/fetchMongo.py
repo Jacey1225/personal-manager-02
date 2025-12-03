@@ -81,9 +81,9 @@ class MongoHandler:
             column (Optional[Any]): The specific column to retrieve. If None, retrieves the entire document.
         """
         try:
+            await self.get_client()
             if self.collection is None:
                 raise ValueError("Collection is not initialized.")
-            await self.get_client()
             if column:
                 document = await self.collection.find_one(query, {"_id": 0, column: 1})
                 await self.close_client()
@@ -121,12 +121,15 @@ class MongoHandler:
             logger.error(f"Error fetching documents: {str(e)}")
             return {"error": str(e)}
 
-    async def post_update(self, query: dict, update: dict) -> None:
+    async def post_update(self, query: dict, update: dict):
         """Update a document in the MongoDB collection.
 
         Args:
             query (dict): The query to find the document to update.
             update (dict): The update operations to apply.
+            
+        Returns:
+            UpdateResult: The result of the update operation, or None if error.
         """
         try:
             await self.get_client()
@@ -138,8 +141,10 @@ class MongoHandler:
                 logger.info(f"Document updated successfully.")
             else:
                 logger.warning(f"No documents matched the query.")
+            return result
         except Exception as e:
             logger.error(f"Error updating document: {str(e)}")
+            return None
 
     async def post_delete(self, query: dict) -> None:
         """Delete a document from the MongoDB collection.

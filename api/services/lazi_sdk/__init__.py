@@ -1,5 +1,5 @@
-from widgets_read import ReadWidget
-from widgets_write import WriteWidget
+from .widgets_read import ReadWidget
+from .widgets_write import WriteWidget
 
 __all__ = [
     "ReadWidget",

@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from api.routes.auth.user import auth_router
 from api.routes.auth.google import google_router
+from api.routes.auth.public import oauth_router
+from api.routes.public_router import public_router
 from api.routes.tasklist_router import task_list_router
 from api.routes.project_router import project_router
-from api.routes.coordination_router import coordination_router
-from api.routes.discussion_router import discussion_router
 from api.routes.organization_router import organization_router
 from api.routes.event_router import event_router
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,10 +34,10 @@ def build_app() -> FastAPI:
     app.include_router(event_router)
     app.include_router(auth_router)
     app.include_router(google_router)
+    app.include_router(oauth_router)
+    app.include_router(public_router)
     app.include_router(task_list_router)
     app.include_router(project_router)
-    app.include_router(coordination_router)
-    app.include_router(discussion_router)
     app.include_router(organization_router)
 
     return app

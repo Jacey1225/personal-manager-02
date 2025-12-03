@@ -15,19 +15,19 @@ The SDK provides two main classes for widget management:
 
 ```python
 from lazi_sdk import WriteWidget
+from api.schemas.widgets import WidgetSize
 
-# Initialize
+# Initialize SDK with OAuth token
 widget = WriteWidget(
+    username="developer@example.com",
     token="your_access_token",
-    user_id="user_123"
+    project_id="project_456"
 )
 
 # Create a new widget
-await widget.create_new(
+await widget.create(
     name="Sales Dashboard",
-    description="Real-time sales metrics",
-    size="large",  # Options: small, medium, large, extra_large
-    project_id="project_456"
+    size=WidgetSize.LARGE.value  # Options: small, medium, large, extra_large
 )
 
 # Save to database
@@ -45,69 +45,84 @@ Available widget sizes:
 - `"large"` - Large widget (4x2 grid)
 - `"extra_large"` - Extra large widget (4x4 grid)
 
-## Attaching Media
+## Uploading Media Files
 
-### Upload Files to Widgets
+### Upload Files to S3 with Presigned URLs
 
 ```python
+from api.schemas.widgets import WidgetSize
+
 # Create widget
-await widget.create_new(
+await widget.create(
     name="Product Gallery",
-    description="Product images",
-    project_id="project_001"
+    size=WidgetSize.LARGE.value
 )
 
-# Attach image
-await widget.attach_media(
+# Define interaction
+await widget.interaction(
+    endpoint="/api/v1/widgets/gallery/view",
+    headers={},
+    refresh_interval=0,
+    func=lambda data, req, user: data
+)
+
+# Upload image and get presigned URL
+image_url = await widget.uploadable(
     object_name="product_image.jpg",
-    filename="./local/path/to/image.jpg"
+    filename="./local/path/to/image.jpg",
+    expire=3600  # URL expires in 1 hour
 )
 
-# Attach multiple files
-for image in ["img1.jpg", "img2.jpg", "img3.jpg"]:
-    await widget.attach_media(
-        object_name=image,
-        filename=f"./images/{image}"
-    )
+print(f"Image URL: {image_url}")
 
-# Save with all media
+# Upload multiple files
+image_urls = []
+for image in ["img1.jpg", "img2.jpg", "img3.jpg"]:
+    url = await widget.uploadable(
+        object_name=image,
+        filename=f"./images/{image}",
+        expire=3600
+    )
+    image_urls.append(url)
+
+# Save widget
 await widget.save()
 ```
 
 ### Supported Media Types
 
-- **Images**: JPG, PNG, GIF, WebP
-- **Videos**: MP4, WebM, AVI
-- **Documents**: PDF, DOCX, TXT
-- **Archives**: ZIP, TAR
+AWS S3 supports all file types:
+
+- **Images**: JPG, PNG, GIF, WebP, SVG
+- **Videos**: MP4, WebM, AVI, MOV
+- **Documents**: PDF, DOCX, XLSX, TXT, CSV
+- **Archives**: ZIP, TAR, GZ
+- **Audio**: MP3, WAV, OGG
+- **Any other file type**
+
+### Presigned URL Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `object_name` | `str` | Name/key for the file in S3 |
+| `filename` | `Optional[str]` | Local file path to upload (if not already in S3) |
+| `expire` | `int` | URL expiration time in seconds (default: 3600) |
 
 ## Widget Interactions
 
 ### Configure Endpoint and Logic
 
 ```python
-# Create widget with custom interaction
-await widget.create_new(
+from api.schemas.widgets import WidgetSize
+
+# Create widget
+await widget.create(
     name="GitHub Stats",
-    description="Repository statistics",
-    project_id="project_001"
+    size=WidgetSize.MEDIUM.value
 )
 
-# Configure interaction endpoint
-await widget.post(
-    endpoint="https://api.github.com/repos/owner/repo",
-    endpoint_data={
-        "params": {
-            "type": "all",
-            "sort": "updated"
-        },
-        "headers": {
-            "Accept": "application/vnd.github.v3+json",
-            "Authorization": "token ghp_xxxxx"
-        },
-        "refresh_interval": 1800,  # Refresh every 30 minutes
-        "logic": """
-def process_data(widget_data, request, user):
+# Define the data processing function
+def process_github_data(widget_data, request, user):
     stars = widget_data.get('stargazers_count', 0)
     forks = widget_data.get('forks_count', 0)
     return {
@@ -115,8 +130,16 @@ def process_data(widget_data, request, user):
         'forks': forks,
         'popularity': 'high' if stars > 1000 else 'moderate'
     }
-        """
-    }
+
+# Configure interaction endpoint
+await widget.interaction(
+    endpoint="/api/v1/widgets/github/stats",
+    headers={
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": "token ghp_xxxxx"
+    },
+    refresh_interval=1800,  # Refresh every 30 minutes
+    func=process_github_data
 )
 
 await widget.save()
@@ -126,11 +149,136 @@ await widget.save()
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `endpoint` | `str` | API endpoint URL |
-| `params` | `Dict[str, Any]` | Query parameters |
-| `headers` | `Dict[str, str]` | HTTP headers |
+| `endpoint` | `str` | Widget endpoint path (e.g., `/api/v1/widgets/mywidget/action`) |
+| `headers` | `Dict[str, str]` | HTTP headers for the interaction |
 | `refresh_interval` | `int` | Auto-refresh interval in seconds (0 = no refresh) |
-| `logic` | `str` | Python code to process response data |
+| `func` | `Callable` | Python function to process widget data |
+
+## Adding Components to Widgets
+
+### Component Structure
+
+Components define the UI elements of your widget. Each component has:
+
+- **`type`** - Component type (e.g., "button", "input", "text", "container")
+- **`content`** - Data stored in the component (list of any type)
+- **`props`** - Component properties (styling, positioning, behavior)
+
+### Creating Components
+
+```python
+# Create widget first
+await widget.create(
+    name="Contact Form",
+    size=WidgetSize.MEDIUM.value
+)
+
+# Define interaction
+await widget.interaction(
+    endpoint="/api/v1/widgets/contact/submit",
+    headers={"Content-Type": "application/json"},
+    refresh_interval=0,
+    func=handle_contact_submission
+)
+
+# Add a text input component
+await widget.component(
+    endpoint="/api/v1/widgets/contact/submit",
+    type="input",
+    content=[],
+    props={
+        "id": "name_input",
+        "name": "user_name",
+        "type": "text",
+        "placeholder": "Enter your name",
+        "width": "100%",
+        "height": 40,
+        "border": "1px solid #ccc",
+        "border_radius": 4,
+        "padding": {"top": 8, "right": 12, "bottom": 8, "left": 12}
+    }
+)
+
+# Add a submit button
+await widget.component(
+    endpoint="/api/v1/widgets/contact/submit",
+    type="button",
+    content=[],
+    props={
+        "id": "submit_button",
+        "label": "Submit",
+        "width": 100,
+        "height": 40,
+        "background": "#007bff",
+        "color": "#ffffff",
+        "border": "none",
+        "border_radius": 4,
+        "cursor": "pointer",
+        "on_click": "submit_form"
+    }
+)
+
+await widget.save()
+```
+
+### Component Types
+
+| Type | Description | Common Props |
+|------|-------------|-------------|
+| `container` | Layout container for other components | `display`, `flex_direction`, `padding`, `background` |
+| `text` | Text display | `content`, `font_size`, `font_weight`, `color` |
+| `input` | Text input field | `placeholder`, `max_length`, `type`, `name` |
+| `button` | Clickable button | `label`, `on_click`, `background`, `color` |
+| `badge` | Info badge/label | `label`, `background`, `color`, `border_radius` |
+| `message_list` | Scrollable message list | `overflow_y`, `render_type`, `item_template` |
+| `message_item` | Message item template | `is_template`, `username`, `text`, `timestamp` |
+
+### Component Properties (Props)
+
+All components support flexible properties through the `props` dictionary:
+
+```python
+props = {
+    # Positioning
+    "position": "relative",  # or "absolute"
+    "top": 0,
+    "left": 0,
+    "bottom": 0,
+    "right": 0,
+    
+    # Sizing
+    "width": "100%",
+    "height": 50,
+    "flex": 1,
+    
+    # Styling
+    "background": "#ffffff",
+    "color": "#000000",
+    "border": "1px solid #ccc",
+    "border_radius": 8,
+    "padding": {"top": 12, "right": 16, "bottom": 12, "left": 16},
+    "margin": 10,
+    
+    # Layout
+    "display": "flex",
+    "flex_direction": "column",
+    "align_items": "center",
+    "justify_content": "space-between",
+    "gap": 12,
+    
+    # Typography
+    "font_size": 14,
+    "font_weight": "bold",
+    "text_align": "center",
+    "line_height": 1.5,
+    
+    # Behavior
+    "cursor": "pointer",
+    "overflow_y": "auto",
+    "on_click": "action_name",
+    "on_enter": "submit_action"
+}
+```
 
 ## Reading Widgets
 
@@ -165,35 +313,62 @@ print(f"Size: {widget_data['size']}")
 print(f"Content URLs: {widget_data['content']}")
 ```
 
-## Advanced Widget Creation
+## Advanced Widget Patterns
 
-### Using Custom Decorator
+### Reusable Widget Factory
 
 ```python
 from lazi_sdk import WriteWidget
+from api.schemas.widgets import WidgetSize
 
-widget = WriteWidget(token=token, user_id=user_id)
+class WidgetFactory:
+    """Factory for creating standard widget types"""
+    
+    def __init__(self, username: str, token: str, project_id: str):
+        self.username = username
+        self.token = token
+        self.project_id = project_id
+    
+    async def create_analytics_widget(self, name: str, endpoint: str):
+        """Create a standard analytics widget"""
+        widget = WriteWidget(
+            username=self.username,
+            token=self.token,
+            project_id=self.project_id
+        )
+        
+        await widget.create(
+            name=name,
+            size=WidgetSize.LARGE.value
+        )
+        
+        def analytics_handler(data, req, user):
+            return {
+                'metrics': data.get('metrics', {}),
+                'updated': data.get('timestamp')
+            }
+        
+        await widget.interaction(
+            endpoint=endpoint,
+            headers={"Content-Type": "application/json"},
+            refresh_interval=300,
+            func=analytics_handler
+        )
+        
+        await widget.save()
+        return widget.current_widget
 
-# Use decorator pattern for custom creation logic
-@widget.create
-def build_custom_widget():
-    return {
-        "name": "Custom Analytics",
-        "description": "Advanced metrics dashboard",
-        "size": "large",
-        "content": [],
-        "interaction": {
-            "params": {"metric": "revenue"},
-            "headers": {"Authorization": "Bearer token"},
-            "refresh_interval": 300
-        }
-    }
+# Usage
+factory = WidgetFactory(
+    username="user@example.com",
+    token=token,
+    project_id="proj_001"
+)
 
-# Execute decorator
-result = build_custom_widget()
-
-# Save
-await widget.save()
+widget = await factory.create_analytics_widget(
+    name="Sales Analytics",
+    endpoint="/api/v1/widgets/sales/metrics"
+)
 ```
 
 ## Widget Updates
@@ -201,21 +376,45 @@ await widget.save()
 ### Modify Existing Widget
 
 ```python
-# Get widget
-reader = ReadWidget(username=username, token=token, project_id=project_id)
+from lazi_sdk import ReadWidget, WriteWidget
+from api.schemas.widgets import WidgetConfig, WidgetSize
+
+# Step 1: Get existing widget
+reader = ReadWidget(
+    username="user@example.com",
+    token=token,
+    project_id="project_123"
+)
 widget_data = await reader.get_widget("widget_123")
 
-# Initialize writer with existing widget
-writer = WriteWidget(token=token, user_id=user_id)
+# Step 2: Initialize writer with existing widget
+writer = WriteWidget(
+    username="user@example.com",
+    token=token,
+    project_id="project_123"
+)
+
+# Load existing widget configuration
 writer.current_widget = WidgetConfig(**widget_data)
-writer.project_id = project_id
 
-# Update properties
+# Step 3: Update properties
 writer.current_widget.name = "Updated Dashboard"
-writer.current_widget.description = "New description"
+writer.current_widget.size = WidgetSize.EXTRA_LARGE
 
-# Save changes
+# Step 4: Add new interaction
+def new_handler(data, req, user):
+    return {'status': 'updated', 'data': data}
+
+await writer.interaction(
+    endpoint="/api/v1/widgets/updated/endpoint",
+    headers={"Content-Type": "application/json"},
+    refresh_interval=120,
+    func=new_handler
+)
+
+# Step 5: Save changes
 await writer.save()
+print(f"Widget updated: {writer.current_widget.id}")
 ```
 
 ## Complete Example
@@ -224,64 +423,88 @@ await writer.save()
 
 ```python
 from lazi_sdk import WriteWidget
+from api.schemas.widgets import WidgetSize
 import os
 
 async def create_weather_widget():
     # Initialize
     widget = WriteWidget(
+        username=os.getenv("LAZI_USERNAME"),
         token=os.getenv("LAZI_TOKEN"),
-        user_id=os.getenv("LAZI_USER_ID")
-    )
-    
-    # Create widget
-    await widget.create_new(
-        name="Weather Dashboard",
-        description="Current weather conditions",
-        size="medium",
         project_id="weather_project_001"
     )
     
-    # Configure weather API endpoint
-    await widget.post(
-        endpoint="https://api.openweathermap.org/data/2.5/weather",
-        endpoint_data={
-            "params": {
-                "q": "San Francisco",
-                "appid": os.getenv("WEATHER_API_KEY"),
-                "units": "metric"
-            },
-            "headers": {
-                "Content-Type": "application/json"
-            },
-            "refresh_interval": 600,  # Refresh every 10 minutes
-            "logic": """
-def process_data(widget_data, request, user):
-    temp = widget_data['main']['temp']
-    feels_like = widget_data['main']['feels_like']
-    humidity = widget_data['main']['humidity']
-    description = widget_data['weather'][0]['description']
+    # Create widget
+    await widget.create(
+        name="Weather Dashboard",
+        size=WidgetSize.MEDIUM.value
+    )
     
-    return {
-        'temperature': f"{temp}°C",
-        'feels_like': f"{feels_like}°C",
-        'humidity': f"{humidity}%",
-        'conditions': description.title(),
-        'last_updated': widget_data['dt']
-    }
-            """
+    # Define weather processing function
+    def process_weather_data(widget_data, request, user):
+        temp = widget_data.get('main', {}).get('temp', 0)
+        feels_like = widget_data.get('main', {}).get('feels_like', 0)
+        humidity = widget_data.get('main', {}).get('humidity', 0)
+        description = widget_data.get('weather', [{}])[0].get('description', 'N/A')
+        
+        return {
+            'temperature': f"{temp}°C",
+            'feels_like': f"{feels_like}°C",
+            'humidity': f"{humidity}%",
+            'conditions': description.title(),
+            'last_updated': widget_data.get('dt')
+        }
+    
+    # Configure weather API interaction
+    await widget.interaction(
+        endpoint="/api/v1/widgets/weather/update",
+        headers={"Content-Type": "application/json"},
+        refresh_interval=600,  # Refresh every 10 minutes
+        func=process_weather_data
+    )
+    
+    # Add temperature display component
+    await widget.component(
+        endpoint="/api/v1/widgets/weather/update",
+        type="text",
+        content=[],
+        props={
+            "id": "temperature_display",
+            "content": "{{temperature}}",
+            "font_size": 48,
+            "font_weight": "bold",
+            "color": "#333",
+            "text_align": "center"
         }
     )
     
-    # Attach weather icon
-    await widget.attach_media(
+    # Add conditions text
+    await widget.component(
+        endpoint="/api/v1/widgets/weather/update",
+        type="text",
+        content=[],
+        props={
+            "id": "conditions_text",
+            "content": "{{conditions}}",
+            "font_size": 18,
+            "color": "#666",
+            "text_align": "center",
+            "margin_top": 8
+        }
+    )
+    
+    # Upload weather icon using S3
+    presigned_url = await widget.uploadable(
         object_name="weather_icon.png",
-        filename="./assets/weather_icon.png"
+        filename="./assets/weather_icon.png",
+        expire=3600
     )
     
     # Save
     await widget.save()
     
     print(f"✅ Weather widget created: {widget.current_widget.id}")
+    print(f"   Icon URL: {presigned_url}")
     return widget.current_widget.id
 
 # Run

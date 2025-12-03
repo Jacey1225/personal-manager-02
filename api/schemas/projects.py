@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 import uuid
 from datetime import datetime
-from api.schemas.widgets import WidgetConfig
     
 class ProjectDetails(BaseModel):
     project_name: str = Field(..., description="Name of the project")

@@ -21,12 +21,12 @@ class User(BaseModel):
     username: str = Field(default="", description="Username of the user")
     email: str = Field(default="", description="Email address of the user")
     icloud: str = Field(default="", description="iCloud account of the user")
-    projects: dict[str, dict] = Field(default={}, description="Projects associated with the user")
+    projects: dict[str, tuple] = Field(default={}, description="Projects associated with the user, eg. {'project_id': (project_name, role)}")
     projects_liked: int = Field(default=0, description="Number of projects liked by the user")
     organizations: list[str] = Field(default=[], description="Organizations associated with the user")
     service: dict[str, str] = Field(default_factory=dict, description="Services associated with the user")
     developer: bool = Field(default=False, description="Indicates if the user is a developer")
-    google_auth: Dict[str, Any[str, list]] = Field(default={}, description="Google authentication details")
+    google_auth: Dict[str, Any] = Field(default={}, description="Google authentication details")
 
     def set_google_auth(self, 
                         token: str,

@@ -50,23 +50,6 @@ async def delete_project(request: ModifyProjectRequest):
 async def rename_project(request: ModifyProjectRequest):
     return await commander.rename_project(request)
 
-@project_router.get("/projects/events/{project_id}")
-async def get_project_events(project_id: str, user_id: str = Query(...), force_refresh: bool = Query(False)):
-    request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name="", force_refresh=force_refresh)
-    cache_key = project_cache.get_cache_key(
-        "get_project_events",
-        (project_id, user_id), 
-        {"force_refresh": force_refresh})
-    if force_refresh:
-        project_data = await project_cache.get_or_set(
-            cache_key,
-            commander.get_project_events,
-            request)    
-        if request in project_data:
-            await project_cache.pop(cache_key)
-        
-    return await commander.get_project_events(request)
-
 @project_router.get("/projects/add_member")
 async def add_project_member(project_id: str = Query(...), user_id: str = Query(...), new_email: str = Query(...), new_username: str = Query(...), code: str = Query(...)):
     request = ModifyProjectRequest(project_id=project_id, user_id=user_id, project_name="")

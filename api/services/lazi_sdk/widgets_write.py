@@ -92,23 +92,32 @@ class WriteWidget:
             )
         presigned_url = self.s3_client.generate_presigned_url(
             object_name,
-            expire
+            expire  
         )
         return presigned_url
 
     async def save(self):
-        auth = await self.oauth_client.get_active_user()
-        if not auth or Scopes.WIDGETS_WRITE not in auth["payload"]["scopes"]:
+        logger.info(f"Starting save process for widget by user: {self.username}")
+        auth = await self.oauth_client.get_current_user()
+        if not auth or Scopes.WIDGETS_WRITE not in auth["scopes"]:
+            logger.info(f"User {self.username} does not have WIDGETS_WRITE scope or is not active")
             raise HTTPException(status_code=403, detail="Not enough permissions")
+        logger.info(f"Auth successful for user: {self.username}")
 
         await widget_config.post_insert(self.current_widget.model_dump())
+        logger.info(f"Widget {self.current_widget.id} inserted into widget_config")
         project = await project_config.get_single_doc({"project_id": self.project_id})
         if not project:
             raise Exception("Project not found")
+        logger.info(f"Project {self.project_id} found")
 
-        project["widgets"].append(self.current_widget.id)
-        await project_config.post_update({"project_id": self.project_id}, {"$set": {"widgets": project["widgets"]}})
+        if project["widgets"] and isinstance(project["widgets"], list):
+            project["widgets"].append(self.current_widget.id)
+        else:
+            project["widgets"] = [self.current_widget.id]
+        await project_config.post_update({"project_id": self.project_id}, project)
 
         logger.info(f"Widget {self.current_widget.id} saved to project {self.project_id}")
         await widget_config.close_client()
         await project_config.close_client()
+        
