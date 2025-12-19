@@ -1,11 +1,11 @@
 from fastapi import HTTPException, APIRouter
-from api.schemas.auth import RemoveUserRequest, ICloudUserRequest, User
+from api.routes.auth.public import OAuthUser
+from api.schemas.auth import RemoveUserRequest, ICloudUserRequest, User, UserInDB
 from api.config.fetchMongo import MongoHandler
-import os
-import uuid
 import logging
 from typing import Optional
 import keyring
+from passlib.context import CryptContext
 logger = logging.getLogger(__name__)
 
 auth_router = APIRouter()
@@ -31,7 +31,6 @@ async def signup(
     Returns:
         dict: A dictionary containing the status and user ID.
     """
-    # Create new instances for each request to avoid event loop issues
     user_config = MongoHandler("userAuthDatabase", "userCredentials")
     query_email = {"email": email}
     query_username = {"username": username}
@@ -40,14 +39,16 @@ async def signup(
         await user_config.get_single_doc(query_username):
         return {"status": "failed", "message": "Email or username already exists"}
 
-    user = User(
+    user = UserInDB(
         username=username,
         email=email,
         projects=project if project else {},
         organizations=[organization] if organization else []
     )
 
-    keyring.set_password(service_name, user.user_id, password)
+    oauth_handler = OAuthUser(username, password=password)
+    user.hashed_password = oauth_handler.hash_pass()
+    logger.info(f"Signing up user: {username} with email: {email}")
     result = await user_config.post_insert(user.model_dump())
     logger.info(f"User created with ID: {result.inserted_id}")
 
@@ -83,10 +84,7 @@ async def login(
         if project_id and project_id not in user.projects:
             project = await project_config.get_single_doc({"project_id": project_id})
             if project:
-                user.projects[project_id] = {
-                    "name": project.get("project_name"),
-                    "permissions": ["view"]
-                }
+                user.projects[project_id] = (project.get("project_name", ""), "member")
         if org_id and org_id not in user.organizations:
             user.organizations.append(org_id)
 

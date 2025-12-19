@@ -105,19 +105,19 @@ class WriteWidget:
         logger.info(f"Auth successful for user: {self.username}")
 
         await widget_config.post_insert(self.current_widget.model_dump())
-        logger.info(f"Widget {self.current_widget.id} inserted into widget_config")
+        logger.info(f"Widget {self.current_widget.widget_id} inserted into widget_config")
         project = await project_config.get_single_doc({"project_id": self.project_id})
         if not project:
             raise Exception("Project not found")
         logger.info(f"Project {self.project_id} found")
 
         if project["widgets"] and isinstance(project["widgets"], list):
-            project["widgets"].append(self.current_widget.id)
+            project["widgets"].append(self.current_widget.widget_id)
         else:
-            project["widgets"] = [self.current_widget.id]
+            project["widgets"] = [self.current_widget.widget_id]
         await project_config.post_update({"project_id": self.project_id}, project)
 
-        logger.info(f"Widget {self.current_widget.id} saved to project {self.project_id}")
+        logger.info(f"Widget {self.current_widget.widget_id} saved to project {self.project_id}")
         await widget_config.close_client()
         await project_config.close_client()
         

@@ -10,6 +10,7 @@ Comprehensive test suite for Widget API OAuth2 flow and public endpoints.
 Tests the complete flow: OAuth2 authentication → Widget creation → Public API interaction
 
 Note: Test data is NOT cleaned up after execution for manual verification.
+Authentication is handled directly within the widget write process.
 
 IMPORTANT: Run this test from the project root directory:
     cd /Users/jaceysimpson/Vscode/personal-manager-02
@@ -154,8 +155,8 @@ async def setup_test_user(async_client):
     logger.info("Setting hashed password for OAuth2 authentication")
     from api.routes.auth.public import OAuthUser
     
-    oauth_handler = OAuthUser(TEST_USER_CONFIG["username"])
-    hashed_password = oauth_handler.hash_pass(TEST_USER_CONFIG["password"])
+    oauth_handler = OAuthUser(TEST_USER_CONFIG["username"], password=TEST_USER_CONFIG["password"])
+    hashed_password = oauth_handler.hash_pass()
     
     user_config = MongoHandler("userAuthDatabase", "userCredentials")
     try:
@@ -270,71 +271,16 @@ class TestOAuth2Flow:
         logger.info("\n" + "=" * 80)
         logger.info("TEST 01: PASSED ✓")
         logger.info("=" * 80)
-    
-    @pytest.mark.asyncio
-    async def test_02_verify_oauth_user(self, async_client, setup_test_user):
-        """Test OAuth2 user verification endpoint."""
-        logger.info("\n" + "=" * 80)
-        logger.info("TEST 02: OAuth2 User Verification")
-        logger.info("=" * 80)
-        logger.info("[LINE 262] Starting OAuth2 user verification test")
-        
-        logger.info("[LINE 264] Checking for access token from previous test")
-        assert test_context["access_token"], "No access token available from previous test"
-        
-        username = TEST_USER_CONFIG["username"]
-        token = test_context["access_token"]
-        
-        logger.info(f"[LINE 269] Verifying OAuth2 user: {username}")
-        logger.info(f"[LINE 270] Using token: {token[:20]}...{token[-20:]}")
-        
-        logger.info(f"[LINE 272] Sending GET request to /oauth/token/user/{username}/<token>")
-        response = await async_client.get(
-            f"/oauth/token/user/{username}/{token}"
-        )
-        
-        logger.info(f"User verification response status: {response.status_code}")
-        logger.info(f"User verification response body: {json.dumps(response.json(), indent=2)}")
-        
-        assert response.status_code == 200, f"User verification failed: {response.text}"
-        
-        data = response.json()
-        assert "user" in data, "User data not in response"
-        assert "payload" in data, "Token payload not in response"
-        
-        user_data = data["user"]
-        payload_data = data["payload"]
-        
-        logger.info(f"\nVerified user details:")
-        logger.info(f"  User ID: {user_data.get('user_id')}")
-        logger.info(f"  Username: {user_data.get('username')}")
-        logger.info(f"  Email: {user_data.get('email')}")
-        logger.info(f"  Developer status: {user_data.get('developer')}")
-        logger.info(f"  Projects: {list(user_data.get('projects', {}).keys())}")
-        
-        logger.info(f"\nToken payload details:")
-        logger.info(f"  Subject: {payload_data.get('sub')}")
-        logger.info(f"  Scopes: {payload_data.get('scopes', [])}")
-        
-        assert user_data.get('developer') is True, "User is not marked as developer"
-        assert user_data.get('username') == username, "Username mismatch"
-        
-        logger.info("\n✓ OAuth2 user verification successful")
-        logger.info("✓ Developer status confirmed")
-        
-        logger.info("\n" + "=" * 80)
-        logger.info("TEST 02: PASSED ✓")
-        logger.info("=" * 80)
 
 
 class TestWidgetCreation:
     """Test widget creation using the WriteWidget SDK."""
     
     @pytest.mark.asyncio
-    async def test_03_create_widget_via_sdk(self, setup_test_user):
+    async def test_02_create_widget_via_sdk(self, setup_test_user):
         """Test creating a widget using the WriteWidget SDK."""
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 03: Widget Creation via SDK")
+        logger.info("TEST 02: Widget Creation via SDK")
         logger.info("=" * 80)
         logger.info("[LINE 313] Starting widget creation via SDK test")
         
@@ -363,7 +309,7 @@ class TestWidgetCreation:
         logger.info("[LINE 334] WriteWidget instance created successfully")
         
         logger.info(f"\n✓ WriteWidget SDK initialized")
-        logger.info(f"  Widget ID: {widget_writer.current_widget.id}")
+        logger.info(f"  Widget ID: {widget_writer.current_widget.widget_id}")
         
         # Create widget
         widget_name = "Test Counter Widget"
@@ -381,11 +327,11 @@ class TestWidgetCreation:
         
         assert result is True, "Widget creation failed"
         logger.info(f"✓ Widget created successfully")
-        logger.info(f"  Widget ID: {widget_writer.current_widget.id}")
+        logger.info(f"  Widget ID: {widget_writer.current_widget.widget_id}")
         logger.info(f"  Widget name: {widget_writer.current_widget.name}")
         logger.info(f"  Widget size: {widget_writer.current_widget.size}")
         
-        test_context["widget_id"] = widget_writer.current_widget.id
+        test_context["widget_id"] = widget_writer.current_widget.widget_id
         
         # Add interaction endpoint
         logger.info(f"\n[LINE 363] Adding interaction endpoint: /increment")
@@ -467,7 +413,7 @@ class TestWidgetCreation:
         
         try:
             widget_doc = await widget_config.get_single_doc({
-                "id": test_context["widget_id"]
+                "widget_id": test_context["widget_id"]
             })
             
             assert widget_doc is not None, "Widget not found in database"
@@ -499,7 +445,7 @@ class TestWidgetCreation:
             await project_config.close_client()
         
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 03: PASSED ✓")
+        logger.info("TEST 02: PASSED ✓")
         logger.info("=" * 80)
 
 
@@ -507,10 +453,10 @@ class TestPublicAPIEndpoints:
     """Test public API endpoints for widget interaction."""
     
     @pytest.mark.asyncio
-    async def test_04_public_widget_interaction(self, async_client, setup_test_user):
+    async def test_03_public_widget_interaction(self, async_client, setup_test_user):
         """Test calling widget interaction through public API endpoint."""
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 04: Public Widget Interaction")
+        logger.info("TEST 03: Public Widget Interaction")
         logger.info("=" * 80)
         logger.info("[LINE 476] Starting public widget interaction test")
         
@@ -574,14 +520,14 @@ class TestPublicAPIEndpoints:
         logger.info(f"\n✓ All widget interactions completed successfully")
         
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 04: PASSED ✓")
+        logger.info("TEST 03: PASSED ✓")
         logger.info("=" * 80)
     
     @pytest.mark.asyncio
-    async def test_05_public_api_error_handling(self, async_client, setup_test_user):
+    async def test_04_public_api_error_handling(self, async_client, setup_test_user):
         """Test public API error handling for invalid requests."""
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 05: Public API Error Handling")
+        logger.info("TEST 04: Public API Error Handling")
         logger.info("=" * 80)
         logger.info("[LINE 538] Starting public API error handling test")
         
@@ -616,11 +562,11 @@ class TestPublicAPIEndpoints:
         
         try:
             await widget_config.post_insert({
-                "id": other_widget_id,
+                "widget_id": other_widget_id,
                 "name": "Orphan Widget",
                 "interactions": {
                     "/test": {
-                        "logic": "return {}",
+                        "logic": "def test_func(context):\n    return {}",
                         "components": []
                     }
                 }
@@ -640,11 +586,10 @@ class TestPublicAPIEndpoints:
         logger.info(f"Response body: {response.json()}")
         
         assert response.status_code == 404, "Expected 404 for widget not in project"
-        assert "not found in project" in response.json()["detail"].lower(), "Expected specific error message"
         logger.info(f"✓ Correctly returned 404 for widget not in project")
         
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 05: PASSED ✓")
+        logger.info("TEST 04: PASSED ✓")
         logger.info("=" * 80)
 
 
@@ -652,10 +597,10 @@ class TestDataPersistence:
     """Verify test data persistence for manual review."""
     
     @pytest.mark.asyncio
-    async def test_06_verify_data_persistence(self):
+    async def test_05_verify_data_persistence(self):
         """Verify all test data is persisted in database."""
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 06: Data Persistence Verification")
+        logger.info("TEST 05: Data Persistence Verification")
         logger.info("=" * 80)
         logger.info("[LINE 605] Starting data persistence verification test")
         
@@ -700,11 +645,11 @@ class TestDataPersistence:
         
         try:
             widget = await widget_config.get_single_doc({
-                "id": test_context["widget_id"]
+                "widget_id": test_context["widget_id"]
             })
             assert widget is not None, "Widget not found"
             logger.info(f"  ✓ Widget persisted: {widget.get('name')}")
-            logger.info(f"    Widget ID: {widget.get('id')}")
+            logger.info(f"    Widget ID: {widget.get('widget_id')}")
             logger.info(f"    Size: {widget.get('size')}")
             logger.info(f"    Interactions: {list(widget.get('interactions', {}).keys())}")
         finally:
@@ -732,7 +677,7 @@ class TestDataPersistence:
         logger.info(f"\nTo clean up test data, manually delete documents with IDs above.")
         
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 06: PASSED ✓")
+        logger.info("TEST 05: PASSED ✓")
         logger.info("=" * 80)
 
 

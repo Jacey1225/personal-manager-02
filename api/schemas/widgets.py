@@ -22,7 +22,7 @@ class WidgetInteraction(BaseModel):
     logic: str = Field(default="", description="The logic for the widget interaction")
 
 class WidgetConfig(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="The unique identifier for the widget")
+    widget_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="The unique identifier for the widget")
     name: str = Field(default="", description="The name of the widget")
     size: WidgetSize = Field(default=WidgetSize.SMALL, description="The size of the widget")
     interactions: Dict[str, WidgetInteraction] = Field(default_factory=dict, 

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import uuid
 
 class OAuthCompleteRequest(BaseModel):
@@ -15,6 +15,11 @@ class ICloudUserRequest(BaseModel):
     service_name: str = Field(default="userAuth")
     apple_user: str = Field(..., description="Apple user ID")
     apple_pass: str = Field(..., description="Apple user password")
+
+class ReadUserRequest(BaseModel):
+    username: str = Field(..., description="Username of the user")
+    password: Optional[str] = Field(None, description="Password of the user")
+    token: Optional[str] = Field(None, description="Authentication token of the user")
 
 class User(BaseModel):
     user_id: str = Field(default=str(uuid.uuid4()), description="Unique identifier for the user")
@@ -51,7 +56,7 @@ class User(BaseModel):
         }
 
 class UserInDB(User):
-    hashed_password: str
+    hashed_password: Optional[str] = Field(default=None, description="Hashed password of the user")
 
 class Scopes(str, Enum):
     WIDGETS_READ = "widgets:read"

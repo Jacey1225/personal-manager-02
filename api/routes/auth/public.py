@@ -1,12 +1,13 @@
 from fastapi.security import (OAuth2PasswordRequestForm, 
                               OAuth2PasswordBearer)
 from fastapi import Depends, APIRouter, HTTPException, status
-from api.schemas.auth import User, UserInDB
+from api.schemas.auth import User, UserInDB, ReadUserRequest
 from api.config.fetchMongo import MongoHandler
 from typing import Annotated, Optional, Any, Union
 import logging
 import os
 from passlib.context import CryptContext 
+import keyring
 from datetime import datetime, timedelta
 import jwt
 from dotenv import load_dotenv
@@ -19,14 +20,19 @@ user_config = MongoHandler("userAuthDatabase", "userCredentials")
 oauth_router = APIRouter()
 
 class OAuthUser:
-    def __init__(self, username: str, token: Optional[str] = None):
+    def __init__(
+            self, 
+            username: str, 
+            password: Optional[str]=None,
+            token: Optional[str] = None):
         self.username = username
+        self.password = password
         self.token = token
         self.auth_scheme = OAuth2PasswordBearer(tokenUrl="token")
         self.secret_key = os.getenv("JWT_SECRET")
         self.algorithm = "HS256"
 
-    def hash_pass(self, password: str) -> str:
+    def hash_pass(self) -> str:
         """Hash password given by user
 
         Args:
@@ -36,18 +42,25 @@ class OAuthUser:
             str: Hashed password
         """
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        logger.info(f"Hashing password for user: {password[:3]}")
+        if self.password is None:
+            raise ValueError("Password must be provided for hashing")
+        logger.info(f"Hashing password for user: {self.password[:3]}...")
         
-        # Ensure password is within bcrypt's 72 byte limit
-        if isinstance(password, str):
-            password_bytes = password.encode('utf-8')
+        if isinstance(self.password, str):
+            password_bytes = self.password.encode('utf-8')
             if len(password_bytes) > 72:
                 logger.warning(f"Password is {len(password_bytes)} bytes, truncating to 72 bytes")
-                password = password_bytes[:72].decode('utf-8', errors='ignore')
+                self.password = password_bytes[:72].decode('utf-8', errors='ignore')
         
-        return pwd_context.hash(password)
+        try:
+            hashed = pwd_context.hash(self.password)
+        except Exception as e:
+            logger.error(f"Error hashing password: {e}")
+            raise
 
-    def verify_hash(self, password: str, hashed: str) -> bool:
+        return hashed
+
+    def verify_hash(self, hashed: str) -> bool:
         """Verifies the password that the user inputs and the hased 
         password in the database
 
@@ -59,8 +72,10 @@ class OAuthUser:
             bool: True if the passwords match, False otherwise
         """
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        logger.info(f"Verifying password for user: {password[:3]}")
-        return pwd_context.verify(password, hashed)
+        if self.password is None:
+            raise ValueError("Password must be provided for verification")
+        logger.info(f"Verifying password for user: {self.password[:3]}")
+        return pwd_context.verify(self.password, hashed)
     
     
     async def get_user(self, username: str) -> UserInDB:
@@ -76,17 +91,14 @@ class OAuthUser:
         await user_config.close_client()
         return UserInDB(**user)
 
-    async def authenticate_user(self, 
-        username: str, 
-        password: str
-    ) -> Union[UserInDB, bool]:
-        logger.info(f"Authenticating user: {username}")
-        user = await self.get_user(username)
+    async def authenticate_user(self) -> Union[UserInDB, bool]:
+        logger.info(f"Authenticating user: {self.username}")
+        user = await self.get_user(self.username)
         if not user:
-            logger.info(f"Authentication failed: user {username} not found")
+            logger.info(f"Authentication failed: user {self.username} not found")
             return False
-        if not self.verify_hash(password, user.hashed_password):
-            logger.info(f"Authentication failed: incorrect password for user {username}")
+        if user.hashed_password and not self.verify_hash(user.hashed_password):
+            logger.info(f"Authentication failed: incorrect password for user {self.username}")
             return False
         return user
 
@@ -121,8 +133,10 @@ class OAuthUser:
                     logger.info(f"Token expired or invalid for user: {user_id}")
                     raise credentials_exception
             else:
+                logger.error("Secret key or token is missing")
                 raise Exception("No secret key found")
         except jwt.PyJWTError:
+            logger.error("Error decoding JWT token")
             raise credentials_exception
         return payload
 
@@ -162,8 +176,8 @@ class OAuthUser:
         return self.token
 
 @oauth_router.post("/oauth/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    """The login endpoint that handles developers accessing their token to create 
+async def fetch_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    """The token endpoint that handles developers accessing their token to create 
     new widgets
 
     Args:
@@ -177,17 +191,14 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     Returns:
         dict: The access token and token type
     """
-    oauth_handler = OAuthUser(form_data.username)
-    user: Union[UserInDB, bool] = await oauth_handler.authenticate_user(
-        form_data.username, 
-        form_data.password)
+    oauth_handler = OAuthUser(form_data.username, password=form_data.password)
+    user: Union[UserInDB, bool] = await oauth_handler.authenticate_user()
     if not user or isinstance(user, bool):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Invalid authentication credentials")
 
     token_expires = timedelta(hours=24)
     
-    # Get scopes from form_data (already a list)
     scopes = form_data.scopes if form_data.scopes else []
     
     access_token = oauth_handler.create_token(
@@ -195,33 +206,8 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
         expiration=token_expires,
         scopes=scopes)
 
-    if not oauth_handler.verify_hash(form_data.password, user.hashed_password):
+    if user.hashed_password and not oauth_handler.verify_hash(user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Invalid authentication credentials")
 
     return {"access_token": access_token, "token_type": "bearer"}
-
-@oauth_router.get("/oauth/token/user/{username}/{token}")
-async def read_user(
-    username: str,
-    token: str,
-) -> dict:
-    """Reads the user data through OAuth2 process
-
-    Args:
-        username (str): username of the user
-        token (str): OAuth2 token
-
-    Raises:
-        HTTPException: If the user is not found or the token is invalid
-
-    Returns:
-        dict: The user data and payload
-    """
-    oauth = OAuthUser(username, token)
-    user = oauth.authenticate_user(username, token)
-    payload = await oauth.get_current_user()
-    if payload and user:
-        return {"user": user, "payload": payload}
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                        detail="User not found")

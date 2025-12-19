@@ -34,16 +34,18 @@ async def public_post(
     project = await project_config.get_single_doc({"project_id": widget_interaction.project_id})
     logger.info(f"Project retrieved: {project}")
     widget = await widget_config.get_single_doc({"widget_id": widget_interaction.widget_id})
-    if not widget:
+    if not widget or widget.get("widget_id", '') not in project.get("widgets", []):
         raise HTTPException(status_code=404, detail="Widget not found")
     logger.info(f"Widget retrieved: {widget}")
 
     code_logic = widget["interactions"][widget_interaction.endpoint]["logic"]
     context = widget_interaction.params
 
-    validate_code(code_logic)
-    executor = ValidateRunTime(code_logic)
+    threats = validate_code(code_logic)
+    logger.info(f"Validation threats found: {len(threats)}")
+    executor = ValidateRunTime()
     result = executor.run(code_logic, context)
+    logger.info(f"Execution result for endpoint {widget_interaction.endpoint}: {result}")
     
     return {"status": "success", "result": result}
 

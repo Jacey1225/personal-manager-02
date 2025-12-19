@@ -24,24 +24,24 @@ class MongoHandler:
         """Request a MongoDB client connection.
         """
         if not self.client:
-            logger.info(f"Setting up Mongo client...")
+            logger.info(f"Setting up Mongo client for {self.database}.{self.collection_name}...")
             try:
                 self.client = AsyncIOMotorClient(os.getenv("MONGO_URI", 'mongodb://localhost:27017'), tlsCAFile=certifi.where())
                 self.db = self.client[self.database]
                 self.collection = self.db[self.collection_name]
-                logger.info(f"Mongo client set up successfully.")
+                logger.info(f"Mongo client set up successfully for {self.database}.{self.collection_name}.")
             except Exception as e:
-                logger.error(f"Error setting up Mongo client: {e}")
+                logger.error(f"Error setting up Mongo client for {self.database}.{self.collection_name}: {e}")
                 return False
 
         if self.client:
-            logger.info(f"Testing Connection...")
+            logger.info(f"Testing Connection for {self.database}.{self.collection_name}...")
             try:
                 await self.client.admin.command('ping')
-                logger.info(f"MongoDB connection successful.")
+                logger.info(f"MongoDB connection successful for {self.database}.{self.collection_name}.")
                 return True
             except Exception as e:
-                logger.error(f"Error testing MongoDB connection: {e}")
+                logger.error(f"Error testing MongoDB connection for {self.database}.{self.collection_name}: {e}")
                 return False
         return False
  
@@ -53,7 +53,7 @@ class MongoHandler:
             self.client = None
             self.db = None
             self.collection = None
-            logger.info(f"Mongo client closed.")
+            logger.info(f"Mongo client closed for {self.database}.{self.collection_name}.")
 
     async def post_insert(self, insertion: dict) -> Any:
         """Insert a document into the MongoDB collection.
