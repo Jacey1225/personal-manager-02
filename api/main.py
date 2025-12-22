@@ -8,7 +8,7 @@ from api.routes.project_router import project_router
 from api.routes.organization_router import organization_router
 from api.routes.event_router import event_router
 from fastapi.middleware.cors import CORSMiddleware
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler 
 import uvicorn
 from datetime import datetime, timezone
 import pytz

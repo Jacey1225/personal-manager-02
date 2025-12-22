@@ -1,6 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError
-from api.config.fetchMongo import MongoHandler
+from config.fetchMongo import MongoHandler
 import os
 from dotenv import load_dotenv
 import logging

@@ -2,13 +2,11 @@ from typing import Optional
 from datetime import datetime, timedelta
 from api.config.plugins.enable_google_api import SyncGoogleEvents, SyncGoogleTasks
 from api.config.plugins.enable_apple_api import SyncAppleEvents
-from api.config.uniformInterface import UniformInterface
 from api.config.fetchMongo import MongoHandler
 from api.services.calendar.handleDateTimes import DateTimeHandler
 from api.schemas.calendar import CalendarEvent, CalendarInsights   
 from api.schemas.model import EventOutput
 from api.validation.handleEventSetup import ValidateEventHandling
-import pytz
 
 validator = ValidateEventHandling()
 user_config = MongoHandler("userAuthDatabase", "userCredentials")

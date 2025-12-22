@@ -1,11 +1,9 @@
-from fastapi import HTTPException, APIRouter
+from fastapi import APIRouter
 from api.routes.auth.public import OAuthUser
-from api.schemas.auth import RemoveUserRequest, ICloudUserRequest, User, UserInDB
+from api.schemas.auth import RemoveUserRequest, User, UserInDB
 from api.config.fetchMongo import MongoHandler
 import logging
 from typing import Optional
-import keyring
-from passlib.context import CryptContext
 logger = logging.getLogger(__name__)
 
 auth_router = APIRouter()
@@ -73,13 +71,25 @@ async def login(
     """
     # Create new instances for each request to avoid event loop issues
     user_config = MongoHandler("userAuthDatabase", "userCredentials")
-    project_config = MongoHandler("userProjectsDatabase", "projects")
+    project_config = MongoHandler("userProjectsDatabase", "openProjects")
+    await user_config.get_client()
+    await project_config.get_client()
     
-    found_password = keyring.get_password(service_name, username)    
-    if not found_password:
-        return {"status": "failed", "message": "Invalid username or password"}
-    if found_password == password:
-        user_info = await user_config.get_single_doc({"username": username})
+    oauth_handler = OAuthUser(username, password=password)
+    user_info = await user_config.get_single_doc({"username": username})
+    if not user_info:
+        await user_config.close_client()
+        await project_config.close_client()
+        return {"status": "failed", "message": "Invalid username"}
+    
+    hashed = user_info.get("hashed_password", "")
+    logger.info(f"Logging in user: {username} with hashed password: {hashed}")
+    verify_pwd = oauth_handler.verify_hash(hashed)   
+    if not verify_pwd:
+        await user_config.close_client()
+        await project_config.close_client()
+        return {"status": "failed", "message": "Invalid password"}
+    else:
         user = User(**user_info)
         if project_id and project_id not in user.projects:
             project = await project_config.get_single_doc({"project_id": project_id})
@@ -89,25 +99,11 @@ async def login(
             user.organizations.append(org_id)
 
         await user_config.post_update({"username": username}, user.model_dump())
+        await user_config.close_client()
+        await project_config.close_client()
         return {"status": "success", "user_id": user_info.get("user_id")}
-    else:
-        return {"status": "failed", "message": "Invalid username or password"}
 
-@auth_router.post("/auth/set_icloud_user")
-async def set_icloud_user(request: ICloudUserRequest):
-    found_pass = True if keyring.get_password(request.service_name, request.apple_user) else False
-    if not found_pass:
-        user_config = MongoHandler("userAuthDatabase", "userCredentials")
-
-        user_info = await user_config.get_single_doc({"username": request.username})
-        user = User(**user_info)
-        user.icloud = request.apple_user
-
-        await user_config.post_update({"username": request.username}, user.model_dump())
-        keyring.set_password(request.service_name, request.apple_user, request.apple_pass)
-        return {"status": "success", "message": "iCloud user set successfully"}
-    else:
-        return {"status": "failed", "message": "iCloud user already set"}
+#TODO: Add iCloud integration here
 
 @auth_router.post("/auth/remove_user")
 async def remove_user(request: RemoveUserRequest) -> dict:

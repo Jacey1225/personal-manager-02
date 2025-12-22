@@ -1,13 +1,12 @@
 from fastapi.security import (OAuth2PasswordRequestForm, 
                               OAuth2PasswordBearer)
 from fastapi import Depends, APIRouter, HTTPException, status
-from api.schemas.auth import User, UserInDB, ReadUserRequest
+from api.schemas.auth import UserInDB
 from api.config.fetchMongo import MongoHandler
-from typing import Annotated, Optional, Any, Union
+from typing import Annotated, Optional, Union
 import logging
 import os
 from passlib.context import CryptContext 
-import keyring
 from datetime import datetime, timedelta
 import jwt
 from dotenv import load_dotenv
@@ -140,15 +139,17 @@ class OAuthUser:
             raise credentials_exception
         return payload
 
-    def create_token(self, 
+    async def create_token(self, 
+        name: str,
         data: dict, 
         expiration: Optional[timedelta]=None, 
         scopes: Optional[list[str]]=None
     ):
         """Creates an access token for a given user to complete full OAuth2 process with scopes for access
-        restrictions
+        restrictions and stores a hashed version in the database
 
         Args:
+            name (str): The name of the token
             data (dict): The data to include in the token
             expiration (Optional[timedelta], optional): The expiration time for the token. Defaults to None.
             scopes (Optional[list[str]], optional): The scopes to include in the token. Defaults to None.
@@ -157,6 +158,8 @@ class OAuthUser:
             str: The encoded JWT token
         """
         raw_token = data.copy()
+        user_config = MongoHandler("userAuthDatabase", "userCredentials")
+        await user_config.get_client()
         if expiration:
             expires = datetime.now() + expiration
         else:
@@ -172,11 +175,27 @@ class OAuthUser:
             self.token = jwt.encode(raw_token, 
                                      self.secret_key,
                                      algorithm=self.algorithm)
+            
+            pwd_context = CryptContext(schemes=['bcrypt'], deprecated="auto")
+            hashed_token = pwd_context.hash(self.token)
+            logger.info(f"Hashed token: {hashed_token[:10]}...")
+            user_info = await user_config.get_single_doc({"username": self.username})
+            user_info["tokens"] = user_info.get("tokens", [])
+            user_info["tokens"].append({
+                "name": name,
+                "token": hashed_token
+            })
+            await user_config.post_update({"username": self.username}, user_info)
+            logger.info(f"Token stored for user: {self.username}")
+            await user_config.close_client()
+
         logger.info(f"Token created for user: {data.get('sub')}")
         return self.token
 
 @oauth_router.post("/oauth/token")
-async def fetch_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+async def fetch_token(
+    token_name: str,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     """The token endpoint that handles developers accessing their token to create 
     new widgets
 
@@ -202,6 +221,7 @@ async def fetch_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
     scopes = form_data.scopes if form_data.scopes else []
     
     access_token = oauth_handler.create_token(
+        name=token_name,
         data={"sub": user.user_id}, 
         expiration=token_expires,
         scopes=scopes)
@@ -211,3 +231,54 @@ async def fetch_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
                             detail="Invalid authentication credentials")
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+@oauth_router.get("/oauth/list_tokens")
+async def list_tokens(
+    username: str
+):
+    user_config = MongoHandler("userAuthDatabase", "userCredentials")
+    await user_config.get_client()
+
+    user_info = await user_config.get_single_doc({"username": username})
+    tokens_info = user_info.get("tokens", [])
+    await user_config.close_client()
+    return {"status": "success", "tokens": tokens_info}
+
+
+@oauth_router.delete("/oauth/revoke")
+async def revoke_token(
+    username: str,
+    token: Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl="token"))]
+):
+    """Endpoint to revoke an access token
+
+    Args:
+        token (Annotated[str, Depends(OAuth2PasswordBearer(tokenUrl="token"))]): The token to be revoked
+
+    Raises:
+        HTTPException: Invalid credentials for the user not existing
+
+    Returns:
+        dict: Confirmation of token revocation
+    """
+    user_config = MongoHandler("userAuthDatabase", "userCredentials")
+    await user_config.get_client()
+
+    user_info = await user_config.get_single_doc({"username": username})
+    if user_info:
+        tokens = user_info.get("tokens", [])
+        pwd_context = CryptContext(schemes=['bcrypt'], deprecated="auto")
+        for token_info in tokens:
+            t = token_info["token"]
+            name = token_info["name"]
+            if pwd_context.verify(token, t):
+                user_info["tokens"].remove(token_info)
+                logger.info(f"Token {name} revoked for user: {username}")
+                break
+        await user_config.post_update({"username": username}, user_info)
+        await user_config.close_client()
+        return {"status": "success", "message": "Token revoked"}
+    else:
+        await user_config.close_client()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid authentication credentials")

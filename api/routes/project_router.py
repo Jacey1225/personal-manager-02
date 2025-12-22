@@ -61,7 +61,20 @@ async def delete_project_member(project_id: str = Query(...), user_id: str = Que
     return await commander.delete_project_member(request, email, username)
 
 @project_router.get("/projects/list")
-async def list_projects(user_id: str = Query(...)):
+async def list_projects(user_id: str = Query(...), force_refresh: bool = Query(False)):
+    cache_key = project_cache.get_cache_key(
+        "list_projects",
+        (user_id,),
+        {"force_refresh": force_refresh}
+    )
+    if force_refresh:
+        project_data = await project_cache.get_or_set(
+            cache_key,
+            commander.list_projects,
+            user_id=user_id
+        )
+        if user_id in project_data:
+            await project_cache.pop(cache_key)
     return await commander.list_projects(user_id=user_id)
 
 @project_router.post("/projects/edit_transparency")

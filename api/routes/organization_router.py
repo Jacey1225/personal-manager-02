@@ -14,7 +14,7 @@ async def create_organization(request: CreateOrgRequest, user_id: str = Query(..
 async def delete_organization(request: OrgRequest):
     return await commander.delete_organization(request)
 
-@organization_router.get("/organizations/list_orgs")
+@organization_router.post("/organizations/list_orgs")
 async def list_organizations(request: OrgRequest):
     cache_key = organization_cache.get_cache_key(
         "list_organizations",

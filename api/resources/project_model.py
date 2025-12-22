@@ -252,6 +252,7 @@ class ProjectModel:
             return {"message": "Member not found.", "error": True}
 
     @staticmethod
+    @async_cached(cache=project_cache)
     async def list_projects(user_id: str):
         """Lists all projects for a user.
 

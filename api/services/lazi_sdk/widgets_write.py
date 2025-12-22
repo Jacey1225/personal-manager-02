@@ -23,13 +23,25 @@ class WriteWidget:
         self.project_id = project_id
         self.current_widget = WidgetConfig()
         self.s3_client = S3Handler()
-        self.oauth_client = OAuthUser(username, token)
+        self.oauth_client = OAuthUser(username, token=token)
 
     async def create(
             self,
             name: Optional[str]=None,
             size: Optional[str]=None,
     ):
+        """Creating a widget with the required fields to start with. 
+
+        Args:
+            name (Optional[str], optional): Name of the widget to create. Defaults to None.
+            size (Optional[str], optional): The size of the widget to create. Defaults to None.
+
+        Raises:
+            HTTPException: If there is an error during widget creation
+
+        Returns:
+            bool: True if the widget was created successfully, False otherwise
+        """
         try:
             self.current_widget = WidgetConfig(
                 name=name if name else "",
@@ -44,6 +56,17 @@ class WriteWidget:
              headers: dict,
              refresh_interval: int,
              func: Callable):
+        """Any code logic + context that the user develops for their widget interactions
+
+        Args:
+            endpoint (str): The endpoint name for the interaction
+            headers (dict): The headers for the interaction
+            refresh_interval (int): The refresh interval for the interaction
+            func (Callable): The function containing the interaction logic
+
+        Returns:
+            WidgetInteraction: The created widget interaction
+        """
         code_logic: str = inspect.getsource(func)
         interaction = WidgetInteraction(
             headers=headers,
@@ -62,6 +85,20 @@ class WriteWidget:
             content: list[Any],
             props: dict[str, Any]
     ):
+        """Any widget content that the user develops for their widgets
+
+        Args:
+            endpoint (str): The endpoint name for the component
+            type (str): The type of the component
+            content (list[Any]): The content of the component
+            props (dict[str, Any]): The properties of the component
+
+        Raises:
+            HTTPException: If the interaction endpoint is not found
+
+        Returns:
+            WidgetComponents: The created widget component
+        """
         component = WidgetComponents(
             type=type,
             content=content,
@@ -79,6 +116,19 @@ class WriteWidget:
             expire: int,
             filename: Optional[str]
     ):
+        """Uploads any media to the AWS S3 bucket 
+
+        Args:
+            object_name (str): Name of the media to be stored
+            expire (int): Expiration of the media
+            filename (Optional[str]): The local filename of the media to be uploaded
+
+        Raises:
+            HTTPException: If the S3 client is not initialized or upload fails
+
+        Returns:
+            str: The presigned URL for accessing the media
+        """
         if not self.s3_client:
             raise HTTPException(status_code=500, detail="S3 client not initialized")
         
@@ -97,6 +147,12 @@ class WriteWidget:
         return presigned_url
 
     async def save(self):
+        """Saving the widget to the databases after authenticating the user and their scopes
+
+        Raises:
+            HTTPException: If the user does not have WIDGETS_WRITE scope or is not active
+            Exception: If the project is not found
+        """
         logger.info(f"Starting save process for widget by user: {self.username}")
         auth = await self.oauth_client.get_current_user()
         if not auth or Scopes.WIDGETS_WRITE not in auth["scopes"]:

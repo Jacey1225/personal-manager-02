@@ -3,7 +3,6 @@ from api.config.uniformInterface import UniformInterface
 from api.schemas.calendar import EventsRequest
 from api.schemas.model import EventOutput
 from api.config.cache import async_cached, event_cache
-from datetime import datetime
 
 class TaskListModel:
     @staticmethod

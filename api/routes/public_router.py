@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from api.config.strict_pyenv import validate_code, ValidateRunTime
 from api.config.fetchMongo import MongoHandler
-from api.schemas.auth import User
 from api.schemas.widgets import WidgetInteractionRequest
 import logging
 
@@ -30,6 +29,17 @@ async def public_startup(
 async def public_post(
     widget_interaction: WidgetInteractionRequest
 ):
+    """The public API endpoint for user-developed endpoints on custom widgets
+
+    Args:
+        widget_interaction (WidgetInteractionRequest): The widget interaction request object
+
+    Raises:
+        HTTPException: If the widget is not found or not associated with the project
+
+    Returns:
+        dict: The result of the widget interaction execution
+    """
     logger.info(f"Received public widget interaction request for project: {widget_interaction.project_id}, widget: {widget_interaction.widget_id}, endpoint: {widget_interaction.endpoint}")
     project = await project_config.get_single_doc({"project_id": widget_interaction.project_id})
     logger.info(f"Project retrieved: {project}")

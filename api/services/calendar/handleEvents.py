@@ -1,11 +1,7 @@
-from api.config.uniformInterface import UniformInterface
 from api.services.model_setup.structure_model_output import EventOutput
-from api.services.calendar.eventSetup import RequestSetup, CalendarInsights, CalendarEvent 
+from api.services.calendar.eventSetup import RequestSetup, CalendarEvent 
 from api.validation.handleEventSetup import ValidateEventHandling
-from api.config.plugins.enable_google_api import SyncGoogleEvents, SyncGoogleTasks
-from api.config.plugins.enable_apple_api import SyncAppleEvents
 from datetime import datetime, timezone
-from typing import Optional
 import logging
 
 logging.basicConfig(level=logging.INFO)

@@ -31,10 +31,12 @@ class UniformInterface:
         Yields:
             service instances for each enabled calendar service.
         """
+        await user_config.get_client()
         if not user_config.client:
             raise ConnectionError("Unable to connect to user configuration database.")
         
         user_info = await user_config.get_single_doc({"user_id": self.user_id})
+        await user_config.close_client()
         if not user_info:
             print("User configuration not found.")
             return None

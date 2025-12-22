@@ -8,7 +8,7 @@ google_router = APIRouter()
 logger = logging.getLogger(__name__)
 
 @google_router.get("/auth/google")
-def google_auth(user_id: str) -> dict:
+async def google_auth(user_id: str) -> dict:
     """Get Google OAuth authorization URL for the user"""
     try:
         logger.info(f"Google auth request for user_id: {user_id}")
@@ -20,7 +20,7 @@ def google_auth(user_id: str) -> dict:
             )
         
         google_api = ConfigureGoogleAPI(user_id)
-        result = google_api.enable()
+        result = await google_api.enable()
         
         logger.info(f"Result type: {type(result)}, Result: {result}")
         
@@ -39,14 +39,14 @@ def google_auth(user_id: str) -> dict:
         raise HTTPException(status_code=500, detail=f"Error initializing Google auth: {str(e)}")
 
 @google_router.post("/auth/google/complete")
-def complete_google_auth(request: OAuthCompleteRequest):
+async def complete_google_auth(request: OAuthCompleteRequest):
     """Complete Google OAuth flow with authorization code"""
     try:
         logger.info(f"Completing Google auth for user_id: {request.user_id}")
         logger.info(f"Authorization code length: {len(request.authorization_code)}")
         
         google_api = ConfigureGoogleAPI(request.user_id)
-        result = google_api.complete_auth_flow(request.authorization_code)
+        result = await google_api.complete_auth_flow(request.authorization_code)
         
         if result is not None and len(result) == 2:
             return {"status": "success", "message": "Google authentication completed successfully"}

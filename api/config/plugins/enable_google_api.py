@@ -4,7 +4,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build 
 from api.schemas.calendar import CalendarEvent
-from typing import Optional, Any, Dict, List
+from typing import Optional
 from api.schemas.calendar import CalendarEvent
 from api.config.fetchMongo import MongoHandler
 import logging
@@ -30,6 +30,11 @@ class ConfigureGoogleAPI:
             os.makedirs('data/tokens')
 
     async def write_token(self):
+        """Writes a token for the specified user and updates the database with it
+
+        Returns:
+            _type_: _description_
+        """
         user_config = MongoHandler("userAuthDatabase", "userCredentials")
         if self.creds:
             await user_config.post_update({"user_id": self.user_id}, {"google_auth": self.creds.to_json()})

@@ -85,7 +85,7 @@ async def setup_test_user(async_client):
     logger.info(f"Cleaning up any existing test data")
     user_config = MongoHandler("userAuthDatabase", "userCredentials")
     try:
-        # Delete any existing test users (including ones with bad data)
+        # Delete any existing test users
         existing_users = await user_config.get_multi_doc({"username": {"$regex": "^test_widget_user_"}})
         if isinstance(existing_users, list) and len(existing_users) > 0:
             logger.info(f"Found {len(existing_users)} existing test users to delete")
@@ -93,14 +93,6 @@ async def setup_test_user(async_client):
                 if "user_id" in existing_user:
                     logger.info(f"Deleting test user: {existing_user.get('username', 'unknown')}")
                     await user_config.post_delete({"user_id": existing_user["user_id"]})
-                    
-                    # Also clean up keyring
-                    import keyring
-                    try:
-                        keyring.delete_password("user_auth", existing_user["user_id"])
-                        logger.info(f"  Deleted keyring password for {existing_user['user_id']}")
-                    except Exception as e:
-                        logger.debug(f"  No keyring entry found: {e}")
         else:
             logger.info("No existing test users found to clean up")
     except Exception as e:
@@ -131,9 +123,20 @@ async def setup_test_user(async_client):
     user_id = data["user_id"]
     test_context["user_id"] = user_id
     logger.info(f"✓ User created successfully with ID: {user_id}")
+    logger.info(f"✓ Password automatically hashed during signup")
+    
+    # Verify user was created with hashed password
+    user_config = MongoHandler("userAuthDatabase", "userCredentials")
+    try:
+        user_doc = await user_config.get_single_doc({"user_id": user_id})
+        assert user_doc is not None, "User not found in database"
+        assert user_doc.get('hashed_password') is not None, "Password not hashed"
+        logger.info(f"✓ Verified hashed password exists in database")
+    finally:
+        await user_config.close_client()
     
     # Grant developer privileges
-    logger.info(f"Granting developer privileges to user: {user_id}")
+    logger.info(f"\nGranting developer privileges to user: {user_id}")
     user_config = MongoHandler("userAuthDatabase", "userCredentials")
     
     try:
@@ -148,23 +151,6 @@ async def setup_test_user(async_client):
         logger.info(f"User developer status: {user_doc.get('developer', False)}")
         assert user_doc.get('developer') is True, "Developer status not set correctly"
         
-    finally:
-        await user_config.close_client()
-    
-    # Set hashed password for OAuth2
-    logger.info("Setting hashed password for OAuth2 authentication")
-    from api.routes.auth.public import OAuthUser
-    
-    oauth_handler = OAuthUser(TEST_USER_CONFIG["username"], password=TEST_USER_CONFIG["password"])
-    hashed_password = oauth_handler.hash_pass()
-    
-    user_config = MongoHandler("userAuthDatabase", "userCredentials")
-    try:
-        await user_config.post_update(
-            {"user_id": user_id},
-            {"hashed_password": hashed_password}
-        )
-        logger.info("✓ Hashed password set successfully")
     finally:
         await user_config.close_client()
     
@@ -271,18 +257,98 @@ class TestOAuth2Flow:
         logger.info("\n" + "=" * 80)
         logger.info("TEST 01: PASSED ✓")
         logger.info("=" * 80)
+    
+    @pytest.mark.asyncio
+    async def test_02_user_login_verification(self, async_client, setup_test_user):
+        """Test user login endpoint with password verification."""
+        logger.info("\n" + "=" * 80)
+        logger.info("TEST 02: User Login Verification")
+        logger.info("=" * 80)
+        logger.info("[LINE 260] Starting user login verification test")
+        
+        username = TEST_USER_CONFIG["username"]
+        password = TEST_USER_CONFIG["password"]
+        
+        logger.info(f"[LINE 264] Testing login for user: {username}")
+        logger.info(f"[LINE 265] Using password-based authentication")
+        
+        # Test successful login
+        logger.info("[LINE 268] Sending GET request to /auth/login endpoint")
+        response = await async_client.get(
+            "/auth/login",
+            params={
+                "username": username,
+                "password": password
+            }
+        )
+        
+        logger.info(f"Login response status: {response.status_code}")
+        logger.info(f"Login response body: {response.json()}")
+        
+        assert response.status_code == 200, f"Login failed: {response.text}"
+        
+        data = response.json()
+        assert data["status"] == "success", f"Login status failed: {data}"
+        assert "user_id" in data, "User ID not in response"
+        assert data["user_id"] == test_context["user_id"], "User ID mismatch"
+        
+        logger.info(f"✓ Login successful")
+        logger.info(f"  User ID: {data['user_id']}")
+        logger.info(f"  Status: {data['status']}")
+        
+        # Test failed login with wrong password
+        logger.info(f"\n[LINE 293] Testing login with incorrect password")
+        response = await async_client.get(
+            "/auth/login",
+            params={
+                "username": username,
+                "password": "WrongPassword123!"
+            }
+        )
+        
+        logger.info(f"Failed login response status: {response.status_code}")
+        logger.info(f"Failed login response body: {response.json()}")
+        
+        assert response.status_code == 200, "Expected 200 status"
+        data = response.json()
+        assert data["status"] == "failed", "Expected failed status for wrong password"
+        assert "Invalid password" in data.get("message", ""), "Expected error message"
+        
+        logger.info(f"✓ Correctly rejected invalid password")
+        
+        # Test failed login with non-existent user
+        logger.info(f"\n[LINE 313] Testing login with non-existent user")
+        response = await async_client.get(
+            "/auth/login",
+            params={
+                "username": "nonexistent_user_12345",
+                "password": password
+            }
+        )
+        
+        logger.info(f"Non-existent user response status: {response.status_code}")
+        
+        # The endpoint might return different status or error - just verify it doesn't succeed
+        data = response.json() if response.status_code == 200 else {}
+        if response.status_code == 200:
+            assert data.get("status") == "failed", "Expected failed status for non-existent user"
+            logger.info(f"✓ Correctly rejected non-existent user")
+        
+        logger.info("\n" + "=" * 80)
+        logger.info("TEST 02: PASSED ✓")
+        logger.info("=" * 80)
 
 
 class TestWidgetCreation:
     """Test widget creation using the WriteWidget SDK."""
     
     @pytest.mark.asyncio
-    async def test_02_create_widget_via_sdk(self, setup_test_user):
+    async def test_03_create_widget_via_sdk(self, setup_test_user):
         """Test creating a widget using the WriteWidget SDK."""
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 02: Widget Creation via SDK")
+        logger.info("TEST 03: Widget Creation via SDK")
         logger.info("=" * 80)
-        logger.info("[LINE 313] Starting widget creation via SDK test")
+        logger.info("[LINE 373] Starting widget creation via SDK test")
         
         logger.info("[LINE 315] Validating test prerequisites")
         assert test_context["access_token"], "No access token available"
@@ -445,7 +511,7 @@ class TestWidgetCreation:
             await project_config.close_client()
         
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 02: PASSED ✓")
+        logger.info("TEST 03: PASSED ✓")
         logger.info("=" * 80)
 
 
@@ -453,12 +519,12 @@ class TestPublicAPIEndpoints:
     """Test public API endpoints for widget interaction."""
     
     @pytest.mark.asyncio
-    async def test_03_public_widget_interaction(self, async_client, setup_test_user):
+    async def test_04_public_widget_interaction(self, async_client, setup_test_user):
         """Test calling widget interaction through public API endpoint."""
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 03: Public Widget Interaction")
+        logger.info("TEST 04: Public Widget Interaction")
         logger.info("=" * 80)
-        logger.info("[LINE 476] Starting public widget interaction test")
+        logger.info("[LINE 536] Starting public widget interaction test")
         
         logger.info("[LINE 478] Validating test context data")
         assert test_context["user_id"], "No user ID available"
@@ -520,16 +586,16 @@ class TestPublicAPIEndpoints:
         logger.info(f"\n✓ All widget interactions completed successfully")
         
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 03: PASSED ✓")
+        logger.info("TEST 04: PASSED ✓")
         logger.info("=" * 80)
     
     @pytest.mark.asyncio
-    async def test_04_public_api_error_handling(self, async_client, setup_test_user):
+    async def test_05_public_api_error_handling(self, async_client, setup_test_user):
         """Test public API error handling for invalid requests."""
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 04: Public API Error Handling")
+        logger.info("TEST 05: Public API Error Handling")
         logger.info("=" * 80)
-        logger.info("[LINE 538] Starting public API error handling test")
+        logger.info("[LINE 598] Starting public API error handling test")
         
         # Test with non-existent widget
         logger.info(f"\n[LINE 541] Test 5a: Non-existent widget")
@@ -589,7 +655,7 @@ class TestPublicAPIEndpoints:
         logger.info(f"✓ Correctly returned 404 for widget not in project")
         
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 04: PASSED ✓")
+        logger.info("TEST 05: PASSED ✓")
         logger.info("=" * 80)
 
 
@@ -597,12 +663,12 @@ class TestDataPersistence:
     """Verify test data persistence for manual review."""
     
     @pytest.mark.asyncio
-    async def test_05_verify_data_persistence(self):
+    async def test_06_verify_data_persistence(self):
         """Verify all test data is persisted in database."""
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 05: Data Persistence Verification")
+        logger.info("TEST 06: Data Persistence Verification")
         logger.info("=" * 80)
-        logger.info("[LINE 605] Starting data persistence verification test")
+        logger.info("[LINE 665] Starting data persistence verification test")
         
         logger.info(f"\n[LINE 607] Verifying test data remains in database for review")
         
@@ -677,7 +743,7 @@ class TestDataPersistence:
         logger.info(f"\nTo clean up test data, manually delete documents with IDs above.")
         
         logger.info("\n" + "=" * 80)
-        logger.info("TEST 05: PASSED ✓")
+        logger.info("TEST 06: PASSED ✓")
         logger.info("=" * 80)
 
 
